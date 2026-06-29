@@ -201,18 +201,19 @@ function FamiliaForm({ familia, onSave, onCancel }) {
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Huevito");
   const [servicio, setServicio] = useState(familia?.servicio || "");
-  const [hijos, setHijos] = useState(familia?.hijos || []);
-  const [nuevoHijo, setNuevoHijo] = useState("");
+  const [hijos, setHijos] = useState(
+    (familia?.hijos || []).map(h =>
+      typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h
+    )
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const addHijo = () => {
-    if (!nuevoHijo.trim()) return;
-    setHijos(prev => [...prev, nuevoHijo.trim()]);
-    setNuevoHijo("");
-  };
+  const CURSOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
 
+  const addHijo = () => setHijos(prev => [...prev, { nombre: "", edad: "", curso: "Huevito" }]);
   const removeHijo = (i) => setHijos(prev => prev.filter((_, idx) => idx !== i));
+  const updateHijo = (i, field, value) => setHijos(prev => prev.map((h, idx) => idx === i ? { ...h, [field]: value } : h));
 
   const handleSave = async () => {
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
@@ -244,7 +245,7 @@ function FamiliaForm({ familia, onSave, onCancel }) {
       </div>
 
       <div>
-        <label className="text-xs text-gray-500 mb-2 block">Grado</label>
+        <label className="text-xs text-gray-500 mb-2 block">Grado de la familia</label>
         <div className="flex flex-wrap gap-1.5">
           {GRADOS.map(g => (
             <button key={g} onClick={()=>setGrado(g)}
@@ -256,20 +257,40 @@ function FamiliaForm({ familia, onSave, onCancel }) {
       </div>
 
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">Hijos</label>
-        <div className="flex gap-2 mb-2">
-          <input value={nuevoHijo} onChange={e=>setNuevoHijo(e.target.value)}
-            onKeyDown={e=>e.key==="Enter"&&addHijo()}
-            placeholder="Nombre y edad, ej: Ana 7 años"
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          <button onClick={addHijo} className="px-3 py-2 bg-gray-100 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all">+</button>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-500">Hijos</label>
+          <button onClick={addHijo} className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">+ Añadir hijo</button>
         </div>
-        {hijos.map((h, i) => (
-          <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mb-1">
-            <span className="text-sm text-gray-700">{h}</span>
-            <button onClick={()=>removeHijo(i)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
-          </div>
-        ))}
+        <div className="space-y-3">
+          {hijos.map((h, i) => (
+            <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-medium text-gray-500">Hijo {i + 1}</p>
+                <button onClick={() => removeHijo(i)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕ Eliminar</button>
+              </div>
+              <input value={h.nombre} onChange={e => updateHijo(i, "nombre", e.target.value)}
+                placeholder="Nombre"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+              <input value={h.edad} onChange={e => updateHijo(i, "edad", e.target.value)}
+                placeholder="Edad"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+              <div className="flex flex-wrap gap-1.5">
+                {CURSOS.map(c => (
+                  <button key={c} onClick={() => updateHijo(i, "curso", c)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${h.curso === c ? "bg-violet-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {hijos.length === 0 && (
+            <button onClick={addHijo}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm hover:border-violet-300 hover:text-violet-500 transition-all">
+              + Añadir hijo
+            </button>
+          )}
+        </div>
       </div>
 
       <div>
@@ -499,10 +520,19 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
         {familia.hijos?.length > 0 && (
           <div className="mb-2">
             <p className="text-xs text-gray-400 mb-1">Hijos</p>
-            <div className="flex flex-wrap gap-1.5">
-              {familia.hijos.map((h, i) => (
-                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{h}</span>
-              ))}
+            <div className="space-y-1.5">
+              {familia.hijos.map((h, i) => {
+                const nombre = typeof h === "string" ? h : h.nombre;
+                const edad = typeof h === "string" ? "" : h.edad;
+                const curso = typeof h === "string" ? "" : h.curso;
+                return (
+                  <div key={i} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-700 font-medium">{nombre || "—"}</span>
+                    {edad && <span className="text-xs text-gray-400">{edad} años</span>}
+                    {curso && <Badge text={curso} />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -627,7 +657,11 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
             <span className="font-semibold text-gray-800">{familia.nombre}</span>
             <Badge text={familia.grado} />
           </div>
-          {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.join(" · ")}</p>}
+          {familia.hijos?.length > 0 && (
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"} · ${h.edad ? h.edad + "a" : "—"} · ${h.curso || ""}`).join(" | ")}
+            </p>
+          )}
           {familia.telefono && <p className="text-xs text-gray-400 mt-0.5">📞 {familia.telefono}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -769,7 +803,7 @@ function FeedItem({ item, familia, onVerPerfil }) {
   );
 }
 
-function ResumenView({ visitas, familias, onVerPerfil }) {
+function RecientesView({ visitas, familias, onVerPerfil }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [loadedConv, setLoadedConv] = useState(false);
 
@@ -781,37 +815,72 @@ function ResumenView({ visitas, familias, onVerPerfil }) {
     }
   }, [loadedConv]);
 
-  const total = visitas.length;
-  const completadas = visitas.filter(v => v.completada).length;
-  const familiasCon = [...new Set(visitas.map(v => v.familia_id))].length;
-
   const feed = [
     ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha })),
     ...conversaciones.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
   ].sort((a, b) => b._sort.localeCompare(a._sort));
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        {[{ label: "Visitas", value: total }, { label: "Completadas", value: completadas }, { label: "Familias", value: familiasCon }].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100">
-            <p className="text-2xl font-bold text-violet-600">{s.value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
+    <div className="space-y-3">
       {feed.length === 0 ? (
         <div className="text-center py-12 text-gray-400">Aún no hay actividad registrada</div>
       ) : (
+        feed.map(item => (
+          <FeedItem
+            key={item.id}
+            item={item}
+            familia={familias.find(f => f.id === item.familia_id)}
+            onVerPerfil={onVerPerfil}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
+function ParticipantesView({ familias }) {
+  const [filtro, setFiltro] = useState("Todos");
+  const CURSOS = ["Todos", "Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
+
+  const participantes = familias.flatMap(f =>
+    (f.hijos || []).map(h => ({
+      ...( typeof h === "string" ? { nombre: h, edad: "", curso: "" } : h ),
+      madre: f.nombre,
+      familiaId: f.id,
+    }))
+  ).filter(p => filtro === "Todos" || p.curso === filtro);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {CURSOS.map(c => (
+          <button key={c} onClick={() => setFiltro(c)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtro === c ? "bg-violet-600 text-white" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-50"}`}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {participantes.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin participantes en este grupo</p>
+      ) : (
         <div className="space-y-2.5">
-          {feed.map(item => (
-            <FeedItem
-              key={item.id}
-              item={item}
-              familia={familias.find(f => f.id === item.familia_id)}
-              onVerPerfil={onVerPerfil}
-            />
+          {participantes.map((p, i) => (
+            <div key={i} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+                {(p.nombre || "?")[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-gray-800">{p.nombre || "—"}</span>
+                  {p.curso && <Badge text={p.curso} />}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {p.edad && <span className="text-xs text-gray-400">{p.edad} años</span>}
+                  <span className="text-xs text-gray-400">· {p.madre}</span>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -917,9 +986,9 @@ export default function App() {
           </div>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
           <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
-            {[{id:"familias",label:"Familias"},{id:"resumen",label:"Resumen"}].map(t=>(
+            {[{id:"familias",label:"Familias"},{id:"recientes",label:"Recientes"},{id:"participantes",label:"Participantes"}].map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
                 {t.label}
               </button>
             ))}
@@ -972,8 +1041,8 @@ export default function App() {
               </div>
             </>
           )}
-          {tab==="resumen" && (
-            <ResumenView
+          {tab==="recientes" && (
+            <RecientesView
               visitas={visitas}
               familias={familias}
               onVerPerfil={(id) => {
@@ -982,6 +1051,7 @@ export default function App() {
               }}
             />
           )}
+          {tab==="participantes" && <ParticipantesView familias={familias} />}
         </div>
       </div>
     </>
