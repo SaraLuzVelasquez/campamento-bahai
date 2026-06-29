@@ -67,15 +67,17 @@ const UNIDADES = {
   },
 };
 
-const GRADOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil", "Voluntario"];
+const GRADOS = ["Madre", "Padre", "Voluntario"];
 
 const GRADO_COLOR = {
+  "Madre": "bg-pink-100 text-pink-700",
+  "Padre": "bg-blue-100 text-blue-700",
+  "Voluntario": "bg-gray-100 text-gray-700",
   "Huevito": "bg-blue-100 text-blue-700",
   "Grado 1": "bg-green-100 text-green-700",
   "Grado 2": "bg-orange-100 text-orange-700",
   "Grado 3": "bg-red-100 text-red-700",
   "Prejuvenil": "bg-purple-100 text-purple-700",
-  "Voluntario": "bg-gray-100 text-gray-700",
 };
 
 function Badge({ text }) {
@@ -839,30 +841,49 @@ function RecientesView({ visitas, familias, onVerPerfil }) {
 }
 
 function ParticipantesView({ familias }) {
+  const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState("Todos");
+  const [showFiltro, setShowFiltro] = useState(false);
   const CURSOS = ["Todos", "Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
 
   const participantes = familias.flatMap(f =>
     (f.hijos || []).map(h => ({
-      ...( typeof h === "string" ? { nombre: h, edad: "", curso: "" } : h ),
+      ...(typeof h === "string" ? { nombre: h, edad: "", curso: "" } : h),
       madre: f.nombre,
       familiaId: f.id,
     }))
-  ).filter(p => filtro === "Todos" || p.curso === filtro);
+  ).filter(p => {
+    const q = busqueda.toLowerCase();
+    const matchQ = !q || p.nombre?.toLowerCase().includes(q) || p.madre?.toLowerCase().includes(q);
+    const matchF = filtro === "Todos" || p.curso === filtro;
+    return matchQ && matchF;
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {CURSOS.map(c => (
-          <button key={c} onClick={() => setFiltro(c)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtro === c ? "bg-violet-600 text-white" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-50"}`}>
-            {c}
+      <div className="flex gap-2">
+        <input type="text" placeholder="Buscar participante..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
+          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+        <div className="relative">
+          <button onClick={() => setShowFiltro(!showFiltro)}
+            className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtro !== "Todos" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
+            🔽 {filtro === "Todos" ? "Filtrar" : filtro}
           </button>
-        ))}
+          {showFiltro && (
+            <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
+              {CURSOS.map(c => (
+                <button key={c} onClick={() => { setFiltro(c); setShowFiltro(false); }}
+                  className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtro === c ? "bg-violet-50 text-violet-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {participantes.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin participantes en este grupo</p>
+        <p className="text-center text-gray-400 py-12">Sin participantes</p>
       ) : (
         <div className="space-y-2.5">
           {participantes.map((p, i) => (
@@ -953,12 +974,15 @@ export default function App() {
 
   if (!user) return <AuthScreen onAuth={(u) => initUser(u)} />;
 
-  const grados = ["Todos", ...GRADOS];
+  const roles = ["Todos", "Madre", "Padre", "Voluntario"];
   const familiasFiltradas = familias.filter(f => {
     const q = busqueda.toLowerCase();
-    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h=>h.toLowerCase().includes(q));
-    const matchG = filtroGrado==="Todos" || f.grado.includes(filtroGrado);
-    return matchQ && matchG;
+    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => {
+      const nombre = typeof h === "string" ? h : h.nombre;
+      return nombre?.toLowerCase().includes(q);
+    });
+    const matchR = filtroGrado === "Todos" || f.grado === filtroGrado;
+    return matchQ && matchR;
   });
 
   return (
@@ -1017,7 +1041,7 @@ export default function App() {
                   </button>
                   {showFiltro && (
                     <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
-                      {grados.map(g=>(
+                      {roles.map(g=>(
                         <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
                           className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
                           {g}
