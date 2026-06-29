@@ -477,22 +477,48 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
         <button onClick={onClose} className="text-sm text-violet-500 hover:text-violet-700 font-medium mb-3 flex items-center gap-1">
           ← Volver
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+
+        {/* Perfil */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">
             {familia.nombre[0]}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900">{familia.nombre}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-gray-900 text-lg">{familia.nombre}</span>
               <Badge text={familia.grado} />
             </div>
-            {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 mt-0.5">{familia.hijos.join(" · ")}</p>}
+            {familia.telefono && (
+              <a href={`tel:${familia.telefono}`} className="text-sm text-violet-500 hover:text-violet-700 mt-0.5 block">
+                📞 {familia.telefono}
+              </a>
+            )}
           </div>
         </div>
-        <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
+
+        {familia.hijos?.length > 0 && (
+          <div className="mb-2">
+            <p className="text-xs text-gray-400 mb-1">Hijos</p>
+            <div className="flex flex-wrap gap-1.5">
+              {familia.hijos.map((h, i) => (
+                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{h}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {familia.servicio && (
+          <div className="mb-3">
+            <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
+            <p className="text-sm text-gray-700">{familia.servicio}</p>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           {[
-            { id: "conversaciones", label: `💬 Conversaciones ${conversaciones.length > 0 ? `(${conversaciones.length})` : ""}` },
-            { id: "visitas", label: `📖 Visitas ${visitas.length > 0 ? `(${visitas.length})` : ""}` },
+            { id: "conversaciones", label: `💬 Conversaciones${conversaciones.length > 0 ? ` (${conversaciones.length})` : ""}` },
+            { id: "visitas", label: `📖 Visitas${visitas.length > 0 ? ` (${visitas.length})` : ""}` },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
@@ -806,6 +832,7 @@ export default function App() {
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
+  const [detalleTarget, setDetalleTarget] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -866,77 +893,97 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
-          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Salir</button>
-        </div>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Seguimiento</h1>
-          <span className="text-sm text-gray-500">Hola, {profile?.nombre} 👋</span>
-        </div>
-        <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
-        <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
-          {[{id:"familias",label:"Familias"},{id:"resumen",label:"Resumen"}].map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 py-4 max-w-lg mx-auto space-y-4">
-        {tab==="familias" && (
-          <>
-            {showNuevaFamilia ? (
-              <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
-            ) : (
-              <button onClick={()=>setShowNuevaFamilia(true)}
-                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                + Nueva familia
+    <>
+      {detalleTarget && (
+        <DetalleScreen
+          familia={detalleTarget}
+          visitas={visitas.filter(v => v.familia_id === detalleTarget.id)}
+          currentUser={user}
+          allProfiles={allProfiles}
+          onAddVisita={handleAddVisita}
+          onDeleteVisita={handleDeleteVisita}
+          onClose={() => setDetalleTarget(null)}
+        />
+      )}
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
+            <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Salir</button>
+          </div>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-900">Seguimiento</h1>
+            <span className="text-sm text-gray-500">Hola, {profile?.nombre} 👋</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
+          <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
+            {[{id:"familias",label:"Familias"},{id:"resumen",label:"Resumen"}].map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
+                {t.label}
               </button>
-            )}
+            ))}
+          </div>
+        </div>
 
-            <div className="flex gap-2">
-              <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-              <div className="relative">
-                <button onClick={()=>setShowFiltro(!showFiltro)}
-                  className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroGrado!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
-                  🔽 {filtroGrado==="Todos"?"Filtrar":filtroGrado}
+        <div className="px-4 py-4 max-w-lg mx-auto space-y-4">
+          {tab==="familias" && (
+            <>
+              {showNuevaFamilia ? (
+                <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
+              ) : (
+                <button onClick={()=>setShowNuevaFamilia(true)}
+                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                  + Nueva familia
                 </button>
-                {showFiltro && (
-                  <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
-                    {grados.map(g=>(
-                      <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
-                        className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+              )}
 
-            <div className="space-y-2.5">
-              {familiasFiltradas.map(f=>(
-                <div key={f.id} id={`familia-${f.id}`}>
-                <FamiliaCard familia={f}
-                  visitas={visitas.filter(v=>v.familia_id===f.id)}
-                  currentUser={user} allProfiles={allProfiles}
-                  onAddVisita={handleAddVisita}
-                  onDeleteVisita={handleDeleteVisita}
-                  onEdit={handleEditFamilia} />
+              <div className="flex gap-2">
+                <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+                <div className="relative">
+                  <button onClick={()=>setShowFiltro(!showFiltro)}
+                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroGrado!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
+                    🔽 {filtroGrado==="Todos"?"Filtrar":filtroGrado}
+                  </button>
+                  {showFiltro && (
+                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
+                      {grados.map(g=>(
+                        <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-              {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
-            </div>
-          </>
-        )}
-        {tab==="resumen" && <ResumenView visitas={visitas} familias={familias} onVerPerfil={(id) => { setTab("familias"); setTimeout(() => { const el = document.getElementById(`familia-${id}`); if (el) el.scrollIntoView({ behavior: "smooth" }); }, 100); }} />}
+              </div>
+
+              <div className="space-y-2.5">
+                {familiasFiltradas.map(f=>(
+                  <FamiliaCard key={f.id} familia={f}
+                    visitas={visitas.filter(v=>v.familia_id===f.id)}
+                    currentUser={user} allProfiles={allProfiles}
+                    onAddVisita={handleAddVisita}
+                    onDeleteVisita={handleDeleteVisita}
+                    onEdit={handleEditFamilia} />
+                ))}
+                {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
+              </div>
+            </>
+          )}
+          {tab==="resumen" && (
+            <ResumenView
+              visitas={visitas}
+              familias={familias}
+              onVerPerfil={(id) => {
+                const f = familias.find(x => x.id === id);
+                if (f) setDetalleTarget(f);
+              }}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
