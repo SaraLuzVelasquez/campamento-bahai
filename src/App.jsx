@@ -108,22 +108,43 @@ function AuthScreen({ onAuth }) {
   const [success, setSuccess] = useState("");
 
   const handleLogin = async () => {
+    if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
+    if (!password.trim()) { setError("Escribe tu contraseña"); return; }
     setLoading(true); setError("");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError("Correo o contraseña incorrectos");
+    if (error) setError("Correo o contraseña incorrectos. ¿Has creado una cuenta?");
     else onAuth(data.user);
     setLoading(false);
   };
 
   const handleRegister = async () => {
     if (!nombre.trim()) { setError("Escribe tu nombre"); return; }
+    if (nombre.includes("@")) { setError("El nombre no puede ser un correo. Escribe solo tu nombre, por ejemplo: Sara"); return; }
+    if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
+    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
     setLoading(true); setError("");
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { nombre } }
     });
-    if (error) setError(error.message);
-    else { setSuccess("¡Cuenta creada! Ya puedes iniciar sesión."); setMode("login"); }
+    if (error) {
+      if (error.message.includes("already registered")) setError("Este correo ya tiene una cuenta. Prueba a entrar directamente.");
+      else setError("Algo ha salido mal. Inténtalo de nuevo.");
+    } else {
+      setSuccess("¡Cuenta creada! Ya puedes entrar con tu correo y contraseña.");
+      setMode("login");
+    }
+    setLoading(false);
+  };
+
+  const handleRecover = async () => {
+    if (!email.trim()) { setError("Escribe tu correo para recuperar la contraseña"); return; }
+    setLoading(true); setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) setError("No hemos podido enviar el correo. Comprueba la dirección.");
+    else setSuccess("Te hemos enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.");
     setLoading(false);
   };
 
@@ -137,37 +158,72 @@ function AuthScreen({ onAuth }) {
           <p className="text-sm text-gray-500 mt-1">Madrid · 6 al 31 de julio</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-            {["login","register"].map(m => (
-              <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${mode===m?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>
-                {m==="login"?"Entrar":"Crear cuenta"}
+          {mode !== "recover" && (
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+              {["login","register"].map(m => (
+                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${mode===m?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>
+                  {m==="login"?"Entrar":"Crear cuenta"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === "recover" && (
+            <div>
+              <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+                className="text-sm text-violet-500 hover:text-violet-700 mb-2 flex items-center gap-1">
+                ← Volver
               </button>
-            ))}
-          </div>
+              <p className="font-semibold text-gray-800 mb-1">Recuperar contraseña</p>
+              <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo para crear una nueva contraseña.</p>
+            </div>
+          )}
+
           {mode==="register" && (
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
+              <input
+                value={nombre}
+                onChange={e=>setNombre(e.target.value)}
+                placeholder="Ej: Sara"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
             </div>
           )}
+
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
             <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
           </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          </div>
+
+          {mode !== "recover" && (
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
+          )}
+
           {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
           {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
-          <button onClick={mode==="login"?handleLogin:handleRegister} disabled={loading}
+
+          <button
+            onClick={mode==="login"?handleLogin:mode==="register"?handleRegister:handleRecover}
+            disabled={loading}
             className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
-            {loading?"Un momento...":mode==="login"?"Entrar":"Crear cuenta"}
+            {loading?"Un momento...":mode==="login"?"Entrar":mode==="register"?"Crear cuenta":"Enviar enlace"}
           </button>
+
+          {mode==="login" && (
+            <button onClick={() => { setMode("recover"); setError(""); setSuccess(""); }}
+              className="w-full text-center text-sm text-gray-400 hover:text-violet-500 transition-colors">
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </div>
       </div>
     </div>
