@@ -370,10 +370,10 @@ function VisitaForm({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
         <div className="flex flex-wrap gap-1.5">
           {Object.keys(secciones).map(s => (
             <button key={s} onClick={()=>setSeccion(Number(s))}
-              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{s}</button>
+              className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{s}</button>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-1.5 italic">{secciones[seccion]}</p>
+        <p className="text-sm text-gray-500 mt-2 italic leading-snug">{secciones[seccion]}</p>
       </div>
       <div>
         <label className="text-xs text-gray-500 mb-2 block">Estado</label>
@@ -494,9 +494,9 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0 overflow-y-auto max-h-64">
         <button onClick={onClose} className="text-sm text-violet-500 hover:text-violet-700 font-medium mb-3 flex items-center gap-1">
           ← Volver
         </button>
@@ -743,7 +743,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
 }
 
 function FeedItem({ item, familia, onVerPerfil }) {
-  const [expanded, setExpanded] = useState(false);
   const esVisita = item.tipo === "visita";
 
   const preview = esVisita
@@ -757,51 +756,24 @@ function FeedItem({ item, familia, onVerPerfil }) {
   const autor = item.profiles?.nombre;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full text-left px-4 py-3.5 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
-            {esVisita ? "📖 Visita" : "💬 Conversación"}
-          </span>
-          <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
-        </div>
-        <p className="text-sm text-gray-700 line-clamp-2">{preview}</p>
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs text-gray-400">{fecha}</span>
-          <span className="text-gray-200">·</span>
-          <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
-          {familia && <Badge text={familia.grado} />}
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
-          {esVisita ? (
-            <div className="space-y-1.5">
-              <p className="text-xs text-violet-600 font-medium">{UNIDADES[item.unidad]?.nombre}</p>
-              <p className="text-sm text-gray-700">Sección {item.seccion}: {UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
-              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${item.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                {item.completada ? "Completada" : "En progreso"}
-              </span>
-              {item.comentario && (
-                <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {item.comentario}</p>
-              )}
-              <p className="text-xs text-gray-400">Fue: {autor}</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <p className="text-sm text-gray-700">{item.nota}</p>
-              <p className="text-xs text-gray-400">Por: {autor}</p>
-            </div>
-          )}
-          <button onClick={() => onVerPerfil(familia?.id)}
-            className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors pt-1">
-            Ver perfil completo →
-          </button>
-        </div>
-      )}
-    </div>
+    <button
+      onClick={() => onVerPerfil(familia?.id)}
+      className="w-full text-left bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 active:bg-gray-50 transition-colors">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
+          {esVisita ? "📖 Visita" : "💬 Conversación"}
+        </span>
+        {familia && <Badge text={familia.grado} />}
+      </div>
+      <p className="text-sm text-gray-700 line-clamp-2 mb-1.5">{preview}</p>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400">{fecha}</span>
+        <span className="text-gray-200">·</span>
+        <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
+        <span className="text-gray-200">·</span>
+        <span className="text-xs text-gray-400">{autor}</span>
+      </div>
+    </button>
   );
 }
 
@@ -870,7 +842,7 @@ function ParticipantesView({ familias }) {
             🔽 {filtro === "Todos" ? "Filtrar" : filtro}
           </button>
           {showFiltro && (
-            <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
+            <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
               {CURSOS.map(c => (
                 <button key={c} onClick={() => { setFiltro(c); setShowFiltro(false); }}
                   className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtro === c ? "bg-violet-50 text-violet-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
@@ -905,6 +877,59 @@ function ParticipantesView({ familias }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AdminView({ currentUserId }) {
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("profiles").select("*").order("created_at", { ascending: true })
+      .then(({ data }) => { setUsuarios(data || []); setLoading(false); });
+  }, []);
+
+  const toggleAdmin = async (u) => {
+    const nuevoValor = !u.is_admin;
+    await supabase.from("profiles").update({ is_admin: nuevoValor }).eq("id", u.id);
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: nuevoValor } : x));
+  };
+
+  if (loading) return <p className="text-center text-gray-400 py-12">Cargando...</p>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
+        <p className="text-sm text-amber-700 font-medium">Sección de administración</p>
+        <p className="text-xs text-amber-600 mt-0.5">Solo visible para administradores. Puedes ver los usuarios registrados y gestionar permisos.</p>
+      </div>
+
+      <div className="space-y-2.5">
+        {usuarios.map(u => (
+          <div key={u.id} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+              {(u.nombre || "?")[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-800">{u.nombre}</p>
+              <p className="text-xs text-gray-400 truncate">{u.email || "—"}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {u.is_admin && (
+                <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
+              )}
+              {u.id !== currentUserId && (
+                <button
+                  onClick={() => toggleAdmin(u)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${u.is_admin ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"}`}>
+                  {u.is_admin ? "Quitar admin" : "Hacer admin"}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1002,15 +1027,20 @@ export default function App() {
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
-            <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Salir</button>
+            <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2 py-1">Salir</button>
           </div>
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">Seguimiento</h1>
-            <span className="text-sm text-gray-500">Hola, {profile?.nombre} 👋</span>
+            <span className="text-sm text-gray-500 truncate ml-2">Hola, {profile?.nombre} 👋</span>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
           <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
-            {[{id:"familias",label:"Familias"},{id:"recientes",label:"Recientes"},{id:"participantes",label:"Participantes"}].map(t=>(
+            {[
+              {id:"familias",label:"Familias"},
+              {id:"recientes",label:"Recientes"},
+              {id:"participantes",label:"Participantes"},
+              ...(profile?.is_admin ? [{id:"admin",label:"⚙️"}] : [])
+            ].map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
                 {t.label}
@@ -1019,7 +1049,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="px-4 py-4 max-w-lg mx-auto space-y-4">
+        <div className="px-4 py-4 pb-8 w-full max-w-lg mx-auto space-y-4">
           {tab==="familias" && (
             <>
               {showNuevaFamilia ? (
@@ -1040,7 +1070,7 @@ export default function App() {
                     🔽 {filtroGrado==="Todos"?"Filtrar":filtroGrado}
                   </button>
                   {showFiltro && (
-                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
+                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
                       {roles.map(g=>(
                         <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
                           className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
@@ -1076,6 +1106,7 @@ export default function App() {
             />
           )}
           {tab==="participantes" && <ParticipantesView familias={familias} />}
+          {tab==="admin" && profile?.is_admin && <AdminView currentUserId={user.id} />}
         </div>
       </div>
     </>
