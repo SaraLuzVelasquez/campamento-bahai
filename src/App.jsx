@@ -494,25 +494,25 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0 overflow-y-auto max-h-64">
-        <button onClick={onClose} className="text-sm text-violet-500 hover:text-violet-700 font-medium mb-3 flex items-center gap-1">
+      <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-3 flex-shrink-0">
+        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-2 flex items-center gap-1">
           ← Volver
         </button>
 
-        {/* Perfil */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">
+        {/* Perfil compacto */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
             {familia.nombre[0]}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-gray-900 text-lg">{familia.nombre}</span>
+              <span className="font-bold text-gray-900">{familia.nombre}</span>
               <Badge text={familia.grado} />
             </div>
             {familia.telefono && (
-              <a href={`tel:${familia.telefono}`} className="text-sm text-violet-500 hover:text-violet-700 mt-0.5 block">
+              <a href={`tel:${familia.telefono}`} className="text-sm text-violet-500 mt-0.5 block">
                 📞 {familia.telefono}
               </a>
             )}
@@ -520,40 +520,32 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
         </div>
 
         {familia.hijos?.length > 0 && (
-          <div className="mb-2">
-            <p className="text-xs text-gray-400 mb-1">Hijos</p>
-            <div className="space-y-1.5">
-              {familia.hijos.map((h, i) => {
-                const nombre = typeof h === "string" ? h : h.nombre;
-                const edad = typeof h === "string" ? "" : h.edad;
-                const curso = typeof h === "string" ? "" : h.curso;
-                return (
-                  <div key={i} className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-gray-700 font-medium">{nombre || "—"}</span>
-                    {edad && <span className="text-xs text-gray-400">{edad} años</span>}
-                    {curso && <Badge text={curso} />}
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+            {familia.hijos.map((h, i) => {
+              const nombre = typeof h === "string" ? h : h.nombre;
+              const edad = typeof h === "string" ? "" : h.edad;
+              const curso = typeof h === "string" ? "" : h.curso;
+              return (
+                <span key={i} className="text-xs text-gray-600">
+                  {nombre || "—"}{edad ? `, ${edad}a` : ""}{curso ? ` · ` : ""}{curso && <Badge text={curso} />}
+                </span>
+              );
+            })}
           </div>
         )}
 
         {familia.servicio && (
-          <div className="mb-3">
-            <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
-            <p className="text-sm text-gray-700">{familia.servicio}</p>
-          </div>
+          <p className="text-xs text-gray-500 mb-2">{familia.servicio}</p>
         )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           {[
-            { id: "conversaciones", label: `💬 Conversaciones${conversaciones.length > 0 ? ` (${conversaciones.length})` : ""}` },
+            { id: "conversaciones", label: `💬 Conv.${conversaciones.length > 0 ? ` (${conversaciones.length})` : ""}` },
             { id: "visitas", label: `📖 Visitas${visitas.length > 0 ? ` (${visitas.length})` : ""}` },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500"}`}>
               {t.label}
             </button>
           ))}
