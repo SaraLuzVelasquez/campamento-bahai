@@ -450,20 +450,148 @@ function ConversacionesSection({ familiaId, currentUser }) {
   );
 }
 
+function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onClose }) {
+  const [tab, setTab] = useState("conversaciones");
+  const [conversaciones, setConversaciones] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) {
+      supabase.from("conversaciones").select("*, profiles(nombre)").eq("familia_id", familia.id)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
+    }
+  }, [familia.id, loaded]);
+
+  const handleDeleteConv = async (id) => {
+    await supabase.from("conversaciones").delete().eq("id", id);
+    setConversaciones(prev => prev.filter(c => c.id !== id));
+  };
+
+  const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={onClose} className="text-sm text-violet-500 hover:text-violet-700 font-medium mb-3 flex items-center gap-1">
+          ← Volver
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+            {familia.nombre[0]}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-gray-900">{familia.nombre}</span>
+              <Badge text={familia.grado} />
+            </div>
+            {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 mt-0.5">{familia.hijos.join(" · ")}</p>}
+          </div>
+        </div>
+        <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
+          {[
+            { id: "conversaciones", label: `💬 Conversaciones ${conversaciones.length > 0 ? `(${conversaciones.length})` : ""}` },
+            { id: "visitas", label: `📖 Visitas ${visitas.length > 0 ? `(${visitas.length})` : ""}` },
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {tab === "conversaciones" && (
+          conversaciones.length === 0
+            ? <p className="text-center text-gray-400 py-12">Aún no hay conversaciones</p>
+            : conversaciones.map(c => (
+              <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                <p className="text-sm text-gray-700">{c.nota}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
+                  <button onClick={() => handleDeleteConv(c.id)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕</button>
+                </div>
+              </div>
+            ))
+        )}
+        {tab === "visitas" && (
+          sorted.length === 0
+            ? <p className="text-center text-gray-400 py-12">Aún no hay visitas</p>
+            : sorted.map(v => (
+              <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                      {v.completada ? "Completada" : "En progreso"}
+                    </span>
+                    <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+                  </div>
+                </div>
+                <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
+                <p className="text-sm text-gray-700">Sección {v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
+                <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
+                {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
+              </div>
+            ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit }) {
   const [expanded, setExpanded] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [accion, setAccion] = useState(null); // "comentario" | "visita" | null
+  const [showDetalle, setShowDetalle] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const sorted = [...visitas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  const ultima = sorted[0];
+  const [nota, setNota] = useState("");
+  const [savingNota, setSavingNota] = useState(false);
+  const [totalConv, setTotalConv] = useState(null);
+
+  const hayActividad = visitas.length > 0 || totalConv > 0;
+
+  useEffect(() => {
+    if (expanded && totalConv === null) {
+      supabase.from("conversaciones").select("id", { count: "exact", head: true }).eq("familia_id", familia.id)
+        .then(({ count }) => setTotalConv(count || 0));
+    }
+  }, [expanded, familia.id, totalConv]);
+
+  const handleSaveNota = async () => {
+    if (!nota.trim()) return;
+    setSavingNota(true);
+    await supabase.from("conversaciones").insert({
+      familia_id: familia.id, nota: nota.trim(), autor_id: currentUser.id,
+    });
+    setNota("");
+    setSavingNota(false);
+    setAccion(null);
+    setTotalConv(prev => (prev || 0) + 1);
+  };
 
   if (showEdit) return (
     <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
   );
 
+  if (showDetalle) return (
+    <DetalleScreen
+      familia={familia}
+      visitas={visitas}
+      currentUser={currentUser}
+      allProfiles={allProfiles}
+      onAddVisita={onAddVisita}
+      onDeleteVisita={onDeleteVisita}
+      onClose={() => setShowDetalle(false)}
+    />
+  );
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={()=>setExpanded(!expanded)}
+      <button onClick={() => setExpanded(!expanded)}
         className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
         <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
           {familia.nombre[0]}
@@ -479,97 +607,185 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         <div className="flex items-center gap-2 flex-shrink-0">
           {visitas.length > 0 && (
             <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-              {visitas.length} visita{visitas.length!==1?"s":""}
+              {visitas.length} visita{visitas.length !== 1 ? "s" : ""}
             </span>
           )}
-          <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
+          <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
         </div>
       </button>
+
       {expanded && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-50">
-          <div className="pt-3 flex items-start justify-between">
+        <div className="border-t border-gray-50">
+          {/* Info básica */}
+          <div className="px-4 pt-3 pb-2 flex items-start justify-between">
             <div>
-              <p className="text-xs text-gray-400 mb-1">Colaboración</p>
+              <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
               <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
             </div>
-            <button onClick={()=>setShowEdit(true)}
+            <button onClick={() => setShowEdit(true)}
               className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
               Editar
             </button>
           </div>
-          {ultima && (
-            <div className="bg-violet-50 rounded-xl px-3 py-2.5">
-              <p className="text-xs text-violet-500 mb-0.5 font-medium">Última visita</p>
-              <p className="text-sm text-gray-700">{ultima.fecha} · U{ultima.unidad} S{ultima.seccion} · {ultima.profiles?.nombre}</p>
-            </div>
-          )}
-          <ConversacionesSection familiaId={familia.id} currentUser={currentUser} />
-          {sorted.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Visitas</p>
-              {sorted.map(v => <VisitaCard key={v.id} visita={v} onDelete={()=>onDeleteVisita(v.id)} />)}
-            </div>
-          )}
-          {showForm ? (
-            <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-              onSave={(v)=>{onAddVisita(v);setShowForm(false);}} onCancel={()=>setShowForm(false)} />
-          ) : (
-            <button onClick={()=>setShowForm(true)}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-violet-200 text-violet-500 text-sm hover:border-violet-400 hover:bg-violet-50 transition-all font-semibold">
-              + Registrar visita
-            </button>
-          )}
+
+          {/* Opciones del dropdown */}
+          <div className="px-4 pb-4 space-y-2 mt-1">
+            {/* Escribir comentario */}
+            {accion === "comentario" ? (
+              <div className="space-y-2">
+                <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3}
+                  placeholder="Escribe tu comentario..."
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                <div className="flex gap-2">
+                  <button onClick={handleSaveNota} disabled={savingNota || !nota.trim()}
+                    className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
+                    {savingNota ? "Guardando..." : "Guardar comentario"}
+                  </button>
+                  <button onClick={() => setAccion(null)}
+                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : accion === "visita" ? (
+              <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
+                onSave={(v) => { onAddVisita(v); setAccion(null); }}
+                onCancel={() => setAccion(null)} />
+            ) : (
+              <div className="space-y-2">
+                <button onClick={() => setAccion("comentario")}
+                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
+                  💬 Escribir comentario
+                </button>
+                <button onClick={() => setAccion("visita")}
+                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
+                  📖 Registrar visita
+                </button>
+                <button
+                  onClick={() => hayActividad && setShowDetalle(true)}
+                  disabled={!hayActividad}
+                  className={`w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between ${hayActividad ? "bg-violet-50 hover:bg-violet-100 text-violet-700" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}>
+                  <span>📋 Ver conversaciones y visitas</span>
+                  {hayActividad && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
+                    {visitas.length + (totalConv || 0)}
+                  </span>}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function ResumenView({ visitas, familias }) {
+function FeedItem({ item, familia, onVerPerfil }) {
+  const [expanded, setExpanded] = useState(false);
+  const esVisita = item.tipo === "visita";
+
+  const preview = esVisita
+    ? `U${item.unidad} · S${item.seccion} · ${UNIDADES[item.unidad]?.secciones[item.seccion]}`
+    : item.nota;
+
+  const fecha = esVisita
+    ? item.fecha
+    : new Date(item.created_at).toLocaleDateString("es-ES");
+
+  const autor = item.profiles?.nombre;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)}
+        className="w-full text-left px-4 py-3.5 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
+            {esVisita ? "📖 Visita" : "💬 Conversación"}
+          </span>
+          <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+        </div>
+        <p className="text-sm text-gray-700 line-clamp-2">{preview}</p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-xs text-gray-400">{fecha}</span>
+          <span className="text-gray-200">·</span>
+          <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
+          {familia && <Badge text={familia.grado} />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
+          {esVisita ? (
+            <div className="space-y-1.5">
+              <p className="text-xs text-violet-600 font-medium">{UNIDADES[item.unidad]?.nombre}</p>
+              <p className="text-sm text-gray-700">Sección {item.seccion}: {UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
+              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${item.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {item.completada ? "Completada" : "En progreso"}
+              </span>
+              {item.comentario && (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {item.comentario}</p>
+              )}
+              <p className="text-xs text-gray-400">Fue: {autor}</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-sm text-gray-700">{item.nota}</p>
+              <p className="text-xs text-gray-400">Por: {autor}</p>
+            </div>
+          )}
+          <button onClick={() => onVerPerfil(familia?.id)}
+            className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors pt-1">
+            Ver perfil completo →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResumenView({ visitas, familias, onVerPerfil }) {
+  const [conversaciones, setConversaciones] = useState([]);
+  const [loadedConv, setLoadedConv] = useState(false);
+
+  useEffect(() => {
+    if (!loadedConv) {
+      supabase.from("conversaciones").select("*, profiles(nombre)")
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { setConversaciones(data || []); setLoadedConv(true); });
+    }
+  }, [loadedConv]);
+
   const total = visitas.length;
-  const completadas = visitas.filter(v=>v.completada).length;
-  const familiasCon = [...new Set(visitas.map(v=>v.familia_id))].length;
-  const porFamilia = familias.map(f=>({...f,visitas:visitas.filter(v=>v.familia_id===f.id)})).filter(f=>f.visitas.length>0);
+  const completadas = visitas.filter(v => v.completada).length;
+  const familiasCon = [...new Set(visitas.map(v => v.familia_id))].length;
+
+  const feed = [
+    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha })),
+    ...conversaciones.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
+  ].sort((a, b) => b._sort.localeCompare(a._sort));
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        {[{label:"Visitas",value:total},{label:"Completadas",value:completadas},{label:"Familias",value:familiasCon}].map(s=>(
+        {[{ label: "Visitas", value: total }, { label: "Completadas", value: completadas }, { label: "Familias", value: familiasCon }].map(s => (
           <div key={s.label} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100">
             <p className="text-2xl font-bold text-violet-600">{s.value}</p>
             <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
-      {porFamilia.length===0 ? (
-        <div className="text-center py-12 text-gray-400">Aún no hay visitas registradas</div>
+
+      {feed.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">Aún no hay actividad registrada</div>
       ) : (
-        <div className="space-y-3">
-          {porFamilia.map(f=>(
-            <div key={f.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-800">{f.nombre}</span>
-                  <Badge text={f.grado} />
-                </div>
-                <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-                  {f.visitas.length} visita{f.visitas.length!==1?"s":""}
-                </span>
-              </div>
-              {f.visitas.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>(
-                <div key={v.id} className="bg-gray-50 rounded-xl p-2.5 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{v.fecha}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>
-                      {v.completada?"Completada":"En progreso"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-violet-600">U{v.unidad} · S{v.seccion} · {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
-                  <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
-                  {v.comentario && <p className="text-xs text-gray-400 italic">💬 {v.comentario}</p>}
-                </div>
-              ))}
-            </div>
+        <div className="space-y-2.5">
+          {feed.map(item => (
+            <FeedItem
+              key={item.id}
+              item={item}
+              familia={familias.find(f => f.id === item.familia_id)}
+              onVerPerfil={onVerPerfil}
+            />
           ))}
         </div>
       )}
@@ -706,18 +922,20 @@ export default function App() {
 
             <div className="space-y-2.5">
               {familiasFiltradas.map(f=>(
-                <FamiliaCard key={f.id} familia={f}
+                <div key={f.id} id={`familia-${f.id}`}>
+                <FamiliaCard familia={f}
                   visitas={visitas.filter(v=>v.familia_id===f.id)}
                   currentUser={user} allProfiles={allProfiles}
                   onAddVisita={handleAddVisita}
                   onDeleteVisita={handleDeleteVisita}
                   onEdit={handleEditFamilia} />
+                </div>
               ))}
               {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
             </div>
           </>
         )}
-        {tab==="resumen" && <ResumenView visitas={visitas} familias={familias} />}
+        {tab==="resumen" && <ResumenView visitas={visitas} familias={familias} onVerPerfil={(id) => { setTab("familias"); setTimeout(() => { const el = document.getElementById(`familia-${id}`); if (el) el.scrollIntoView({ behavior: "smooth" }); }, 100); }} />}
       </div>
     </div>
   );
