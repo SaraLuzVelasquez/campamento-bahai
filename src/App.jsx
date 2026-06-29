@@ -67,21 +67,7 @@ const UNIDADES = {
   },
 };
 
-const FAMILIAS = [
-  { id: "maximo", nombre: "Máximo", hijos: ["Izac (5 años)"], grado: "Huevito", servicio: "Presente todo el campus" },
-  { id: "aurora", nombre: "Aurora", hijos: ["Amin (5 años)"], grado: "Huevito", servicio: "Presente 3 semanas" },
-  { id: "maryorie", nombre: "Maryorie", hijos: ["Meghan (10 años)", "Hijo (4 años)"], grado: "Huevito / Grado 3", servicio: "Visitas y oraciones" },
-  { id: "richel", nombre: "Richel", hijos: ["Hijo (edad por confirmar)"], grado: "Grado 1", servicio: "Por confirmar" },
-  { id: "rosalyn", nombre: "Rosalyn", hijos: ["Samuel (6 años)", "Zafia Elise (9 años)"], grado: "Grado 1 / Grado 2", servicio: "Limpieza una vez a la semana" },
-  { id: "josephine", nombre: "Joséphine", hijos: ["Marc (8 años)"], grado: "Grado 2", servicio: "No puede colaborar en campus" },
-  { id: "kristine", nombre: "Kristine", hijos: ["Kyrie (8 años)"], grado: "Grado 2", servicio: "No puede colaborar en campus" },
-  { id: "janelle", nombre: "Janelle", hijos: ["Jerran (8 años)"], grado: "Grado 2", servicio: "Taller" },
-  { id: "miriam", nombre: "Miriam", hijos: ["Daniel (11 años)"], grado: "Grado 3", servicio: "No puede colaborar en campus" },
-  { id: "mercedes", nombre: "Mercedes", hijos: ["Dariel Valentín (11 años)"], grado: "Grado 3", servicio: "Limpieza tarde/noche" },
-  { id: "marializ", nombre: "María Liz", hijos: ["Bruno Rafael (13 años)"], grado: "Prejuvenil", servicio: "Limpieza" },
-  { id: "marlaainhoa", nombre: "Marla Ainhoa", hijos: ["Ángel (14 años)"], grado: "Prejuvenil", servicio: "Invitar familiar joven como voluntario" },
-  { id: "ismael", nombre: "Ismael", hijos: [], grado: "Voluntario", servicio: "Ayudar en todo" },
-];
+const GRADOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil", "Voluntario"];
 
 const GRADO_COLOR = {
   "Huevito": "bg-blue-100 text-blue-700",
@@ -97,6 +83,8 @@ function Badge({ text }) {
   const cls = GRADO_COLOR[base] || "bg-gray-100 text-gray-600";
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{text}</span>;
 }
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
 
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
@@ -123,28 +111,20 @@ function AuthScreen({ onAuth }) {
     if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
     if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
     setLoading(true); setError("");
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { nombre } }
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } });
     if (error) {
       if (error.message.includes("already registered")) setError("Este correo ya tiene una cuenta. Prueba a entrar directamente.");
       else setError("Algo ha salido mal. Inténtalo de nuevo.");
-    } else {
-      setSuccess("¡Cuenta creada! Ya puedes entrar con tu correo y contraseña.");
-      setMode("login");
-    }
+    } else { setSuccess("¡Cuenta creada! Ya puedes entrar."); setMode("login"); }
     setLoading(false);
   };
 
   const handleRecover = async () => {
     if (!email.trim()) { setError("Escribe tu correo para recuperar la contraseña"); return; }
     setLoading(true); setError("");
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
     if (error) setError("No hemos podido enviar el correo. Comprueba la dirección.");
-    else setSuccess("Te hemos enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.");
+    else setSuccess("Te hemos enviado un correo para restablecer tu contraseña.");
     setLoading(false);
   };
 
@@ -168,38 +148,27 @@ function AuthScreen({ onAuth }) {
               ))}
             </div>
           )}
-
           {mode === "recover" && (
             <div>
               <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-                className="text-sm text-violet-500 hover:text-violet-700 mb-2 flex items-center gap-1">
-                ← Volver
-              </button>
+                className="text-sm text-violet-500 hover:text-violet-700 mb-2">← Volver</button>
               <p className="font-semibold text-gray-800 mb-1">Recuperar contraseña</p>
-              <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo para crear una nueva contraseña.</p>
+              <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo.</p>
             </div>
           )}
-
           {mode==="register" && (
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-              <input
-                value={nombre}
-                onChange={e=>setNombre(e.target.value)}
-                placeholder="Ej: Sara"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
+              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
+                autoComplete="off" autoCorrect="off" spellCheck="false"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
             </div>
           )}
-
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
             <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
           </div>
-
           {mode !== "recover" && (
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
@@ -207,17 +176,12 @@ function AuthScreen({ onAuth }) {
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
             </div>
           )}
-
           {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
           {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
-
-          <button
-            onClick={mode==="login"?handleLogin:mode==="register"?handleRegister:handleRecover}
-            disabled={loading}
+          <button onClick={mode==="login"?handleLogin:mode==="register"?handleRegister:handleRecover} disabled={loading}
             className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
             {loading?"Un momento...":mode==="login"?"Entrar":mode==="register"?"Crear cuenta":"Enviar enlace"}
           </button>
-
           {mode==="login" && (
             <button onClick={() => { setMode("recover"); setError(""); setSuccess(""); }}
               className="w-full text-center text-sm text-gray-400 hover:text-violet-500 transition-colors">
@@ -229,6 +193,105 @@ function AuthScreen({ onAuth }) {
     </div>
   );
 }
+
+// ── FAMILIA FORM ──────────────────────────────────────────────────────────────
+
+function FamiliaForm({ familia, onSave, onCancel }) {
+  const [nombre, setNombre] = useState(familia?.nombre || "");
+  const [telefono, setTelefono] = useState(familia?.telefono || "");
+  const [grado, setGrado] = useState(familia?.grado || "Huevito");
+  const [servicio, setServicio] = useState(familia?.servicio || "");
+  const [hijos, setHijos] = useState(familia?.hijos || []);
+  const [nuevoHijo, setNuevoHijo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const addHijo = () => {
+    if (!nuevoHijo.trim()) return;
+    setHijos(prev => [...prev, nuevoHijo.trim()]);
+    setNuevoHijo("");
+  };
+
+  const removeHijo = (i) => setHijos(prev => prev.filter((_, idx) => idx !== i));
+
+  const handleSave = async () => {
+    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
+    setSaving(true);
+    const id = familia?.id || nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
+    const payload = { id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, servicio: servicio.trim(), hijos };
+    const { data, error } = familia
+      ? await supabase.from("familias").update(payload).eq("id", familia.id).select().single()
+      : await supabase.from("familias").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">{familia ? "Editar familia" : "Nueva familia"}</p>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Nombre del padre/madre *</label>
+        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-2 block">Grado</label>
+        <div className="flex flex-wrap gap-1.5">
+          {GRADOS.map(g => (
+            <button key={g} onClick={()=>setGrado(g)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${grado===g?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Hijos</label>
+        <div className="flex gap-2 mb-2">
+          <input value={nuevoHijo} onChange={e=>setNuevoHijo(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&addHijo()}
+            placeholder="Nombre y edad, ej: Ana 7 años"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <button onClick={addHijo} className="px-3 py-2 bg-gray-100 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all">+</button>
+        </div>
+        {hijos.map((h, i) => (
+          <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mb-1">
+            <span className="text-sm text-gray-700">{h}</span>
+            <button onClick={()=>removeHijo(i)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Colaboración</label>
+        <input value={servicio} onChange={e=>setServicio(e.target.value)} placeholder="Ej: Limpieza una vez a la semana"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+// ── VISITA FORM ───────────────────────────────────────────────────────────────
 
 function VisitaForm({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
   const [unidad, setUnidad] = useState(1);
@@ -332,11 +395,71 @@ function VisitaCard({ visita, onDelete }) {
   );
 }
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita }) {
+function ConversacionesSection({ familiaId, currentUser }) {
+  const [conversaciones, setConversaciones] = useState([]);
+  const [nota, setNota] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) {
+      supabase.from("conversaciones").select("*, profiles(nombre)").eq("familia_id", familiaId)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
+    }
+  }, [familiaId, loaded]);
+
+  const handleSave = async () => {
+    if (!nota.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from("conversaciones").insert({
+      familia_id: familiaId, nota: nota.trim(), autor_id: currentUser.id,
+    }).select("*, profiles(nombre)").single();
+    if (data) setConversaciones(prev => [data, ...prev]);
+    setNota("");
+    setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("conversaciones").delete().eq("id", id);
+    setConversaciones(prev => prev.filter(c => c.id !== id));
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Conversaciones</p>
+      <div className="flex gap-2">
+        <textarea value={nota} onChange={e=>setNota(e.target.value)} rows={2}
+          placeholder="Anota algo sobre esta familia..."
+          className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <button onClick={handleSave} disabled={saving || !nota.trim()}
+          className="px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all self-end">
+          {saving?"...":"Guardar"}
+        </button>
+      </div>
+      {conversaciones.map(c => (
+        <div key={c.id} className="bg-amber-50 rounded-xl p-3 space-y-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm text-gray-700 flex-1">{c.nota}</p>
+            <button onClick={()=>handleDelete(c.id)} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">✕</button>
+          </div>
+          <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const sorted = [...visitas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const ultima = sorted[0];
+
+  if (showEdit) return (
+    <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
+  );
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -350,7 +473,8 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
             <span className="font-semibold text-gray-800">{familia.nombre}</span>
             <Badge text={familia.grado} />
           </div>
-          {familia.hijos.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.join(" · ")}</p>}
+          {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.join(" · ")}</p>}
+          {familia.telefono && <p className="text-xs text-gray-400 mt-0.5">📞 {familia.telefono}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {visitas.length > 0 && (
@@ -362,10 +486,16 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         </div>
       </button>
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-50">
-          <div className="pt-3">
-            <p className="text-xs text-gray-400 mb-1">Colaboración</p>
-            <p className="text-sm text-gray-700">{familia.servicio}</p>
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-50">
+          <div className="pt-3 flex items-start justify-between">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Colaboración</p>
+              <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
+            </div>
+            <button onClick={()=>setShowEdit(true)}
+              className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
+              Editar
+            </button>
           </div>
           {ultima && (
             <div className="bg-violet-50 rounded-xl px-3 py-2.5">
@@ -373,9 +503,10 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               <p className="text-sm text-gray-700">{ultima.fecha} · U{ultima.unidad} S{ultima.seccion} · {ultima.profiles?.nombre}</p>
             </div>
           )}
+          <ConversacionesSection familiaId={familia.id} currentUser={currentUser} />
           {sorted.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Historial</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Visitas</p>
               {sorted.map(v => <VisitaCard key={v.id} visita={v} onDelete={()=>onDeleteVisita(v.id)} />)}
             </div>
           )}
@@ -394,11 +525,11 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   );
 }
 
-function ResumenView({ visitas }) {
+function ResumenView({ visitas, familias }) {
   const total = visitas.length;
   const completadas = visitas.filter(v=>v.completada).length;
   const familiasCon = [...new Set(visitas.map(v=>v.familia_id))].length;
-  const porFamilia = FAMILIAS.map(f=>({...f,visitas:visitas.filter(v=>v.familia_id===f.id)})).filter(f=>f.visitas.length>0);
+  const porFamilia = familias.map(f=>({...f,visitas:visitas.filter(v=>v.familia_id===f.id)})).filter(f=>f.visitas.length>0);
 
   return (
     <div className="space-y-4">
@@ -446,14 +577,19 @@ function ResumenView({ visitas }) {
   );
 }
 
+// ── APP ───────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
+  const [familias, setFamilias] = useState([]);
   const [visitas, setVisitas] = useState([]);
   const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
+  const [showFiltro, setShowFiltro] = useState(false);
+  const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -470,13 +606,15 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-    const [{ data: prof }, { data: profs }, { data: vis }] = await Promise.all([
+    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.id).single(),
       supabase.from("profiles").select("*"),
+      supabase.from("familias").select("*").order("created_at", { ascending: true }),
       supabase.from("visitas").select("*, profiles(nombre)"),
     ]);
     setProfile(prof);
     setAllProfiles(profs || []);
+    setFamilias(fams || []);
     setVisitas(vis || []);
     setLoading(false);
   };
@@ -485,6 +623,13 @@ export default function App() {
   const handleDeleteVisita = async (id) => {
     await supabase.from("visitas").delete().eq("id", id);
     setVisitas(prev => prev.filter(v => v.id !== id));
+  };
+  const handleAddFamilia = (f) => {
+    setFamilias(prev => [f, ...prev]);
+    setShowNuevaFamilia(false);
+  };
+  const handleEditFamilia = (f) => {
+    setFamilias(prev => prev.map(x => x.id === f.id ? f : x));
   };
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
@@ -496,10 +641,10 @@ export default function App() {
 
   if (!user) return <AuthScreen onAuth={(u) => initUser(u)} />;
 
-  const grados = ["Todos","Huevito","Grado 1","Grado 2","Grado 3","Prejuvenil","Voluntario"];
-  const familiasFiltradas = FAMILIAS.filter(f => {
+  const grados = ["Todos", ...GRADOS];
+  const familiasFiltradas = familias.filter(f => {
     const q = busqueda.toLowerCase();
-    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos.some(h=>h.toLowerCase().includes(q));
+    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h=>h.toLowerCase().includes(q));
     const matchG = filtroGrado==="Todos" || f.grado.includes(filtroGrado);
     return matchQ && matchG;
   });
@@ -525,30 +670,54 @@ export default function App() {
           ))}
         </div>
       </div>
+
       <div className="px-4 py-4 max-w-lg mx-auto space-y-4">
         {tab==="familias" && (
           <>
-            <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {grados.map(g=>(
-                <button key={g} onClick={()=>setFiltroGrado(g)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroGrado===g?"bg-violet-600 text-white":"bg-white text-gray-500 border border-gray-200 hover:bg-gray-50"}`}>
-                  {g}
+            {showNuevaFamilia ? (
+              <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
+            ) : (
+              <button onClick={()=>setShowNuevaFamilia(true)}
+                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                + Nueva familia
+              </button>
+            )}
+
+            <div className="flex gap-2">
+              <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+              <div className="relative">
+                <button onClick={()=>setShowFiltro(!showFiltro)}
+                  className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroGrado!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
+                  🔽 {filtroGrado==="Todos"?"Filtrar":filtroGrado}
                 </button>
-              ))}
+                {showFiltro && (
+                  <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 min-w-36 overflow-hidden">
+                    {grados.map(g=>(
+                      <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
+                        className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
             <div className="space-y-2.5">
               {familiasFiltradas.map(f=>(
-                <FamiliaCard key={f.id} familia={f} visitas={visitas.filter(v=>v.familia_id===f.id)}
+                <FamiliaCard key={f.id} familia={f}
+                  visitas={visitas.filter(v=>v.familia_id===f.id)}
                   currentUser={user} allProfiles={allProfiles}
-                  onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita} />
+                  onAddVisita={handleAddVisita}
+                  onDeleteVisita={handleDeleteVisita}
+                  onEdit={handleEditFamilia} />
               ))}
               {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
             </div>
           </>
         )}
-        {tab==="resumen" && <ResumenView visitas={visitas} />}
+        {tab==="resumen" && <ResumenView visitas={visitas} familias={familias} />}
       </div>
     </div>
   );
