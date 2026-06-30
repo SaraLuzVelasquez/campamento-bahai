@@ -69,6 +69,8 @@ const UNIDADES = {
 
 const GRADOS = ["Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
 
+const ROLES_VOLUNTARIO = ["Logística", "Maestro", "Animador", "Tesorería", "Camisetas", "Meriendas/Excursiones", "Otros"];
+
 const GRADO_COLOR = {
   "Madre": "bg-pink-100 text-pink-700",
   "Padre": "bg-blue-100 text-blue-700",
@@ -82,8 +84,8 @@ const GRADO_COLOR = {
   "Prejuvenil": "bg-purple-100 text-purple-700",
 };
 
-function ContactoTelefono({ telefono }) {
-  if (!telefono) return null;
+function ContactoTelefono({ telefono, isAdmin }) {
+  if (!telefono || !isAdmin) return null;
   const limpio = telefono.replace(/\D/g, "");
   return (
     <div className="flex gap-2">
@@ -550,7 +552,7 @@ function ConversacionesSection({ familiaId, currentUser }) {
   );
 }
 
-function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onClose }) {
+function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onClose, isAdmin }) {
   const [tab, setTab] = useState("conversaciones");
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -598,7 +600,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
 
         {familia.telefono && (
           <div className="mb-2">
-            <ContactoTelefono telefono={familia.telefono} />
+            <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
           </div>
         )}
 
@@ -609,7 +611,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
               <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
               <Badge text={familia.contacto2_parentesco} />
             </div>
-            {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} />}
+            {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} isAdmin={isAdmin} />}
           </div>
         )}
 
@@ -687,7 +689,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit }) {
+function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
   const [accion, setAccion] = useState(null); // "comentario" | "visita" | null
   const [showDetalle, setShowDetalle] = useState(false);
@@ -730,6 +732,7 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
       onAddVisita={onAddVisita}
       onDeleteVisita={onDeleteVisita}
       onClose={() => setShowDetalle(false)}
+      isAdmin={isAdmin}
     />
   );
 
@@ -778,7 +781,7 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
 
           {familia.telefono && (
             <div className="px-4 pb-3">
-              <ContactoTelefono telefono={familia.telefono} />
+              <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
             </div>
           )}
 
@@ -789,7 +792,7 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
                   <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
                   <Badge text={familia.contacto2_parentesco} />
                 </div>
-                {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} />}
+                {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} isAdmin={isAdmin} />}
               </div>
             </div>
           )}
@@ -1161,7 +1164,7 @@ function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir }) {
       </button>
       {expanded && (
         <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
-          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} />}
+          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} isAdmin={true} />}
           {solicitud.comentario && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
           )}
@@ -1218,6 +1221,249 @@ function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onReactivar, onCon
   );
 }
 
+// ── TALLERES ──────────────────────────────────────────────────────────────────
+
+function TallerForm({ taller, onSave, onCancel }) {
+  const [quien, setQuien] = useState(taller?.quien || "");
+  const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
+  const [necesita, setNecesita] = useState(taller?.necesita || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
+    if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
+    setSaving(true);
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), necesita: necesita.trim() || null };
+    const { data, error } = taller
+      ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
+      : await supabase.from("talleres").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">{taller ? "Editar taller" : "Nuevo taller"}</p>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
+        <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿De qué va el taller? *</label>
+        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
+          placeholder="Describe el taller..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
+        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
+          placeholder="Materiales, recursos, espacio..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  if (editTarget) return (
+    <TallerForm
+      taller={editTarget}
+      onSave={(t) => { onEdit(t); setEditTarget(null); }}
+      onCancel={() => setEditTarget(null)}
+    />
+  );
+
+  return (
+    <div className="space-y-4">
+      {showForm ? (
+        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      ) : (
+        <button onClick={() => setShowForm(true)}
+          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+          + Añadir taller
+        </button>
+      )}
+
+      {talleres.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
+      ) : (
+        <div className="space-y-2.5">
+          {talleres.map(t => (
+            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">{t.quien}</p>
+                  <p className="text-sm text-gray-600 mt-1">{t.descripcion}</p>
+                  {t.necesita && (
+                    <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2">
+                      <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
+                      <p className="text-sm text-gray-700">{t.necesita}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => setEditTarget(t)} className="text-xs text-violet-500 font-medium">Editar</button>
+                  <button onClick={() => onDelete(t.id)} className="text-xs text-red-400 font-medium">✕</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── VOLUNTARIOS ───────────────────────────────────────────────────────────────
+
+function VoluntarioForm({ voluntario, onSave, onCancel }) {
+  const [nombre, setNombre] = useState(voluntario?.nombre || "");
+  const [telefono, setTelefono] = useState(voluntario?.telefono || "");
+  const [roles, setRoles] = useState(voluntario?.roles || []);
+  const [notas, setNotas] = useState(voluntario?.notas || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const toggleRol = (r) => setRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+
+  const handleSave = async () => {
+    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
+    setSaving(true);
+    const payload = { nombre: nombre.trim(), telefono: telefono.trim() || null, roles, notas: notas.trim() || null };
+    const { data, error } = voluntario
+      ? await supabase.from("voluntarios").update(payload).eq("id", voluntario.id).select().single()
+      : await supabase.from("voluntarios").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">{voluntario ? "Editar voluntario" : "Nuevo voluntario"}</p>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
+        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Ismael"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-2 block">Roles</label>
+        <div className="flex flex-wrap gap-1.5">
+          {ROLES_VOLUNTARIO.map(r => (
+            <button key={r} onClick={() => toggleRol(r)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${roles.includes(r) ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+        <textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={2}
+          placeholder="Disponibilidad, observaciones..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  if (editTarget) return (
+    <VoluntarioForm
+      voluntario={editTarget}
+      onSave={(v) => { onEdit(v); setEditTarget(null); }}
+      onCancel={() => setEditTarget(null)}
+    />
+  );
+
+  return (
+    <div className="space-y-4">
+      {showForm ? (
+        <VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      ) : (
+        <button onClick={() => setShowForm(true)}
+          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+          + Añadir voluntario
+        </button>
+      )}
+
+      {voluntarios.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin voluntarios registrados</p>
+      ) : (
+        <div className="space-y-2.5">
+          {voluntarios.map(v => (
+            <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-4 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+                  {v.nombre[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-gray-800">{v.nombre}</span>
+                  {v.roles?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {v.roles.map(r => (
+                        <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setEditTarget(v)} className="text-xs text-violet-500 font-medium px-2">Editar</button>
+              </div>
+              {(v.telefono || v.notas) && (
+                <div className="px-4 pb-4 space-y-2 border-t border-gray-50 pt-3">
+                  <ContactoTelefono telefono={v.telefono} isAdmin={isAdmin} />
+                  {v.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{v.notas}</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -1226,6 +1472,8 @@ export default function App() {
   const [allProfiles, setAllProfiles] = useState([]);
   const [familias, setFamilias] = useState([]);
   const [visitas, setVisitas] = useState([]);
+  const [voluntarios, setVoluntarios] = useState([]);
+  const [talleres, setTalleres] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
   const [menu, setMenu] = useState("solicitudes"); // solicitudes | confirmados | admin
   const [tab, setTab] = useState("familias"); // sub-tab within confirmados
@@ -1250,18 +1498,22 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }] = await Promise.all([
+    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }, { data: vols }, { data: talls }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.id).single(),
       supabase.from("profiles").select("*"),
       supabase.from("familias").select("*").order("created_at", { ascending: true }),
       supabase.from("visitas").select("*, profiles(nombre)"),
       supabase.from("solicitudes").select("*").order("created_at", { ascending: false }),
+      supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
+      supabase.from("talleres").select("*").order("created_at", { ascending: false }),
     ]);
     setProfile(prof);
     setAllProfiles(profs || []);
     setFamilias(fams || []);
     setVisitas(vis || []);
     setSolicitudes(sols || []);
+    setVoluntarios(vols || []);
+    setTalleres(talls || []);
     setLoading(false);
   };
 
@@ -1278,6 +1530,15 @@ export default function App() {
     setFamilias(prev => prev.map(x => x.id === f.id ? f : x));
   };
   const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  const handleAddVoluntario = (v) => setVoluntarios(prev => [...prev, v]);
+  const handleEditVoluntario = (v) => setVoluntarios(prev => prev.map(x => x.id === v.id ? v : x));
+  const handleAddTaller = (t) => setTalleres(prev => [t, ...prev]);
+  const handleEditTaller = (t) => setTalleres(prev => prev.map(x => x.id === t.id ? t : x));
+  const handleDeleteTaller = async (id) => {
+    await supabase.from("talleres").delete().eq("id", id);
+    setTalleres(prev => prev.filter(t => t.id !== id));
+  };
 
   const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
   const handleMarcarVisto = async (id) => {
@@ -1321,10 +1582,14 @@ export default function App() {
     return matchQ && matchR;
   });
 
+  const isAdmin = profile?.is_admin;
+
   const NAV_ITEMS = [
-    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length },
+    ...(isAdmin ? [{ id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length }] : []),
     { id: "confirmados", label: "Confirmados", icon: "✅" },
-    ...(profile?.is_admin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []),
+    { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
+    { id: "talleres", label: "Talleres", icon: "🎨" },
+    ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []),
   ];
 
   return (
@@ -1338,6 +1603,7 @@ export default function App() {
           onAddVisita={handleAddVisita}
           onDeleteVisita={handleDeleteVisita}
           onClose={() => setDetalleTarget(null)}
+          isAdmin={isAdmin}
         />
       )}
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
@@ -1348,7 +1614,7 @@ export default function App() {
           </div>
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">
-              {menu === "solicitudes" ? "Solicitudes" : menu === "admin" ? "Administración" : "Confirmados"}
+              {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "talleres" ? "Talleres" : menu === "admin" ? "Administración" : "Confirmados"}
             </h1>
             <span className="text-sm text-gray-500 truncate ml-2">Hola, {profile?.nombre} 👋</span>
           </div>
@@ -1371,7 +1637,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
-          {menu === "solicitudes" && (
+          {menu === "solicitudes" && isAdmin && (
             <SolicitudesView
               solicitudes={solicitudes}
               onAdd={handleAddSolicitud}
@@ -1383,13 +1649,22 @@ export default function App() {
 
           {menu === "confirmados" && tab==="familias" && (
             <>
-              {showNuevaFamilia ? (
+              <div className="flex gap-2">
+                {showNuevaFamilia ? null : (
+                  <>
+                    <button onClick={()=>setShowNuevaFamilia(true)}
+                      className="flex-1 py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                      + Nueva familia
+                    </button>
+                    <button onClick={() => setMenu("voluntarios")}
+                      className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl text-sm font-semibold hover:bg-gray-200 transition-all">
+                      + Voluntario
+                    </button>
+                  </>
+                )}
+              </div>
+              {showNuevaFamilia && (
                 <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
-              ) : (
-                <button onClick={()=>setShowNuevaFamilia(true)}
-                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                  + Nueva familia
-                </button>
               )}
 
               <div className="flex gap-2">
@@ -1420,7 +1695,8 @@ export default function App() {
                     currentUser={user} allProfiles={allProfiles}
                     onAddVisita={handleAddVisita}
                     onDeleteVisita={handleDeleteVisita}
-                    onEdit={handleEditFamilia} />
+                    onEdit={handleEditFamilia}
+                    isAdmin={isAdmin} />
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
               </div>
@@ -1438,7 +1714,25 @@ export default function App() {
           )}
           {menu === "confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
 
-          {menu === "admin" && profile?.is_admin && <AdminView currentUserId={user.id} />}
+          {menu === "voluntarios" && (
+            <VoluntariosView
+              voluntarios={voluntarios}
+              isAdmin={isAdmin}
+              onAdd={handleAddVoluntario}
+              onEdit={handleEditVoluntario}
+            />
+          )}
+
+          {menu === "talleres" && (
+            <TalleresView
+              talleres={talleres}
+              onAdd={handleAddTaller}
+              onEdit={handleEditTaller}
+              onDelete={handleDeleteTaller}
+            />
+          )}
+
+          {menu === "admin" && isAdmin && <AdminView currentUserId={user.id} />}
         </div>
 
         {/* Bottom navigation */}
