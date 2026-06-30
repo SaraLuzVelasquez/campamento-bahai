@@ -753,7 +753,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"} · ${h.edad ? h.edad + "a" : "—"} · ${h.curso || ""}`).join(" | ")}
             </p>
           )}
-          {familia.telefono && <p className="text-xs text-emerald-600 mt-0.5">💬 {familia.telefono}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {visitas.length > 0 && (
@@ -768,20 +767,29 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
       {expanded && (
         <div className="border-t border-gray-50">
           {/* Info básica */}
-          <div className="px-4 pt-3 pb-2 flex items-start justify-between">
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
-              <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
-            </div>
-            <button onClick={() => setShowEdit(true)}
-              className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
-              Editar
-            </button>
+          <div className="px-4 pt-3 pb-2">
+            <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
+            <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
           </div>
 
           {familia.telefono && (
-            <div className="px-4 pb-3">
-              <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
+            <div className="px-4 pb-3 flex gap-2">
+              <div className="flex-1">
+                <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
+              </div>
+              <button onClick={() => setShowEdit(true)}
+                className="px-3 py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+                Editar
+              </button>
+            </div>
+          )}
+
+          {!familia.telefono && (
+            <div className="px-4 pb-2 flex justify-end">
+              <button onClick={() => setShowEdit(true)}
+                className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
+                Editar
+              </button>
             </div>
           )}
 
@@ -1132,7 +1140,7 @@ function SolicitudForm({ onSave, onCancel }) {
   );
 }
 
-function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir }) {
+function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -1169,51 +1177,53 @@ function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir }) {
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
           )}
           <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
-          <div className="flex gap-2 pt-1">
-            {solicitud.visto ? (
-              <button onClick={() => onReactivar(solicitud.id)}
-                className="flex-1 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
-                ↻ Activar solicitud
-              </button>
-            ) : (
-              <>
-                <button onClick={() => setShowConfirm(true)}
-                  className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
-                  ✓ Confirmar familia
+          {isAdmin && (
+            <div className="flex gap-2 pt-1">
+              {solicitud.visto ? (
+                <button onClick={() => onReactivar(solicitud.id)}
+                  className="flex-1 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
+                  ↻ Activar solicitud
                 </button>
-                <button onClick={() => onMarcarVisto(solicitud.id)}
-                  className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
-                  Para otro momento
-                </button>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <button onClick={() => setShowConfirm(true)}
+                    className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+                    ✓ Confirmar familia
+                  </button>
+                  <button onClick={() => onMarcarVisto(solicitud.id)}
+                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
+                    Para otro momento
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onReactivar, onConvertir }) {
+function SolicitudesView({ solicitudes, isAdmin, onAdd, onMarcarVisto, onReactivar, onConvertir }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
     <div className="space-y-4">
-      {showForm ? (
+      {isAdmin && (showForm ? (
         <SolicitudForm onSave={(s) => { onAdd(s); setShowForm(false); }} onCancel={() => setShowForm(false)} />
       ) : (
         <button onClick={() => setShowForm(true)}
           className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
           + Añadir solicitud
         </button>
-      )}
+      ))}
 
       {solicitudes.length === 0 ? (
         <p className="text-center text-gray-400 py-12">Sin solicitudes pendientes</p>
       ) : (
         <div className="space-y-2.5">
           {solicitudes.map(s => (
-            <SolicitudCard key={s.id} solicitud={s} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} />
+            <SolicitudCard key={s.id} solicitud={s} isAdmin={isAdmin} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} />
           ))}
         </div>
       )}
@@ -1284,25 +1294,36 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
+  if (showForm) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Nuevo taller</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      </div>
+    </div>
+  );
+
   if (editTarget) return (
-    <TallerForm
-      taller={editTarget}
-      onSave={(t) => { onEdit(t); setEditTarget(null); }}
-      onCancel={() => setEditTarget(null)}
-    />
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
+      </div>
+    </div>
   );
 
   return (
     <div className="space-y-4">
-      {showForm ? (
-        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      ) : (
-        <button onClick={() => setShowForm(true)}
-          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-          + Añadir taller
-        </button>
-      )}
-
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+        + Añadir taller
+      </button>
       {talleres.length === 0 ? (
         <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
       ) : (
@@ -1405,6 +1426,53 @@ function VoluntarioForm({ voluntario, onSave, onCancel }) {
   );
 }
 
+function VoluntarioCard({ voluntario, isAdmin, onEdit }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
+          {voluntario.nombre[0]}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-gray-800">{voluntario.nombre}</span>
+          {voluntario.roles?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {voluntario.roles.map(r => (
+                <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
+          {voluntario.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{voluntario.notas}</p>}
+          {voluntario.telefono ? (
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <ContactoTelefono telefono={voluntario.telefono} isAdmin={isAdmin} />
+              </div>
+              <button onClick={() => onEdit(voluntario)}
+                className="px-3 py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+                Editar
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <button onClick={() => onEdit(voluntario)}
+                className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
+                Editar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -1439,36 +1507,12 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
         className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
         + Añadir voluntario
       </button>
-
       {voluntarios.length === 0 ? (
         <p className="text-center text-gray-400 py-12">Sin voluntarios registrados</p>
       ) : (
         <div className="space-y-2.5">
           {voluntarios.map(v => (
-            <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-4 py-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-                  {v.nombre[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-gray-800">{v.nombre}</span>
-                  {v.roles?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {v.roles.map(r => (
-                        <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setEditTarget(v)} className="text-xs text-violet-500 font-medium px-2">Editar</button>
-              </div>
-              {(v.telefono || v.notas) && (
-                <div className="px-4 pb-4 space-y-2 border-t border-gray-50 pt-3">
-                  <ContactoTelefono telefono={v.telefono} isAdmin={isAdmin} />
-                  {v.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{v.notas}</p>}
-                </div>
-              )}
-            </div>
+            <VoluntarioCard key={v.id} voluntario={v} isAdmin={isAdmin} onEdit={setEditTarget} />
           ))}
         </div>
       )}
@@ -1493,6 +1537,7 @@ export default function App() {
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -1597,11 +1642,10 @@ export default function App() {
   const isAdmin = profile?.is_admin;
 
   const NAV_ITEMS = [
-    ...(isAdmin ? [{ id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length }] : []),
-    { id: "confirmados", label: "Confirmados", icon: "✅" },
+    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length },
+    { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "talleres", label: "Talleres", icon: "🎨" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []),
   ];
 
   return (
@@ -1618,25 +1662,75 @@ export default function App() {
           isAdmin={isAdmin}
         />
       )}
+
+      {showMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowMenu(false)}>
+          <div className="absolute top-0 right-0 w-64 bg-white shadow-xl h-full flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-8 pb-5 border-b border-gray-100">
+              <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg mb-3">
+                {profile?.nombre?.[0] || "?"}
+              </div>
+              <p className="font-bold text-gray-900 text-lg">Hola, {profile?.nombre} 👋</p>
+              <p className="text-xs text-gray-400 mt-0.5">{profile?.email || ""}</p>
+            </div>
+            <div className="flex-1 px-3 py-4 space-y-1">
+              {isAdmin && (
+                <button onClick={() => { setMenu("admin"); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-violet-50 hover:text-violet-700 transition-colors flex items-center gap-3">
+                  <span>⚙️</span> Administración
+                </button>
+              )}
+            </div>
+            <div className="px-3 pb-6">
+              <button onClick={handleLogout}
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors text-left flex items-center gap-3">
+                <span>🚪</span> Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {menu === "admin" && isAdmin && (
+        <div className="fixed inset-0 bg-gray-50 z-40 flex flex-col overflow-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+            <button onClick={() => setMenu("confirmados")} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+            <h2 className="text-lg font-bold text-gray-900">Administración</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <AdminView currentUserId={user.id} />
+          </div>
+        </div>
+      )}
+        <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+            <button onClick={()=>setShowNuevaFamilia(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+            <h2 className="text-lg font-bold text-gray-900">Nueva familia</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
+          </div>
+        </div>
+      )}
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
-            <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2 py-1">Salir</button>
+            <button onClick={() => setShowMenu(!showMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
+              <span className="text-lg">☰</span>
+            </button>
           </div>
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">
-              {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "talleres" ? "Talleres" : menu === "admin" ? "Administración" : "Confirmados"}
-            </h1>
-            <span className="text-sm text-gray-500 truncate ml-2">Hola, {profile?.nombre} 👋</span>
-          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "talleres" ? "Talleres" : "Familias"}
+          </h1>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
 
           {menu === "confirmados" && (
             <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
               {[
                 {id:"familias",label:"Familias"},
-                {id:"recientes",label:"Recientes"},
+                {id:"recientes",label:"Conversaciones"},
                 {id:"participantes",label:"Participantes"},
               ].map(t=>(
                 <button key={t.id} onClick={()=>setTab(t.id)}
@@ -1649,9 +1743,10 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
-          {menu === "solicitudes" && isAdmin && (
+          {menu === "solicitudes" && (
             <SolicitudesView
               solicitudes={solicitudes}
+              isAdmin={isAdmin}
               onAdd={handleAddSolicitud}
               onMarcarVisto={handleMarcarVisto}
               onReactivar={handleReactivar}
@@ -1661,18 +1756,6 @@ export default function App() {
 
           {menu === "confirmados" && tab==="familias" && (
             <>
-              {showNuevaFamilia && (
-                <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-                  <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-                    <button onClick={()=>setShowNuevaFamilia(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-                    <h2 className="text-lg font-bold text-gray-900">Nueva familia</h2>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-4">
-                    <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
-                  </div>
-                </div>
-              )}
-
               {!showNuevaFamilia && (
                 <button onClick={()=>setShowNuevaFamilia(true)}
                   className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
@@ -1744,12 +1827,10 @@ export default function App() {
               onDelete={handleDeleteTaller}
             />
           )}
-
-          {menu === "admin" && isAdmin && <AdminView currentUserId={user.id} />}
         </div>
 
         {/* Bottom navigation */}
-        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom">
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
             {NAV_ITEMS.map(item => (
               <button key={item.id} onClick={() => setMenu(item.id)}
