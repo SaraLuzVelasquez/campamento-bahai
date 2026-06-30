@@ -1661,13 +1661,6 @@ export default function App() {
 
           {menu === "confirmados" && tab==="familias" && (
             <>
-              {!showNuevaFamilia && (
-                <button onClick={()=>setShowNuevaFamilia(true)}
-                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                  + Nueva familia
-                </button>
-              )}
-
               {showNuevaFamilia && (
                 <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
                   <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
@@ -1678,6 +1671,13 @@ export default function App() {
                     <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
                   </div>
                 </div>
+              )}
+
+              {!showNuevaFamilia && (
+                <button onClick={()=>setShowNuevaFamilia(true)}
+                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                  + Nueva familia
+                </button>
               )}
 
               <div className="flex gap-2">
