@@ -650,14 +650,13 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
-      {/* Header */}
+    <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
+      {/* Header compacto */}
       <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-3 flex-shrink-0">
-        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-2 flex items-center gap-1">
+        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-3 flex items-center gap-1">
           ← Volver
         </button>
 
-        {/* Perfil compacto */}
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
             {familia.nombre[0]}
@@ -667,48 +666,26 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
               <span className="font-bold text-gray-900">{familia.nombre}</span>
               <Badge text={familia.grado} />
             </div>
-            {familia.telefono && (
-              <a href={`https://wa.me/${familia.telefono.replace(/\D/g, "").startsWith("34") ? familia.telefono.replace(/\D/g, "") : "34" + familia.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 mt-0.5 block">
-                💬 {familia.telefono}
-              </a>
+            {familia.hijos?.length > 0 && (
+              <p className="text-xs text-gray-500 truncate mt-0.5">
+                {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"}${h.edad ? `, ${h.edad}a` : ""}`).join(" · ")}
+              </p>
             )}
+            {familia.servicio && <p className="text-xs text-gray-400 mt-0.5 truncate">{familia.servicio}</p>}
           </div>
         </div>
 
         {familia.telefono && (
           <div className="mb-2">
-            <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
+            <ContactoConEditar telefono={familia.telefono} isAdmin={isAdmin} onEditar={() => {}} />
           </div>
         )}
 
         {familia.contacto2_nombre && (
-          <div className="mb-2 bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400 mb-1">Segundo contacto</p>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
-              <Badge text={familia.contacto2_parentesco} />
-            </div>
-            {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} isAdmin={isAdmin} />}
+          <div className="mb-2 bg-gray-50 rounded-xl p-2.5 flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
+            <Badge text={familia.contacto2_parentesco} />
           </div>
-        )}
-
-        {familia.hijos?.length > 0 && (
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
-            {familia.hijos.map((h, i) => {
-              const nombre = typeof h === "string" ? h : h.nombre;
-              const edad = typeof h === "string" ? "" : h.edad;
-              const curso = typeof h === "string" ? "" : h.curso;
-              return (
-                <span key={i} className="text-xs text-gray-600">
-                  {nombre || "—"}{edad ? `, ${edad}a` : ""}{curso ? ` · ` : ""}{curso && <Badge text={curso} />}
-                </span>
-              );
-            })}
-          </div>
-        )}
-
-        {familia.servicio && (
-          <p className="text-xs text-gray-500 mb-2">{familia.servicio}</p>
         )}
 
         {/* Tabs */}
