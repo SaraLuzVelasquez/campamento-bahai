@@ -80,6 +80,46 @@ const GRADO_COLOR = {
   "Prejuvenil": "bg-purple-100 text-purple-700",
 };
 
+function ContactoTelefono({ telefono }) {
+  if (!telefono) return null;
+  const limpio = telefono.replace(/\D/g, "");
+  return (
+    <div className="flex gap-2">
+      <a href={`https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}`} target="_blank" rel="noopener noreferrer"
+        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+        💬 WhatsApp
+      </a>
+      <a href={`tel:${telefono}`}
+        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all">
+        📞 Llamar
+      </a>
+    </div>
+  );
+}
+
+function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4">
+        <div>
+          <p className="font-semibold text-gray-800 mb-1">{title}</p>
+          <p className="text-sm text-gray-500">{message}</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onConfirm}
+            className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 transition-all">
+            {confirmLabel}
+          </button>
+          <button onClick={onCancel}
+            className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Badge({ text }) {
   const base = text.split(" / ")[0];
   const cls = GRADO_COLOR[base] || "bg-gray-100 text-gray-600";
@@ -512,12 +552,18 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
               <Badge text={familia.grado} />
             </div>
             {familia.telefono && (
-              <a href={`tel:${familia.telefono}`} className="text-sm text-violet-500 mt-0.5 block">
-                📞 {familia.telefono}
+              <a href={`https://wa.me/${familia.telefono.replace(/\D/g, "").startsWith("34") ? familia.telefono.replace(/\D/g, "") : "34" + familia.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 mt-0.5 block">
+                💬 {familia.telefono}
               </a>
             )}
           </div>
         </div>
+
+        {familia.telefono && (
+          <div className="mb-2">
+            <ContactoTelefono telefono={familia.telefono} />
+          </div>
+        )}
 
         {familia.hijos?.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
@@ -656,7 +702,7 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"} · ${h.edad ? h.edad + "a" : "—"} · ${h.curso || ""}`).join(" | ")}
             </p>
           )}
-          {familia.telefono && <p className="text-xs text-gray-400 mt-0.5">📞 {familia.telefono}</p>}
+          {familia.telefono && <p className="text-xs text-emerald-600 mt-0.5">💬 {familia.telefono}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {visitas.length > 0 && (
@@ -681,6 +727,12 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               Editar
             </button>
           </div>
+
+          {familia.telefono && (
+            <div className="px-4 pb-3">
+              <ContactoTelefono telefono={familia.telefono} />
+            </div>
+          )}
 
           {/* Opciones del dropdown */}
           <div className="px-4 pb-4 space-y-2 mt-1">
@@ -1017,10 +1069,21 @@ function SolicitudForm({ onSave, onCancel }) {
   );
 }
 
-function SolicitudCard({ solicitud, onDelete, onConvertir }) {
+function SolicitudCard({ solicitud, onMarcarVisto, onConvertir }) {
   const [expanded, setExpanded] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${solicitud.visto ? "border-gray-100 opacity-60" : "border-gray-100"}`}>
+      {showConfirm && (
+        <ConfirmModal
+          title="¿Confirmar familia?"
+          message={`${solicitud.nombre} pasará a la sección de Confirmados con sus datos actuales.`}
+          confirmLabel="Sí, confirmar"
+          onConfirm={() => { onConvertir(solicitud); setShowConfirm(false); }}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
       <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold flex-shrink-0">
           {solicitud.nombre[0]}
@@ -1033,26 +1096,27 @@ function SolicitudCard({ solicitud, onDelete, onConvertir }) {
             </p>
           )}
         </div>
+        {solicitud.visto && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Visto</span>}
         <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
       </button>
       {expanded && (
         <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
-          {solicitud.telefono && (
-            <a href={`tel:${solicitud.telefono}`} className="text-sm text-violet-500 block">📞 {solicitud.telefono}</a>
-          )}
+          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} />}
           {solicitud.comentario && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
           )}
           <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
           <div className="flex gap-2 pt-1">
-            <button onClick={() => onConvertir(solicitud)}
+            <button onClick={() => setShowConfirm(true)}
               className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
               ✓ Confirmar familia
             </button>
-            <button onClick={() => onDelete(solicitud.id)}
-              className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
-              Eliminar
-            </button>
+            {!solicitud.visto && (
+              <button onClick={() => onMarcarVisto(solicitud.id)}
+                className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
+                Para otro momento
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1060,7 +1124,7 @@ function SolicitudCard({ solicitud, onDelete, onConvertir }) {
   );
 }
 
-function SolicitudesView({ solicitudes, onAdd, onDelete, onConvertir }) {
+function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onConvertir }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
@@ -1079,7 +1143,7 @@ function SolicitudesView({ solicitudes, onAdd, onDelete, onConvertir }) {
       ) : (
         <div className="space-y-2.5">
           {solicitudes.map(s => (
-            <SolicitudCard key={s.id} solicitud={s} onDelete={onDelete} onConvertir={onConvertir} />
+            <SolicitudCard key={s.id} solicitud={s} onMarcarVisto={onMarcarVisto} onConvertir={onConvertir} />
           ))}
         </div>
       )}
@@ -1149,9 +1213,9 @@ export default function App() {
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
   const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
-  const handleDeleteSolicitud = async (id) => {
-    await supabase.from("solicitudes").delete().eq("id", id);
-    setSolicitudes(prev => prev.filter(s => s.id !== id));
+  const handleMarcarVisto = async (id) => {
+    await supabase.from("solicitudes").update({ visto: true }).eq("id", id);
+    setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: true } : s));
   };
   const handleConvertirSolicitud = async (s) => {
     const id = s.nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
@@ -1160,8 +1224,8 @@ export default function App() {
     }).select().single();
     if (data) {
       setFamilias(prev => [data, ...prev]);
-      await supabase.from("solicitudes").delete().eq("id", s.id);
-      setSolicitudes(prev => prev.filter(x => x.id !== s.id));
+      await supabase.from("solicitudes").update({ visto: true }).eq("id", s.id);
+      setSolicitudes(prev => prev.map(x => x.id === s.id ? { ...x, visto: true } : x));
       setMenu("confirmados");
       setTab("familias");
     }
@@ -1187,7 +1251,7 @@ export default function App() {
   });
 
   const NAV_ITEMS = [
-    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.length },
+    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length },
     { id: "confirmados", label: "Confirmados", icon: "✅" },
     ...(profile?.is_admin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []),
   ];
@@ -1240,7 +1304,7 @@ export default function App() {
             <SolicitudesView
               solicitudes={solicitudes}
               onAdd={handleAddSolicitud}
-              onDelete={handleDeleteSolicitud}
+              onMarcarVisto={handleMarcarVisto}
               onConvertir={handleConvertirSolicitud}
             />
           )}
