@@ -1945,13 +1945,13 @@ export default function App() {
   };
   const handleConvertirSolicitud = async (s) => {
     const id = s.nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
-    const { data, error } = await supabase.from("familias").insert({
+    const { data } = await supabase.from("familias").insert({
       id, nombre: s.nombre, telefono: s.telefono, hijos: s.hijos, grado: "Madre", servicio: "",
     }).select().single();
     if (data) {
       setFamilias(prev => [data, ...prev]);
-      await supabase.from("solicitudes").update({ visto: true }).eq("id", s.id);
-      setSolicitudes(prev => prev.map(x => x.id === s.id ? { ...x, visto: true } : x));
+      await supabase.from("solicitudes").delete().eq("id", s.id);
+      setSolicitudes(prev => prev.filter(x => x.id !== s.id));
       setMenu("confirmados");
       setTab("familias");
     }
