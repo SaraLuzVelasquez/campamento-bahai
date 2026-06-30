@@ -796,16 +796,13 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin, onAddOfrecimiento }) {
+function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin, onAddOfrecimiento, onVerDetalle }) {
   const [expanded, setExpanded] = useState(false);
-  const [accion, setAccion] = useState(null); // "comentario" | "visita" | null
-  const [showDetalle, setShowDetalle] = useState(false);
+  const [accion, setAccion] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
-  const [nota, setNota] = useState("");
-  const [savingNota, setSavingNota] = useState(false);
   const [totalConv, setTotalConv] = useState(null);
 
-  const hayActividad = visitas.length > 0 || totalConv > 0;
+  const totalActividad = visitas.length + (totalConv || 0);
 
   useEffect(() => {
     if (expanded && totalConv === null) {
@@ -813,18 +810,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         .then(({ count }) => setTotalConv(count || 0));
     }
   }, [expanded, familia.id, totalConv]);
-
-  const handleSaveNota = async () => {
-    if (!nota.trim()) return;
-    setSavingNota(true);
-    await supabase.from("conversaciones").insert({
-      familia_id: familia.id, nota: nota.trim(), autor_id: currentUser.id,
-    });
-    setNota("");
-    setSavingNota(false);
-    setAccion(null);
-    setTotalConv(prev => (prev || 0) + 1);
-  };
 
   if (showEdit) return (
     <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
@@ -836,22 +821,7 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
       </div>
     </div>
-  );
-
-  if (showDetalle) return (
-    <DetalleScreen
-      familia={familia}
-      visitas={visitas}
-      currentUser={currentUser}
-      allProfiles={allProfiles}
-      onAddVisita={onAddVisita}
-      onDeleteVisita={onDeleteVisita}
-      onClose={() => setShowDetalle(false)}
-      isAdmin={isAdmin}
-    />
-  );
-
-  return (
+  );  return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <button onClick={() => setExpanded(!expanded)}
         className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
@@ -943,12 +913,12 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
                   🎁 Ofrecimiento
                 </button>
                 <button
-                  onClick={() => setShowDetalle(true)}
+                  onClick={() => onVerDetalle(familia)}
                   className="w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between bg-violet-50 hover:bg-violet-100 text-violet-700">
                   <span>📋 Ver conversaciones y visitas</span>
-                  {(visitas.length + (totalConv || 0)) > 0 && (
+                  {totalActividad > 0 && (
                     <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-                      {visitas.length + (totalConv || 0)}
+                      {totalActividad}
                     </span>
                   )}
                 </button>
@@ -2164,7 +2134,8 @@ export default function App() {
                     onDeleteVisita={handleDeleteVisita}
                     onEdit={handleEditFamilia}
                     isAdmin={isAdmin}
-                    onAddOfrecimiento={handleAddOfrecimiento} />
+                    onAddOfrecimiento={handleAddOfrecimiento}
+                    onVerDetalle={(f) => setDetalleTarget(f)} />
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
               </div>
