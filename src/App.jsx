@@ -67,11 +67,13 @@ const UNIDADES = {
   },
 };
 
-const GRADOS = ["Madre", "Padre", "Voluntario"];
+const GRADOS = ["Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
 
 const GRADO_COLOR = {
   "Madre": "bg-pink-100 text-pink-700",
   "Padre": "bg-blue-100 text-blue-700",
+  "Abuela": "bg-rose-100 text-rose-700",
+  "Abuelo": "bg-cyan-100 text-cyan-700",
   "Voluntario": "bg-gray-100 text-gray-700",
   "Huevito": "bg-blue-100 text-blue-700",
   "Grado 1": "bg-green-100 text-green-700",
@@ -241,13 +243,17 @@ function AuthScreen({ onAuth }) {
 function FamiliaForm({ familia, onSave, onCancel }) {
   const [nombre, setNombre] = useState(familia?.nombre || "");
   const [telefono, setTelefono] = useState(familia?.telefono || "");
-  const [grado, setGrado] = useState(familia?.grado || "Huevito");
+  const [grado, setGrado] = useState(familia?.grado || "Madre");
   const [servicio, setServicio] = useState(familia?.servicio || "");
   const [hijos, setHijos] = useState(
     (familia?.hijos || []).map(h =>
       typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h
     )
   );
+  const [showContacto2, setShowContacto2] = useState(!!(familia?.contacto2_nombre));
+  const [contacto2Nombre, setContacto2Nombre] = useState(familia?.contacto2_nombre || "");
+  const [contacto2Parentesco, setContacto2Parentesco] = useState(familia?.contacto2_parentesco || "Madre");
+  const [contacto2Telefono, setContacto2Telefono] = useState(familia?.contacto2_telefono || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -261,7 +267,12 @@ function FamiliaForm({ familia, onSave, onCancel }) {
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
     setSaving(true);
     const id = familia?.id || nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
-    const payload = { id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, servicio: servicio.trim(), hijos };
+    const payload = {
+      id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, servicio: servicio.trim(), hijos,
+      contacto2_nombre: showContacto2 ? contacto2Nombre.trim() || null : null,
+      contacto2_parentesco: showContacto2 ? contacto2Parentesco : null,
+      contacto2_telefono: showContacto2 ? contacto2Telefono.trim() || null : null,
+    };
     const { data, error } = familia
       ? await supabase.from("familias").update(payload).eq("id", familia.id).select().single()
       : await supabase.from("familias").insert(payload).select().single();
@@ -286,8 +297,34 @@ function FamiliaForm({ familia, onSave, onCancel }) {
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
       </div>
 
+      {showContacto2 ? (
+        <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-gray-500">Segundo contacto</p>
+            <button onClick={() => setShowContacto2(false)} className="text-gray-300 hover:text-red-400 text-xs">✕ Quitar</button>
+          </div>
+          <input value={contacto2Nombre} onChange={e=>setContacto2Nombre(e.target.value)} placeholder="Nombre"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <div className="flex flex-wrap gap-1.5">
+            {GRADOS.map(g => (
+              <button key={g} onClick={() => setContacto2Parentesco(g)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${contacto2Parentesco === g ? "bg-violet-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
+                {g}
+              </button>
+            ))}
+          </div>
+          <input value={contacto2Telefono} onChange={e=>setContacto2Telefono(e.target.value)} placeholder="Teléfono" type="tel"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        </div>
+      ) : (
+        <button onClick={() => setShowContacto2(true)}
+          className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
+          + Añadir segundo contacto
+        </button>
+      )}
+
       <div>
-        <label className="text-xs text-gray-500 mb-2 block">Grado de la familia</label>
+        <label className="text-xs text-gray-500 mb-2 block">Parentesco (contacto principal)</label>
         <div className="flex flex-wrap gap-1.5">
           {GRADOS.map(g => (
             <button key={g} onClick={()=>setGrado(g)}
@@ -565,6 +602,17 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
           </div>
         )}
 
+        {familia.contacto2_nombre && (
+          <div className="mb-2 bg-gray-50 rounded-xl p-3">
+            <p className="text-xs text-gray-400 mb-1">Segundo contacto</p>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
+              <Badge text={familia.contacto2_parentesco} />
+            </div>
+            {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} />}
+          </div>
+        )}
+
         {familia.hijos?.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
             {familia.hijos.map((h, i) => {
@@ -731,6 +779,18 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
           {familia.telefono && (
             <div className="px-4 pb-3">
               <ContactoTelefono telefono={familia.telefono} />
+            </div>
+          )}
+
+          {familia.contacto2_nombre && (
+            <div className="px-4 pb-3">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
+                  <Badge text={familia.contacto2_parentesco} />
+                </div>
+                {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} />}
+              </div>
             </div>
           )}
 
