@@ -1129,7 +1129,7 @@ function SolicitudForm({ onSave, onCancel }) {
   );
 }
 
-function SolicitudCard({ solicitud, onMarcarVisto, onConvertir }) {
+function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir }) {
   const [expanded, setExpanded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -1167,15 +1167,22 @@ function SolicitudCard({ solicitud, onMarcarVisto, onConvertir }) {
           )}
           <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
           <div className="flex gap-2 pt-1">
-            <button onClick={() => setShowConfirm(true)}
-              className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
-              ✓ Confirmar familia
-            </button>
-            {!solicitud.visto && (
-              <button onClick={() => onMarcarVisto(solicitud.id)}
-                className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
-                Para otro momento
+            {solicitud.visto ? (
+              <button onClick={() => onReactivar(solicitud.id)}
+                className="flex-1 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
+                ↻ Activar solicitud
               </button>
+            ) : (
+              <>
+                <button onClick={() => setShowConfirm(true)}
+                  className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+                  ✓ Confirmar familia
+                </button>
+                <button onClick={() => onMarcarVisto(solicitud.id)}
+                  className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
+                  Para otro momento
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1184,7 +1191,7 @@ function SolicitudCard({ solicitud, onMarcarVisto, onConvertir }) {
   );
 }
 
-function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onConvertir }) {
+function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onReactivar, onConvertir }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
@@ -1203,7 +1210,7 @@ function SolicitudesView({ solicitudes, onAdd, onMarcarVisto, onConvertir }) {
       ) : (
         <div className="space-y-2.5">
           {solicitudes.map(s => (
-            <SolicitudCard key={s.id} solicitud={s} onMarcarVisto={onMarcarVisto} onConvertir={onConvertir} />
+            <SolicitudCard key={s.id} solicitud={s} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} />
           ))}
         </div>
       )}
@@ -1276,6 +1283,10 @@ export default function App() {
   const handleMarcarVisto = async (id) => {
     await supabase.from("solicitudes").update({ visto: true }).eq("id", id);
     setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: true } : s));
+  };
+  const handleReactivar = async (id) => {
+    await supabase.from("solicitudes").update({ visto: false }).eq("id", id);
+    setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: false } : s));
   };
   const handleConvertirSolicitud = async (s) => {
     const id = s.nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
@@ -1365,6 +1376,7 @@ export default function App() {
               solicitudes={solicitudes}
               onAdd={handleAddSolicitud}
               onMarcarVisto={handleMarcarVisto}
+              onReactivar={handleReactivar}
               onConvertir={handleConvertirSolicitud}
             />
           )}
