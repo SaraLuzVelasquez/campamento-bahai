@@ -84,8 +84,8 @@ const GRADO_COLOR = {
   "Prejuvenil": "bg-purple-100 text-purple-700",
 };
 
-function ContactoTelefono({ telefono, isAdmin }) {
-  if (!telefono || !isAdmin) return null;
+function ContactoTelefono({ telefono }) {
+  if (!telefono) return null;
   const limpio = telefono.replace(/\D/g, "");
   return (
     <div className="flex gap-2">
@@ -768,7 +768,15 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   };
 
   if (showEdit) return (
-    <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowEdit(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Editar familia</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
+      </div>
+    </div>
   );
 
   if (showDetalle) return (
@@ -814,30 +822,14 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
 
       {expanded && (
         <div className="border-t border-gray-50">
-          {/* Info básica */}
           <div className="px-4 pt-3 pb-2">
             <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
             <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
           </div>
 
           {familia.telefono && (
-            <div className="px-4 pb-3 flex gap-2">
-              <div className="flex-1">
-                <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
-              </div>
-              <button onClick={() => setShowEdit(true)}
-                className="px-3 py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-                Editar
-              </button>
-            </div>
-          )}
-
-          {!familia.telefono && (
-            <div className="px-4 pb-2 flex justify-end">
-              <button onClick={() => setShowEdit(true)}
-                className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
-                Editar
-              </button>
+            <div className="px-4 pb-3">
+              <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
             </div>
           )}
 
@@ -852,6 +844,13 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               </div>
             </div>
           )}
+
+          <div className="px-4 pb-3">
+            <button onClick={() => setShowEdit(true)}
+              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+              Editar
+            </button>
+          </div>
 
           {/* Opciones del dropdown */}
           <div className="px-4 pb-4 space-y-2 mt-1">
@@ -1097,11 +1096,11 @@ function AdminView({ currentUserId }) {
   );
 }
 
-function SolicitudForm({ onSave, onCancel }) {
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [hijos, setHijos] = useState([]);
-  const [comentario, setComentario] = useState("");
+function SolicitudForm({ solicitud, onSave, onCancel }) {
+  const [nombre, setNombre] = useState(solicitud?.nombre || "");
+  const [telefono, setTelefono] = useState(solicitud?.telefono || "");
+  const [hijos, setHijos] = useState(solicitud?.hijos || []);
+  const [comentario, setComentario] = useState(solicitud?.comentario || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1112,12 +1111,10 @@ function SolicitudForm({ onSave, onCancel }) {
   const handleSave = async () => {
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
     setSaving(true);
-    const { data, error } = await supabase.from("solicitudes").insert({
-      nombre: nombre.trim(),
-      telefono: telefono.trim() || null,
-      hijos,
-      comentario: comentario.trim() || null,
-    }).select().single();
+    const payload = { nombre: nombre.trim(), telefono: telefono.trim() || null, hijos, comentario: comentario.trim() || null };
+    const { data, error } = solicitud
+      ? await supabase.from("solicitudes").update(payload).eq("id", solicitud.id).select().single()
+      : await supabase.from("solicitudes").insert(payload).select().single();
     if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
     else onSave(data);
     setSaving(false);
@@ -1188,9 +1185,22 @@ function SolicitudForm({ onSave, onCancel }) {
   );
 }
 
-function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isAdmin }) {
+function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isAdmin, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+
+  if (showEdit) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowEdit(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Editar solicitud</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <SolicitudForm solicitud={solicitud} onSave={(s) => { onEdit(s); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
+      </div>
+    </div>
+  );
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${solicitud.visto ? "border-gray-100 opacity-60" : "border-gray-100"}`}>
@@ -1220,11 +1230,15 @@ function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isA
       </button>
       {expanded && (
         <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
-          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} isAdmin={true} />}
+          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} isAdmin={isAdmin} />}
           {solicitud.comentario && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
           )}
           <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
+          <button onClick={() => setShowEdit(true)}
+            className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+            Editar
+          </button>
           {isAdmin && (
             <div className="flex gap-2 pt-1">
               {solicitud.visto ? (
@@ -1252,7 +1266,7 @@ function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isA
   );
 }
 
-function SolicitudesView({ solicitudes, isAdmin, onAdd, onMarcarVisto, onReactivar, onConvertir }) {
+function SolicitudesView({ solicitudes, isAdmin, onAdd, onEdit, onMarcarVisto, onReactivar, onConvertir }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
@@ -1271,7 +1285,7 @@ function SolicitudesView({ solicitudes, isAdmin, onAdd, onMarcarVisto, onReactiv
       ) : (
         <div className="space-y-2.5">
           {solicitudes.map(s => (
-            <SolicitudCard key={s.id} solicitud={s} isAdmin={isAdmin} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} />
+            <SolicitudCard key={s.id} solicitud={s} isAdmin={isAdmin} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -1526,12 +1540,10 @@ function VoluntarioCard({ voluntario, isAdmin, onEdit }) {
               </button>
             </div>
           ) : (
-            <div className="flex justify-end">
-              <button onClick={() => onEdit(voluntario)}
-                className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
-                Editar
-              </button>
-            </div>
+            <button onClick={() => onEdit(voluntario)}
+              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+              Editar
+            </button>
           )}
         </div>
       )}
@@ -1666,6 +1678,7 @@ export default function App() {
   };
 
   const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
+  const handleEditSolicitud = (s) => setSolicitudes(prev => prev.map(x => x.id === s.id ? s : x));
   const handleMarcarVisto = async (id) => {
     await supabase.from("solicitudes").update({ visto: true }).eq("id", id);
     setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: true } : s));
@@ -1819,6 +1832,7 @@ export default function App() {
               solicitudes={solicitudes}
               isAdmin={isAdmin}
               onAdd={handleAddSolicitud}
+              onEdit={handleEditSolicitud}
               onMarcarVisto={handleMarcarVisto}
               onReactivar={handleReactivar}
               onConvertir={handleConvertirSolicitud}
