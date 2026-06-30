@@ -50,5 +50,5 @@ input, textarea, select {
 
 /* Safe area for phones with notch */
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
 }

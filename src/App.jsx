@@ -926,6 +926,167 @@ function AdminView({ currentUserId }) {
   );
 }
 
+function SolicitudForm({ onSave, onCancel }) {
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [hijos, setHijos] = useState([]);
+  const [comentario, setComentario] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const addHijo = () => setHijos(prev => [...prev, { nombre: "", edad: "" }]);
+  const removeHijo = (i) => setHijos(prev => prev.filter((_, idx) => idx !== i));
+  const updateHijo = (i, field, value) => setHijos(prev => prev.map((h, idx) => idx === i ? { ...h, [field]: value } : h));
+
+  const handleSave = async () => {
+    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
+    setSaving(true);
+    const { data, error } = await supabase.from("solicitudes").insert({
+      nombre: nombre.trim(),
+      telefono: telefono.trim() || null,
+      hijos,
+      comentario: comentario.trim() || null,
+    }).select().single();
+    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">Nueva solicitud</p>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
+        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-500">Hijos</label>
+          <button onClick={addHijo} className="text-xs text-violet-500 font-medium">+ Añadir hijo</button>
+        </div>
+        <div className="space-y-2">
+          {hijos.map((h, i) => (
+            <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-gray-500">Hijo {i + 1}</p>
+                <button onClick={() => removeHijo(i)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+              </div>
+              <input value={h.nombre} onChange={e => updateHijo(i, "nombre", e.target.value)}
+                placeholder="Nombre"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" />
+              <input value={h.edad} onChange={e => updateHijo(i, "edad", e.target.value)}
+                placeholder="Edad"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" />
+            </div>
+          ))}
+          {hijos.length === 0 && (
+            <button onClick={addHijo}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm">
+              + Añadir hijo
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Comentario</label>
+        <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={3}
+          placeholder="Detalles sobre esta solicitud..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar solicitud"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function SolicitudCard({ solicitud, onDelete, onConvertir }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold flex-shrink-0">
+          {solicitud.nombre[0]}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-gray-800">{solicitud.nombre}</span>
+          {solicitud.hijos?.length > 0 && (
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {solicitud.hijos.map(h => `${h.nombre || "—"}${h.edad ? ` (${h.edad}a)` : ""}`).join(" · ")}
+            </p>
+          )}
+        </div>
+        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
+          {solicitud.telefono && (
+            <a href={`tel:${solicitud.telefono}`} className="text-sm text-violet-500 block">📞 {solicitud.telefono}</a>
+          )}
+          {solicitud.comentario && (
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
+          )}
+          <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => onConvertir(solicitud)}
+              className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+              ✓ Confirmar familia
+            </button>
+            <button onClick={() => onDelete(solicitud.id)}
+              className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SolicitudesView({ solicitudes, onAdd, onDelete, onConvertir }) {
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      {showForm ? (
+        <SolicitudForm onSave={(s) => { onAdd(s); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      ) : (
+        <button onClick={() => setShowForm(true)}
+          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+          + Añadir solicitud
+        </button>
+      )}
+
+      {solicitudes.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin solicitudes pendientes</p>
+      ) : (
+        <div className="space-y-2.5">
+          {solicitudes.map(s => (
+            <SolicitudCard key={s.id} solicitud={s} onDelete={onDelete} onConvertir={onConvertir} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -934,7 +1095,9 @@ export default function App() {
   const [allProfiles, setAllProfiles] = useState([]);
   const [familias, setFamilias] = useState([]);
   const [visitas, setVisitas] = useState([]);
-  const [tab, setTab] = useState("familias");
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [menu, setMenu] = useState("solicitudes"); // solicitudes | confirmados | admin
+  const [tab, setTab] = useState("familias"); // sub-tab within confirmados
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
@@ -956,16 +1119,18 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }] = await Promise.all([
+    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.id).single(),
       supabase.from("profiles").select("*"),
       supabase.from("familias").select("*").order("created_at", { ascending: true }),
       supabase.from("visitas").select("*, profiles(nombre)"),
+      supabase.from("solicitudes").select("*").order("created_at", { ascending: false }),
     ]);
     setProfile(prof);
     setAllProfiles(profs || []);
     setFamilias(fams || []);
     setVisitas(vis || []);
+    setSolicitudes(sols || []);
     setLoading(false);
   };
 
@@ -982,6 +1147,25 @@ export default function App() {
     setFamilias(prev => prev.map(x => x.id === f.id ? f : x));
   };
   const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
+  const handleDeleteSolicitud = async (id) => {
+    await supabase.from("solicitudes").delete().eq("id", id);
+    setSolicitudes(prev => prev.filter(s => s.id !== id));
+  };
+  const handleConvertirSolicitud = async (s) => {
+    const id = s.nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
+    const { data, error } = await supabase.from("familias").insert({
+      id, nombre: s.nombre, telefono: s.telefono, hijos: s.hijos, grado: "Madre", servicio: "",
+    }).select().single();
+    if (data) {
+      setFamilias(prev => [data, ...prev]);
+      await supabase.from("solicitudes").delete().eq("id", s.id);
+      setSolicitudes(prev => prev.filter(x => x.id !== s.id));
+      setMenu("confirmados");
+      setTab("familias");
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1002,6 +1186,12 @@ export default function App() {
     return matchQ && matchR;
   });
 
+  const NAV_ITEMS = [
+    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.length },
+    { id: "confirmados", label: "Confirmados", icon: "✅" },
+    ...(profile?.is_admin ? [{ id: "admin", label: "Admin", icon: "⚙️" }] : []),
+  ];
+
   return (
     <>
       {detalleTarget && (
@@ -1015,34 +1205,47 @@ export default function App() {
           onClose={() => setDetalleTarget(null)}
         />
       )}
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
             <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2 py-1">Salir</button>
           </div>
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">Seguimiento</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {menu === "solicitudes" ? "Solicitudes" : menu === "admin" ? "Administración" : "Confirmados"}
+            </h1>
             <span className="text-sm text-gray-500 truncate ml-2">Hola, {profile?.nombre} 👋</span>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
-          <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
-            {[
-              {id:"familias",label:"Familias"},
-              {id:"recientes",label:"Recientes"},
-              {id:"participantes",label:"Participantes"},
-              ...(profile?.is_admin ? [{id:"admin",label:"⚙️"}] : [])
-            ].map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+
+          {menu === "confirmados" && (
+            <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
+              {[
+                {id:"familias",label:"Familias"},
+                {id:"recientes",label:"Recientes"},
+                {id:"participantes",label:"Participantes"},
+              ].map(t=>(
+                <button key={t.id} onClick={()=>setTab(t.id)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="px-4 py-4 pb-8 w-full max-w-lg mx-auto space-y-4">
-          {tab==="familias" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
+          {menu === "solicitudes" && (
+            <SolicitudesView
+              solicitudes={solicitudes}
+              onAdd={handleAddSolicitud}
+              onDelete={handleDeleteSolicitud}
+              onConvertir={handleConvertirSolicitud}
+            />
+          )}
+
+          {menu === "confirmados" && tab==="familias" && (
             <>
               {showNuevaFamilia ? (
                 <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
@@ -1087,7 +1290,7 @@ export default function App() {
               </div>
             </>
           )}
-          {tab==="recientes" && (
+          {menu === "confirmados" && tab==="recientes" && (
             <RecientesView
               visitas={visitas}
               familias={familias}
@@ -1097,8 +1300,27 @@ export default function App() {
               }}
             />
           )}
-          {tab==="participantes" && <ParticipantesView familias={familias} />}
-          {tab==="admin" && profile?.is_admin && <AdminView currentUserId={user.id} />}
+          {menu === "confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
+
+          {menu === "admin" && profile?.is_admin && <AdminView currentUserId={user.id} />}
+        </div>
+
+        {/* Bottom navigation */}
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom">
+          <div className="flex max-w-lg mx-auto">
+            {NAV_ITEMS.map(item => (
+              <button key={item.id} onClick={() => setMenu(item.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 relative transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-xs font-medium">{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="absolute top-1 right-1/4 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </>
