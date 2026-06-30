@@ -1702,6 +1702,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {menu === "confirmados" && showNuevaFamilia && (
         <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
           <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
             <button onClick={()=>setShowNuevaFamilia(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
