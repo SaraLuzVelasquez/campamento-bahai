@@ -766,7 +766,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin }) {
+function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin, onAddOfrecimiento }) {
   const [expanded, setExpanded] = useState(false);
   const [accion, setAccion] = useState(null); // "comentario" | "visita" | null
   const [showDetalle, setShowDetalle] = useState(false);
@@ -896,6 +896,20 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
                 onSave={(v) => { onAddVisita(v); setAccion(null); }}
                 onCancel={() => setAccion(null)} />
+            ) : accion === "ofrecimiento" ? (
+              <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+                <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+                  <button onClick={() => setAccion(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+                  <h2 className="text-lg font-bold text-gray-900">Nuevo ofrecimiento</h2>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <OfrecimientoForm
+                    familiaId={familia.id}
+                    familias={[]}
+                    onSave={(o) => { onAddOfrecimiento(o); setAccion(null); }}
+                    onCancel={() => setAccion(null)} />
+                </div>
+              </div>
             ) : (
               <div className="space-y-2">
                 <button onClick={() => setAccion("comentario")}
@@ -905,6 +919,10 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
                 <button onClick={() => setAccion("visita")}
                   className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
                   📖 Registrar visita
+                </button>
+                <button onClick={() => setAccion("ofrecimiento")}
+                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
+                  🎁 Ofrecimiento
                 </button>
                 <button
                   onClick={() => hayActividad && setShowDetalle(true)}
@@ -1600,6 +1618,245 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   );
 }
 
+function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel }) {
+  const [que, setQue] = useState(ofrecimiento?.que || "");
+  const [fecha, setFecha] = useState(ofrecimiento?.fecha || "");
+  const [familiaIdLocal, setFamiliaIdLocal] = useState(familiaId || ofrecimiento?.familia_id || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!que.trim()) { setError("Indica qué se ofrece"); return; }
+    if (!fecha) { setError("Indica la fecha"); return; }
+    if (!familiaIdLocal) { setError("Selecciona una familia"); return; }
+    setSaving(true);
+    const payload = { familia_id: familiaIdLocal, que: que.trim(), fecha };
+    const { data, error } = ofrecimiento
+      ? await supabase.from("ofrecimientos").update(payload).eq("id", ofrecimiento.id).select().single()
+      : await supabase.from("ofrecimientos").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">{ofrecimiento ? "Editar ofrecimiento" : "Nuevo ofrecimiento"}</p>
+
+      {!familiaId && (
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Familia</label>
+          <select value={familiaIdLocal} onChange={e => setFamiliaIdLocal(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+            <option value="">Selecciona una familia</option>
+            {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Qué ofrece? *</label>
+        <textarea value={que} onChange={e=>setQue(e.target.value)} rows={3}
+          placeholder="Ej: Organizar merienda para los niños..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function Ofrecimientos({ ofrecimientos, familias, onAdd, onDelete }) {
+  const [showForm, setShowForm] = useState(false);
+
+  if (showForm) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Nuevo ofrecimiento</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <OfrecimientoForm familias={familias} onSave={(o) => { onAdd(o); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+        + Añadir ofrecimiento
+      </button>
+      {ofrecimientos.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin ofrecimientos registrados</p>
+      ) : (
+        <div className="space-y-2.5">
+          {[...ofrecimientos].sort((a,b) => a.fecha.localeCompare(b.fecha)).map(o => {
+            const familia = familias.find(f => f.id === o.familia_id);
+            return (
+              <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+                        {new Date(o.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                      </span>
+                      {familia && <Badge text={familia.grado} />}
+                    </div>
+                    <p className="font-semibold text-gray-800">{familia?.nombre || "—"}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">{o.que}</p>
+                  </div>
+                  <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalendarioView({ ofrecimientos, talleres, familias }) {
+  const hoy = new Date();
+  const [mes, setMes] = useState(hoy.getMonth());
+  const [anio, setAnio] = useState(hoy.getFullYear());
+
+  const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+  const primerDia = new Date(anio, mes, 1).getDay();
+  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  const eventosDelMes = [
+    ...(ofrecimientos || []).filter(o => {
+      const d = new Date(o.fecha + "T12:00:00");
+      return d.getMonth() === mes && d.getFullYear() === anio;
+    }).map(o => ({ ...o, tipo: "ofrecimiento", dia: new Date(o.fecha + "T12:00:00").getDate() })),
+    ...(talleres || []).filter(t => t.fecha).filter(t => {
+      const d = new Date(t.fecha + "T12:00:00");
+      return d.getMonth() === mes && d.getFullYear() === anio;
+    }).map(t => ({ ...t, tipo: "taller", dia: new Date(t.fecha + "T12:00:00").getDate() })),
+  ];
+
+  const porDia = {};
+  eventosDelMes.forEach(e => {
+    if (!porDia[e.dia]) porDia[e.dia] = [];
+    porDia[e.dia].push(e);
+  });
+
+  const celdas = [];
+  const offset = primerDia === 0 ? 6 : primerDia - 1;
+  for (let i = 0; i < offset; i++) celdas.push(null);
+  for (let d = 1; d <= diasEnMes; d++) celdas.push(d);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+        <button onClick={() => { if (mes === 0) { setMes(11); setAnio(a => a-1); } else setMes(m => m-1); }}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-600 font-bold">‹</button>
+        <p className="font-semibold text-gray-800">{MESES[mes]} {anio}</p>
+        <button onClick={() => { if (mes === 11) { setMes(0); setAnio(a => a+1); } else setMes(m => m+1); }}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-600 font-bold">›</button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-gray-100">
+          {["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map(d => (
+            <div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {celdas.map((dia, i) => {
+            const eventos = dia ? (porDia[dia] || []) : [];
+            const esHoy = dia && dia === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+            return (
+              <div key={i} className={`min-h-12 p-1 border-b border-r border-gray-50 ${!dia ? "bg-gray-50" : ""}`}>
+                {dia && (
+                  <>
+                    <p className={`text-xs font-medium text-center mb-0.5 w-6 h-6 flex items-center justify-center rounded-full mx-auto ${esHoy ? "bg-violet-600 text-white" : "text-gray-600"}`}>
+                      {dia}
+                    </p>
+                    {eventos.map((e, j) => (
+                      <div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo === "taller" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
+                        {e.tipo === "taller" ? e.quien : familias.find(f => f.id === e.familia_id)?.nombre || "—"}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex gap-3">
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
+      </div>
+
+      {/* Lista de eventos del mes */}
+      {eventosDelMes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
+          {[...eventosDelMes].sort((a,b) => a.dia - b.dia).map((e, i) => (
+            <div key={i} className="bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3">
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo === "taller" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
+                {e.dia}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">
+                  {e.tipo === "taller" ? e.quien : familias.find(f => f.id === e.familia_id)?.nombre}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{e.tipo === "taller" ? e.descripcion : e.que}</p>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${e.tipo === "taller" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>
+                {e.tipo === "taller" ? "Taller" : "Ofrecimiento"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento }) {
+  const [tab, setTab] = useState("ofrecimientos");
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        {[
+          { id: "ofrecimientos", label: "Ofrecimientos" },
+          { id: "talleres", label: "Talleres" },
+          { id: "calendario", label: "Calendario" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "ofrecimientos" && <Ofrecimientos ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
+      {tab === "talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
+      {tab === "calendario" && <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -1610,6 +1867,7 @@ export default function App() {
   const [visitas, setVisitas] = useState([]);
   const [voluntarios, setVoluntarios] = useState([]);
   const [talleres, setTalleres] = useState([]);
+  const [ofrecimientos, setOfrecimientos] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
   const [menu, setMenu] = useState("solicitudes"); // solicitudes | confirmados | admin
   const [tab, setTab] = useState("familias"); // sub-tab within confirmados
@@ -1637,7 +1895,7 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }, { data: vols }, { data: talls }] = await Promise.all([
+    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.id).single(),
       supabase.from("profiles").select("*"),
       supabase.from("familias").select("*").order("created_at", { ascending: true }),
@@ -1645,6 +1903,7 @@ export default function App() {
       supabase.from("solicitudes").select("*").order("created_at", { ascending: false }),
       supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
       supabase.from("talleres").select("*").order("created_at", { ascending: false }),
+      supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
     ]);
     setProfile(prof);
     setAllProfiles(profs || []);
@@ -1653,6 +1912,7 @@ export default function App() {
     setSolicitudes(sols || []);
     setVoluntarios(vols || []);
     setTalleres(talls || []);
+    setOfrecimientos(ofrecs || []);
     setLoading(false);
   };
 
@@ -1677,6 +1937,11 @@ export default function App() {
   const handleDeleteTaller = async (id) => {
     await supabase.from("talleres").delete().eq("id", id);
     setTalleres(prev => prev.filter(t => t.id !== id));
+  };
+  const handleAddOfrecimiento = (o) => setOfrecimientos(prev => [...prev, o]);
+  const handleDeleteOfrecimiento = async (id) => {
+    await supabase.from("ofrecimientos").delete().eq("id", id);
+    setOfrecimientos(prev => prev.filter(o => o.id !== id));
   };
 
   const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
@@ -1730,7 +1995,7 @@ export default function App() {
     { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
-    { id: "talleres", label: "Talleres", icon: "🎨" },
+    { id: "servicios", label: "Servicios", icon: "🎨" },
   ];
 
   return (
@@ -1808,7 +2073,7 @@ export default function App() {
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "talleres" ? "Talleres" : "Familias"}
+            {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
           </h1>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
 
@@ -1879,7 +2144,8 @@ export default function App() {
                     onAddVisita={handleAddVisita}
                     onDeleteVisita={handleDeleteVisita}
                     onEdit={handleEditFamilia}
-                    isAdmin={isAdmin} />
+                    isAdmin={isAdmin}
+                    onAddOfrecimiento={handleAddOfrecimiento} />
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
               </div>
@@ -1906,12 +2172,16 @@ export default function App() {
             />
           )}
 
-          {menu === "talleres" && (
-            <TalleresView
+          {menu === "servicios" && (
+            <ServiciosView
               talleres={talleres}
-              onAdd={handleAddTaller}
-              onEdit={handleEditTaller}
-              onDelete={handleDeleteTaller}
+              ofrecimientos={ofrecimientos}
+              familias={familias}
+              onAddTaller={handleAddTaller}
+              onEditTaller={handleEditTaller}
+              onDeleteTaller={handleDeleteTaller}
+              onAddOfrecimiento={handleAddOfrecimiento}
+              onDeleteOfrecimiento={handleDeleteOfrecimiento}
             />
           )}
         </div>
