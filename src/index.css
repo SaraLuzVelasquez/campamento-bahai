@@ -52,3 +52,8 @@ input, textarea, select {
 .safe-bottom {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
 }
+
+/* Ensure content in full-screen flows doesn't get cut off */
+.flex-1.overflow-y-auto {
+  padding-bottom: 5rem;
+}
