@@ -1205,8 +1205,8 @@ export default function App() {
           onClose={() => setDetalleTarget(null)}
         />
       )}
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-10 flex-shrink-0">
+      <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
             <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-2 py-1">Salir</button>
@@ -1235,7 +1235,7 @@ export default function App() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
           {menu === "solicitudes" && (
             <SolicitudesView
               solicitudes={solicitudes}
