@@ -1409,24 +1409,36 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
+  if (showForm) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Nuevo voluntario</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      </div>
+    </div>
+  );
+
   if (editTarget) return (
-    <VoluntarioForm
-      voluntario={editTarget}
-      onSave={(v) => { onEdit(v); setEditTarget(null); }}
-      onCancel={() => setEditTarget(null)}
-    />
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Editar voluntario</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <VoluntarioForm voluntario={editTarget} onSave={(v) => { onEdit(v); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
+      </div>
+    </div>
   );
 
   return (
     <div className="space-y-4">
-      {showForm ? (
-        <VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      ) : (
-        <button onClick={() => setShowForm(true)}
-          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-          + Añadir voluntario
-        </button>
-      )}
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+        + Añadir voluntario
+      </button>
 
       {voluntarios.length === 0 ? (
         <p className="text-center text-gray-400 py-12">Sin voluntarios registrados</p>
@@ -1649,22 +1661,23 @@ export default function App() {
 
           {menu === "confirmados" && tab==="familias" && (
             <>
-              <div className="flex gap-2">
-                {showNuevaFamilia ? null : (
-                  <>
-                    <button onClick={()=>setShowNuevaFamilia(true)}
-                      className="flex-1 py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                      + Nueva familia
-                    </button>
-                    <button onClick={() => setMenu("voluntarios")}
-                      className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl text-sm font-semibold hover:bg-gray-200 transition-all">
-                      + Voluntario
-                    </button>
-                  </>
-                )}
-              </div>
+              {!showNuevaFamilia && (
+                <button onClick={()=>setShowNuevaFamilia(true)}
+                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                  + Nueva familia
+                </button>
+              )}
+
               {showNuevaFamilia && (
-                <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
+                <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+                  <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+                    <button onClick={()=>setShowNuevaFamilia(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+                    <h2 className="text-lg font-bold text-gray-900">Nueva familia</h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 py-4">
+                    <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
+                  </div>
+                </div>
               )}
 
               <div className="flex gap-2">
