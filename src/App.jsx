@@ -1237,6 +1237,7 @@ function TallerForm({ taller, onSave, onCancel }) {
   const [quien, setQuien] = useState(taller?.quien || "");
   const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
   const [necesita, setNecesita] = useState(taller?.necesita || "");
+  const [fecha, setFecha] = useState(taller?.fecha || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1244,7 +1245,7 @@ function TallerForm({ taller, onSave, onCancel }) {
     if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
     if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
     setSaving(true);
-    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), necesita: necesita.trim() || null };
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), necesita: necesita.trim() || null, fecha: fecha || null };
     const { data, error } = taller
       ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
       : await supabase.from("talleres").insert(payload).select().single();
@@ -1268,6 +1269,12 @@ function TallerForm({ taller, onSave, onCancel }) {
         <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
           placeholder="Describe el taller..."
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Fecha de ejecución</label>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
       </div>
 
       <div>
@@ -1320,6 +1327,14 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
 
   return (
     <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl">🎨</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p>
+          <p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p>
+        </div>
+      </div>
+
       <button onClick={() => setShowForm(true)}
         className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
         + Añadir taller
@@ -1332,8 +1347,11 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
             <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-800">{t.quien}</p>
-                  <p className="text-sm text-gray-600 mt-1">{t.descripcion}</p>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="font-semibold text-gray-800">{t.quien}</p>
+                    {t.fecha && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{new Date(t.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>}
+                  </div>
+                  <p className="text-sm text-gray-600">{t.descripcion}</p>
                   {t.necesita && (
                     <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2">
                       <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
@@ -1718,8 +1736,8 @@ export default function App() {
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
             <button onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
-              <span className="text-lg">☰</span>
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-sm hover:bg-violet-200 transition-colors flex-shrink-0">
+              {profile?.nombre?.[0]?.toUpperCase() || "?"}
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
