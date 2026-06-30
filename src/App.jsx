@@ -132,6 +132,54 @@ function Badge({ text }) {
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 
+function ResetPasswordScreen({ onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleReset = async () => {
+    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (password !== confirm) { setError("Las contraseñas no coinciden"); return; }
+    setLoading(true); setError("");
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) setError("No se ha podido actualizar. Inténtalo de nuevo.");
+    else { setSuccess("¡Contraseña actualizada! Ya puedes entrar."); setTimeout(onDone, 2000); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🔑</div>
+          <h1 className="text-2xl font-bold text-gray-900">Nueva contraseña</h1>
+          <p className="text-sm text-gray-500 mt-1">Elige una contraseña nueva para tu cuenta</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Nueva contraseña</label>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Confirmar contraseña</label>
+            <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repite la contraseña"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          </div>
+          {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+          {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
+          <button onClick={handleReset} disabled={loading}
+            className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
+            {loading ? "Guardando..." : "Guardar contraseña"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -1554,6 +1602,7 @@ export default function App() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
@@ -1565,6 +1614,7 @@ export default function App() {
       else setLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (_e === "PASSWORD_RECOVERY") { setShowResetPassword(true); return; }
       if (session?.user) initUser(session.user);
       else { setUser(null); setProfile(null); setLoading(false); }
     });
@@ -1643,6 +1693,8 @@ export default function App() {
       <p className="text-violet-400">Cargando...</p>
     </div>
   );
+
+  if (showResetPassword) return <ResetPasswordScreen onDone={() => setShowResetPassword(false)} />;
 
   if (!user) return <AuthScreen onAuth={(u) => initUser(u)} />;
 
