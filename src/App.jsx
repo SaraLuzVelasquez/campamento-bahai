@@ -633,6 +633,9 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   const [tab, setTab] = useState("conversaciones");
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [showNuevaConv, setShowNuevaConv] = useState(false);
+  const [showNuevaVisita, setShowNuevaVisita] = useState(false);
+  const [nuevaNota, setNuevaNota] = useState("");
 
   useEffect(() => {
     if (!loaded) {
@@ -705,38 +708,88 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {tab === "conversaciones" && (
-          conversaciones.length === 0
-            ? <p className="text-center text-gray-400 py-12">Aún no hay conversaciones</p>
-            : conversaciones.map(c => (
-              <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                <p className="text-sm text-gray-700">{c.nota}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
-                  <button onClick={() => handleDeleteConv(c.id)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕</button>
+          <>
+            {showNuevaConv ? (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                <p className="text-sm font-semibold text-gray-800">Nueva conversación</p>
+                <textarea value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} rows={3}
+                  placeholder="Escribe tu comentario..."
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                <div className="flex gap-2">
+                  <button onClick={async () => {
+                    if (!nuevaNota.trim()) return;
+                    const { data } = await supabase.from("conversaciones").insert({
+                      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
+                    }).select("*, profiles(nombre)").single();
+                    if (data) setConversaciones(prev => [data, ...prev]);
+                    setNuevaNota(""); setShowNuevaConv(false);
+                  }} disabled={!nuevaNota.trim()}
+                    className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
+                    Guardar
+                  </button>
+                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }}
+                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100">
+                    Cancelar
+                  </button>
                 </div>
               </div>
-            ))
-        )}
-        {tab === "visitas" && (
-          sorted.length === 0
-            ? <p className="text-center text-gray-400 py-12">Aún no hay visitas</p>
-            : sorted.map(v => (
-              <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                      {v.completada ? "Completada" : "En progreso"}
-                    </span>
-                    <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+            ) : (
+              <button onClick={() => setShowNuevaConv(true)}
+                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                + Nueva conversación
+              </button>
+            )}
+            {conversaciones.length === 0
+              ? <p className="text-center text-gray-400 py-8">Aún no hay conversaciones</p>
+              : conversaciones.map(c => (
+                <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                  <p className="text-sm text-gray-700">{c.nota}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
+                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕</button>
                   </div>
                 </div>
-                <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
-                <p className="text-sm text-gray-700">Sección {v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
-                <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
-                {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
+              ))
+            }
+          </>
+        )}
+        {tab === "visitas" && (
+          <>
+            {showNuevaVisita ? (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <p className="text-sm font-semibold text-gray-800 mb-3">Nueva visita</p>
+                <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
+                  onSave={(v) => { onAddVisita(v); setShowNuevaVisita(false); }}
+                  onCancel={() => setShowNuevaVisita(false)} />
               </div>
-            ))
+            ) : (
+              <button onClick={() => setShowNuevaVisita(true)}
+                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+                + Nueva visita
+              </button>
+            )}
+            {sorted.length === 0
+              ? <p className="text-center text-gray-400 py-8">Aún no hay visitas</p>
+              : sorted.map(v => (
+                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                        {v.completada ? "Completada" : "En progreso"}
+                      </span>
+                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
+                  <p className="text-sm text-gray-700">Sección {v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
+                  <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
+                  {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
+                </div>
+              ))
+            }
+          </>
         )}
       </div>
     </div>
@@ -869,10 +922,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
                   </button>
                 </div>
               </div>
-            ) : accion === "visita" ? (
-              <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-                onSave={(v) => { onAddVisita(v); setAccion(null); }}
-                onCancel={() => setAccion(null)} />
             ) : accion === "ofrecimiento" ? (
               <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
                 <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
@@ -889,26 +938,19 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               </div>
             ) : (
               <div className="space-y-2">
-                <button onClick={() => setAccion("comentario")}
-                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
-                  💬 Escribir comentario
-                </button>
-                <button onClick={() => setAccion("visita")}
-                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
-                  📖 Registrar visita
-                </button>
                 <button onClick={() => setAccion("ofrecimiento")}
                   className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
                   🎁 Ofrecimiento
                 </button>
                 <button
-                  onClick={() => hayActividad && setShowDetalle(true)}
-                  disabled={!hayActividad}
-                  className={`w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between ${hayActividad ? "bg-violet-50 hover:bg-violet-100 text-violet-700" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}>
+                  onClick={() => setShowDetalle(true)}
+                  className="w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between bg-violet-50 hover:bg-violet-100 text-violet-700">
                   <span>📋 Ver conversaciones y visitas</span>
-                  {hayActividad && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-                    {visitas.length + (totalConv || 0)}
-                  </span>}
+                  {(visitas.length + (totalConv || 0)) > 0 && (
+                    <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
+                      {visitas.length + (totalConv || 0)}
+                    </span>
+                  )}
                 </button>
               </div>
             )}
