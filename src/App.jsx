@@ -101,6 +101,35 @@ function ContactoTelefono({ telefono }) {
   );
 }
 
+function ContactoConEditar({ telefono, isAdmin, onEditar }) {
+  if (telefono && isAdmin) {
+    const limpio = telefono.replace(/\D/g, "");
+    const wa = `https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}`;
+    return (
+      <div className="flex gap-2">
+        <a href={wa} target="_blank" rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+          💬 WA
+        </a>
+        <a href={`tel:${telefono}`}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all">
+          📞 Llamar
+        </a>
+        <button onClick={onEditar}
+          className="flex-1 flex items-center justify-center bg-violet-50 text-violet-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
+          Editar
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button onClick={onEditar}
+      className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+      Editar
+    </button>
+  );
+}
+
 function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4">
@@ -827,11 +856,9 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
             <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
           </div>
 
-          {familia.telefono && (
-            <div className="px-4 pb-3">
-              <ContactoTelefono telefono={familia.telefono} isAdmin={isAdmin} />
-            </div>
-          )}
+          <div className="px-4 pb-3">
+            <ContactoConEditar telefono={familia.telefono} isAdmin={isAdmin} onEditar={() => setShowEdit(true)} />
+          </div>
 
           {familia.contacto2_nombre && (
             <div className="px-4 pb-3">
@@ -844,13 +871,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
               </div>
             </div>
           )}
-
-          <div className="px-4 pb-3">
-            <button onClick={() => setShowEdit(true)}
-              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-              Editar
-            </button>
-          </div>
 
           {/* Opciones del dropdown */}
           <div className="px-4 pb-4 space-y-2 mt-1">
@@ -1235,10 +1255,7 @@ function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isA
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
           )}
           <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
-          <button onClick={() => setShowEdit(true)}
-            className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-            Editar
-          </button>
+          <ContactoConEditar telefono={solicitud.telefono} isAdmin={isAdmin} onEditar={() => setShowEdit(true)} />
           {isAdmin && (
             <div className="flex gap-2 pt-1">
               {solicitud.visto ? (
@@ -1529,22 +1546,7 @@ function VoluntarioCard({ voluntario, isAdmin, onEdit }) {
       {expanded && (
         <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
           {voluntario.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{voluntario.notas}</p>}
-          {voluntario.telefono ? (
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <ContactoTelefono telefono={voluntario.telefono} isAdmin={isAdmin} />
-              </div>
-              <button onClick={() => onEdit(voluntario)}
-                className="px-3 py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-                Editar
-              </button>
-            </div>
-          ) : (
-            <button onClick={() => onEdit(voluntario)}
-              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-              Editar
-            </button>
-          )}
+          <ContactoConEditar telefono={voluntario.telefono} isAdmin={isAdmin} onEditar={() => onEdit(voluntario)} />
         </div>
       )}
     </div>
