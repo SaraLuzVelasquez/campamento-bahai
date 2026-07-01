@@ -1332,7 +1332,7 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   );
 }
 
-function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel, draftMode }) {
+function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel }) {
   const [que, setQue] = useState(ofrecimiento?.que || "");
   const [fecha, setFecha] = useState(ofrecimiento?.fecha || "");
   const [familiaIdLocal, setFamiliaIdLocal] = useState(familiaId || ofrecimiento?.familia_id || "");
@@ -1342,14 +1342,8 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel,
   const handleSave = async () => {
     if (!que.trim()) { setError("Indica qué se ofrece"); return; }
     if (!fecha) { setError("Indica la fecha"); return; }
-    if (!draftMode && !familiaIdLocal) { setError("Selecciona una familia"); return; }
-
-    const payload = { familia_id: familiaIdLocal || null, que: que.trim(), fecha };
-
-    // In draft mode, just pass data up without inserting
-    if (draftMode) { onSave(payload); return; }
-
     setSaving(true);
+    const payload = { familia_id: familiaIdLocal || null, que: que.trim(), fecha };
     const { data, error } = ofrecimiento
       ? await supabase.from("ofrecimientos").update(payload).eq("id", ofrecimiento.id).select().single()
       : await supabase.from("ofrecimientos").insert(payload).select().single();
@@ -1362,19 +1356,19 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel,
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
       <p className="font-semibold text-gray-800">{ofrecimiento ? "Editar ofrecimiento" : "Nuevo ofrecimiento"}</p>
 
-      {!familiaId && (
+      {!familiaId && familias?.length > 0 && (
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">Familia</label>
+          <label className="text-xs text-gray-500 mb-1 block">Familia (opcional)</label>
           <select value={familiaIdLocal} onChange={e => setFamiliaIdLocal(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
-            <option value="">Selecciona una familia</option>
+            <option value="">Sin familia asociada</option>
             {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
           </select>
         </div>
       )}
 
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Qué ofrece? *</label>
+        <label className="text-xs text-gray-500 mb-1 block">¿Qué ofreces? *</label>
         <textarea value={que} onChange={e=>setQue(e.target.value)} rows={3}
           placeholder="Ej: Organizar merienda para los niños..."
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
@@ -1391,7 +1385,7 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel,
       <div className="flex gap-2">
         <button onClick={handleSave} disabled={saving}
           className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Un momento..." : draftMode ? "Continuar →" : "Guardar"}
+          {saving ? "Guardando..." : "Guardar"}
         </button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
@@ -1425,7 +1419,7 @@ function Ofrecimientos({ ofrecimientos, familias, onAdd, onDelete }) {
       ) : (
         <div className="space-y-2.5">
           {[...ofrecimientos].sort((a,b) => a.fecha.localeCompare(b.fecha)).map(o => {
-            const familia = familias.find(f => f.id === o.familia_id);
+            const familia = familias?.find(f => f.id === o.familia_id);
             return (
               <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -1436,10 +1430,10 @@ function Ofrecimientos({ ofrecimientos, familias, onAdd, onDelete }) {
                       </span>
                       {familia && <Badge text={familia.grado} />}
                     </div>
-                    <p className="font-semibold text-gray-800">{familia?.nombre || "—"}</p>
+                    {familia && <p className="font-semibold text-gray-800">{familia.nombre}</p>}
                     <p className="text-sm text-gray-600 mt-0.5">{o.que}</p>
                   </div>
-                  <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+                  {onDelete && <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>}
                 </div>
               </div>
             );
@@ -1510,7 +1504,7 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
                     </p>
                     {eventos.map((e, j) => (
                       <div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo === "taller" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
-                        {e.tipo === "taller" ? e.quien : familias.find(f => f.id === e.familia_id)?.nombre || "—"}
+                        {e.tipo === "taller" ? e.quien : (familias?.find(f => f.id === e.familia_id)?.nombre || "—")}
                       </div>
                     ))}
                   </>
@@ -1521,13 +1515,11 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
         </div>
       </div>
 
-      {/* Leyenda */}
       <div className="flex gap-3">
         <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
         <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
       </div>
 
-      {/* Lista de eventos del mes */}
       {eventosDelMes.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
@@ -1538,98 +1530,16 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 truncate">
-                  {e.tipo === "taller" ? e.quien : familias.find(f => f.id === e.familia_id)?.nombre}
+                  {e.tipo === "taller" ? e.quien : (familias?.find(f => f.id === e.familia_id)?.nombre || "—")}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{e.tipo === "taller" ? e.descripcion : e.que}</p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${e.tipo === "taller" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>
+              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo === "taller" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>
                 {e.tipo === "taller" ? "Taller" : "Ofrecimiento"}
               </span>
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-function TallerForm({ taller, onSave, onCancel, onDelete, draftMode }) {
-  const [quien, setQuien] = useState(taller?.quien || "");
-  const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
-  const [fecha, setFecha] = useState(taller?.fecha && taller.fecha !== "por-confirmar" ? taller.fecha : "");
-  const [necesita, setNecesita] = useState(taller?.necesita || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [fechaPorConfirmar, setFechaPorConfirmar] = useState(taller?.fecha === "por-confirmar");
-
-  const handleSave = async () => {
-    if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
-    if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
-    const fechaFinal = fechaPorConfirmar ? null : (fecha || null);
-    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fechaFinal, necesita: necesita.trim() || null };
-
-    // In draft mode (step 1 of TwoStepForm), just pass data up without inserting
-    if (draftMode) { onSave(payload); return; }
-
-    setSaving(true);
-    const { data, error } = taller
-      ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
-      : await supabase.from("talleres").insert(payload).select().single();
-    if (error) setError("No se ha podido guardar.");
-    else onSave(data);
-    setSaving(false);
-  };
-
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">{taller ? "Editar taller" : "Nuevo taller"}</p>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
-        <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
-        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
-          placeholder="Describe el taller..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Fecha de ejecución</label>
-        <div className="flex gap-2 mb-2">
-          <button onClick={() => { setFechaPorConfirmar(false); }}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
-            Fecha concreta
-          </button>
-          <button onClick={() => { setFechaPorConfirmar(true); setFecha(""); }}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
-            Por confirmar
-          </button>
-        </div>
-        {!fechaPorConfirmar && (
-          <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-        )}
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
-        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
-          placeholder="Materiales, recursos, espacio..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Un momento..." : draftMode ? "Continuar →" : "Guardar"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
-      </div>
-      {taller && onDelete && (
-        <button onClick={() => onDelete(taller.id)}
-          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
-          Eliminar taller
-        </button>
       )}
     </div>
   );
@@ -1653,7 +1563,6 @@ function TallerCard({ taller: t, onEdit }) {
           <span className="text-xs text-gray-500">· {t.quien}</span>
         </div>
       </button>
-
       {expanded && (
         <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
           {t.necesita ? (
@@ -1664,11 +1573,90 @@ function TallerCard({ taller: t, onEdit }) {
           ) : (
             <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>
           )}
-          <button onClick={onEdit}
-            className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-            Editar
+          {onEdit && (
+            <button onClick={onEdit}
+              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+              Editar
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TallerForm({ taller, onSave, onCancel, onDelete }) {
+  const [quien, setQuien] = useState(taller?.quien || "");
+  const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
+  const [fecha, setFecha] = useState(taller?.fecha || "");
+  const [necesita, setNecesita] = useState(taller?.necesita || "");
+  const [fechaPorConfirmar, setFechaPorConfirmar] = useState(!taller?.fecha);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
+    if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
+    setSaving(true);
+    const fechaFinal = fechaPorConfirmar ? null : (fecha || null);
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fechaFinal, necesita: necesita.trim() || null };
+    const { data, error } = taller
+      ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
+      : await supabase.from("talleres").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
+        <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
+        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
+          placeholder="Describe el taller..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-2 block">Fecha</label>
+        <div className="flex gap-2 mb-2">
+          <button onClick={() => setFechaPorConfirmar(false)}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+            Fecha concreta
+          </button>
+          <button onClick={() => setFechaPorConfirmar(true)}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+            Por confirmar
           </button>
         </div>
+        {!fechaPorConfirmar && (
+          <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        )}
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
+        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
+          placeholder="Materiales, recursos, espacio..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+      {taller && onDelete && (
+        <button onClick={() => onDelete(taller.id)}
+          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
+          Eliminar taller
+        </button>
       )}
     </div>
   );
@@ -1697,8 +1685,7 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
         <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm
-          taller={editTarget}
+        <TallerForm taller={editTarget}
           onSave={(t) => { onEdit(t); setEditTarget(null); }}
           onCancel={() => setEditTarget(null)}
           onDelete={(id) => { onDelete(id); setEditTarget(null); }} />
@@ -1724,88 +1711,7 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
       ) : (
         <div className="space-y-3">
           {talleres.map(t => (
-            <TallerCard key={t.id} taller={t} onEdit={() => setEditTarget(t)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HomeView({ familias, visitas, voluntarios, talleres, ofrecimientos, onNavigate, profile }) {
-  const hoy = new Date();
-  const mesActual = hoy.getMonth();
-  const anioActual = hoy.getFullYear();
-
-  const eventosHoy = [
-    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
-    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
-  ];
-
-  const ultimasConvs = visitas.slice(0,3);
-  const talleresFaltan = Math.max(0, 16 - talleres.length);
-
-  return (
-    <div className="space-y-4">
-      {/* Saludo */}
-      <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
-        <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
-        <h2 className="text-xl font-bold mb-0.5">Hola, {profile?.nombre} 👋</h2>
-        <p className="text-sm opacity-70">6 – 31 julio · Madrid</p>
-      </div>
-
-      {/* Stats rápidas */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Familias", value: familias.length, icon: "👨‍👩‍👧", menu: "confirmados" },
-          { label: "Voluntarios", value: voluntarios.length, icon: "🙌", menu: "voluntarios" },
-          { label: "Talleres", value: talleres.length + "/16", icon: "🎨", menu: "servicios" },
-        ].map(s => (
-          <button key={s.label} onClick={() => onNavigate(s.menu)}
-            className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-            <p className="text-xl mb-1">{s.icon}</p>
-            <p className="text-lg font-bold text-violet-600">{s.value}</p>
-            <p className="text-xs text-gray-500">{s.label}</p>
-          </button>
-        ))}
-      </div>
-
-      {/* Accesos rápidos */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
-        {[
-          { label: "Ver familias confirmadas", icon: "👨‍👩‍👧", menu: "confirmados", tab: "familias" },
-          { label: "Ver participantes", icon: "🧒", menu: "confirmados", tab: "participantes" },
-          { label: "Conversaciones recientes", icon: "💬", menu: "confirmados", tab: "recientes" },
-          { label: "Calendario de servicios", icon: "📅", menu: "servicios" },
-        ].map((item, i) => (
-          <button key={i} onClick={() => onNavigate(item.menu, item.tab)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
-            <span className="text-lg">{item.icon}</span>
-            <span className="text-sm text-gray-700 font-medium">{item.label}</span>
-            <span className="ml-auto text-gray-300">›</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Alertas */}
-      {talleresFaltan > 0 && (
-        <button onClick={() => onNavigate("servicios")}
-          className="w-full bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-left">
-          <span className="text-xl">⚠️</span>
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Faltan {talleresFaltan} talleres</p>
-            <p className="text-xs text-amber-600">Toca para ir a Servicios</p>
-          </div>
-          <span className="ml-auto text-amber-300">›</span>
-        </button>
-      )}
-
-      {eventosHoy.length > 0 && (
-        <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
-          <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
-          {eventosHoy.map((e, i) => (
-            <p key={i} className="text-sm text-violet-700">{e.quien || e.que || "Evento"}</p>
+            <TallerCard key={t.id} taller={t} onEdit={onEdit ? () => setEditTarget(t) : null} />
           ))}
         </div>
       )}
@@ -1819,6 +1725,7 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
@@ -1840,118 +1747,12 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   );
 }
 
-// ── TWO STEP FORM ─────────────────────────────────────────────────────────────
-
-function TwoStepForm({ tipo, familias, onSave, onCancel }) {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState(null);
-  const [authMode, setAuthMode] = useState("crear");
-  const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleStep1 = (data) => { setFormData(data); setStep(2); };
-
-  const handleStep2 = async () => {
-    if (authMode === "crear" && !nombre.trim()) { setError("Escribe tu nombre"); return; }
-    if (!email.trim()) { setError("Escribe tu correo"); return; }
-    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
-    setSaving(true); setError("");
-
-    if (authMode === "login") {
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-      if (loginError) { setError("Correo o contraseña incorrectos."); setSaving(false); return; }
-    } else {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email, password,
-        options: { data: { nombre, rol: "ofrecimientos" } }
-      });
-      if (signUpError && !signUpError.message.includes("already registered")) {
-        setError("No se ha podido crear la cuenta. Inténtalo de nuevo.");
-        setSaving(false); return;
-      }
-    }
-
-    // Save the data (anon insert allowed, or now authenticated)
-    await onSave(formData);
-    setSaving(false);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={step === 1 ? onCancel : () => setStep(1)}
-          className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">
-            {tipo === "ofrecimiento" ? "Nuevo ofrecimiento" : "Nuevo taller"}
-          </h2>
-          <div className="flex gap-1.5">
-            {[1,2].map(s => (
-              <div key={s} className={`w-2 h-2 rounded-full ${step >= s ? "bg-violet-600" : "bg-gray-200"}`} />
-            ))}
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-0.5">Paso {step} de 2</p>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {step === 1 ? (
-          tipo === "ofrecimiento"
-            ? <OfrecimientoForm familias={familias} onSave={handleStep1} onCancel={onCancel} draftMode />
-            : <TallerForm onSave={handleStep1} onCancel={onCancel} draftMode />
-        ) : (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-            <div className="bg-violet-50 rounded-xl p-3">
-              <p className="text-sm text-violet-700 font-medium">¡Casi listo! 🎉</p>
-              <p className="text-sm text-violet-600 mt-0.5">Identifícate para guardar tu {tipo === "ofrecimiento" ? "ofrecimiento" : "taller"}.</p>
-            </div>
-
-            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-              {["crear","login"].map(m => (
-                <button key={m} onClick={() => { setAuthMode(m); setError(""); }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${authMode===m?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>
-                  {m==="crear"?"Crear cuenta":"Iniciar sesión"}
-                </button>
-              ))}
-            </div>
-
-            {authMode === "crear" && (
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-                <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              </div>
-            )}
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            </div>
-            {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-            <button onClick={handleStep2} disabled={saving}
-              className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-              {saving ? "Guardando..." : authMode === "crear" ? "Crear cuenta y guardar" : "Iniciar sesión y guardar"}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── PUBLIC APP ────────────────────────────────────────────────────────────────
 
-function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, offline, showLogin, setShowLogin, onAuth }) {
+function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onDeleteOfrecimiento, offline, showLogin, setShowLogin, onAuth }) {
   const [menu, setMenu] = useState("home");
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
-  const [showTwoStep, setShowTwoStep] = useState(null);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
 
   const hoy = new Date();
@@ -1959,26 +1760,6 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
     ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
     ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
   ];
-
-  const handleSaveTwoStep = async (data) => {
-    if (showTwoStep === "ofrecimiento") {
-      const { data: saved } = await supabase.from("ofrecimientos").insert({
-        familia_id: data.familia_id || null,
-        que: data.que,
-        fecha: data.fecha,
-      }).select().single();
-      if (saved) onAddOfrecimiento(saved);
-    } else {
-      const { data: saved } = await supabase.from("talleres").insert({
-        quien: data.quien,
-        descripcion: data.descripcion,
-        fecha: data.fecha || null,
-        necesita: data.necesita || null,
-      }).select().single();
-      if (saved) onAddTaller(saved);
-    }
-    setShowTwoStep(null);
-  };
 
   if (showLogin) return (
     <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
@@ -1993,22 +1774,13 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
     </div>
   );
 
-  if (showTwoStep) return (
-    <TwoStepForm
-      tipo={showTwoStep}
-      familias={familias}
-      onSave={handleSaveTwoStep}
-      onCancel={() => setShowTwoStep(null)}
-    />
-  );
-
   return (
     <>
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-50">
-              <p className="text-xs text-gray-400">Campamento Bahá'í Madrid</p>
+              <p className="text-xs text-gray-400">Campamento Bahá\'í Madrid</p>
             </div>
             <button onClick={() => { setShowAvatarMenu(false); setShowLogin(true); }}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
@@ -2024,7 +1796,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
+            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá\'í</p>
             <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
               <span className="text-lg">👤</span>
@@ -2044,7 +1816,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
               <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
                 <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
                 <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
-                <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
+                <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá\'í de Estudios · Madrid</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }}
@@ -2068,21 +1840,6 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
                   ))}
                 </div>
               )}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">¿Quieres participar?</p>
-                <button onClick={() => setShowTwoStep("ofrecimiento")}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
-                  <span className="text-lg">🎁</span>
-                  <span className="text-sm text-gray-700 font-medium">Ofrecer algo al campamento</span>
-                  <span className="ml-auto text-gray-300">›</span>
-                </button>
-                <button onClick={() => setShowTwoStep("taller")}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
-                  <span className="text-lg">🎨</span>
-                  <span className="text-sm text-gray-700 font-medium">Proponer un taller</span>
-                  <span className="ml-auto text-gray-300">›</span>
-                </button>
-              </div>
             </div>
           )}
           {menu === "servicios" && (
@@ -2090,21 +1847,18 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
               talleres={talleres}
               ofrecimientos={ofrecimientos}
               familias={familias}
-              onAddTaller={() => setShowTwoStep("taller")}
-              onEditTaller={() => {}}
-              onDeleteTaller={() => {}}
-              onAddOfrecimiento={() => setShowTwoStep("ofrecimiento")}
-              onDeleteOfrecimiento={() => {}}
+              onAddTaller={onAddTaller}
+              onEditTaller={onEditTaller}
+              onDeleteTaller={onDeleteTaller}
+              onAddOfrecimiento={onAddOfrecimiento}
+              onDeleteOfrecimiento={onDeleteOfrecimiento}
               initialTab={serviciosTab}
             />
           )}
         </div>
         <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
-            {[
-              { id: "home", label: "Inicio", icon: "🏠" },
-              { id: "servicios", label: "Servicios", icon: "🎨" },
-            ].map(item => (
+            {[{ id: "home", label: "Inicio", icon: "🏠" }, { id: "servicios", label: "Servicios", icon: "🎨" }].map(item => (
               <button key={item.id} onClick={() => setMenu(item.id)}
                 className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span>
@@ -2475,6 +2229,9 @@ export default function App() {
         familias={familias}
         onAddOfrecimiento={handleAddOfrecimiento}
         onAddTaller={handleAddTaller}
+        onEditTaller={handleEditTaller}
+        onDeleteTaller={handleDeleteTaller}
+        onDeleteOfrecimiento={handleDeleteOfrecimiento}
         offline={offline}
         showLogin={showLogin}
         setShowLogin={setShowLogin}
