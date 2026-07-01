@@ -1792,8 +1792,8 @@ function HomeView({ familias, visitas, voluntarios, talleres, ofrecimientos, onN
   );
 }
 
-function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento }) {
-  const [tab, setTab] = useState("ofrecimientos");
+function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "ofrecimientos");
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
@@ -1915,6 +1915,7 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
 
 function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onLogin, offline, showLogin, setShowLogin, onAuth }) {
   const [menu, setMenu] = useState("home");
+  const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [showTwoStep, setShowTwoStep] = useState(null);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
 
@@ -2000,13 +2001,13 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => { setMenu("servicios"); }}
+              <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }}
                 className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
                 <p className="text-2xl mb-2">🎁</p>
                 <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
                 <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
               </button>
-              <button onClick={() => { setMenu("servicios"); }}
+              <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }}
                 className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
                 <p className="text-2xl mb-2">🎨</p>
                 <p className="text-sm font-semibold text-gray-800">Talleres</p>
@@ -2053,6 +2054,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
             onDeleteOfrecimiento={() => {}}
             publicMode={true}
             onTwoStep={(tipo) => setShowTwoStep(tipo)}
+            initialTab={serviciosTab}
           />
         )}
       </div>
