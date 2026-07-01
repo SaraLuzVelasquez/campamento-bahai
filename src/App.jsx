@@ -9,7 +9,7 @@ const supabase = createClient(
 
 // ── CACHE ─────────────────────────────────────────────────────────────────────
 
-const CACHE_KEY = "campamento_cache_v1";
+const CACHE_KEY = "campamento_cache_v2";
 
 function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() })); } catch {}
@@ -17,10 +17,11 @@ function saveCache(data) {
 
 function loadCache() {
   try {
+    // Clear old cache versions
+    localStorage.removeItem("campamento_cache_v1");
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    // Cache valid for 24h
     if (Date.now() - data._ts > 86400000) { localStorage.removeItem(CACHE_KEY); return null; }
     return data;
   } catch { return null; }
@@ -2047,6 +2048,7 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
+
     const cached = loadCache();
     if (cached) {
       setFamilias(cached.familias || []);
@@ -2057,45 +2059,31 @@ export default function App() {
       setLoading(false);
     }
 
-    const fetchWithRetry = async (fn, retries = 3) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          const result = await fn();
-          if (!result.error) return result;
-          if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-        } catch {
-          if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-        }
-      }
-      return { data: null, error: true };
-    };
+    try {
+      const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", u.id).single(),
+        supabase.from("profiles").select("*"),
+        supabase.from("familias").select("*").order("created_at", { ascending: true }),
+        supabase.from("visitas").select("*, profiles(nombre)"),
+        supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
+        supabase.from("talleres").select("*").order("created_at", { ascending: false }),
+        supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
+      ]);
 
-    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
-      fetchWithRetry(() => supabase.from("profiles").select("*").eq("id", u.id).single()),
-      fetchWithRetry(() => supabase.from("profiles").select("*")),
-      fetchWithRetry(() => supabase.from("familias").select("*").order("created_at", { ascending: true })),
-      fetchWithRetry(() => supabase.from("visitas").select("*, profiles(nombre)")),
-      fetchWithRetry(() => supabase.from("voluntarios").select("*").order("created_at", { ascending: true })),
-      fetchWithRetry(() => supabase.from("talleres").select("*").order("created_at", { ascending: false })),
-      fetchWithRetry(() => supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true })),
-    ]);
+      setProfile(prof);
+      setAllProfiles(profs || []);
+      setFamilias(fams || []);
+      setVisitas(vis || []);
+      setVoluntarios(vols || []);
+      setTalleres(talls || []);
+      setOfrecimientos(ofrecs || []);
+      setLoading(false);
 
-    const newFamilias = fams || cached?.familias || [];
-    const newVisitas = vis || cached?.visitas || [];
-    const newVoluntarios = vols || cached?.voluntarios || [];
-    const newTalleres = talls || cached?.talleres || [];
-    const newOfrecimientos = ofrecs || cached?.ofrecimientos || [];
-
-    setProfile(prof);
-    setAllProfiles(profs || []);
-    setFamilias(newFamilias);
-    setVisitas(newVisitas);
-    setVoluntarios(newVoluntarios);
-    setTalleres(newTalleres);
-    setOfrecimientos(newOfrecimientos);
-    setLoading(false);
-
-    saveCache({ familias: newFamilias, visitas: newVisitas, voluntarios: newVoluntarios, talleres: newTalleres, ofrecimientos: newOfrecimientos });
+      saveCache({ familias: fams || [], visitas: vis || [], voluntarios: vols || [], talleres: talls || [], ofrecimientos: ofrecs || [] });
+    } catch (err) {
+      console.error("Error loading data:", err);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -2172,7 +2160,7 @@ export default function App() {
     }
   };
 
-  if (loading && !loadCache()) return (
+  if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-3">
         <div className="h-8 bg-gray-200 rounded-xl animate-pulse w-3/4 mx-auto"></div>
