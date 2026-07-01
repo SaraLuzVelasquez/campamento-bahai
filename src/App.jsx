@@ -713,14 +713,13 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
         {tab === "conversaciones" && (
           <>
             {showNuevaConv ? (
               <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                <p className="text-sm font-semibold text-gray-800">Nueva conversación</p>
                 <textarea value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} rows={3}
-                  placeholder="Escribe tu comentario..."
+                  placeholder="Escribe un mensaje..."
                   autoFocus
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
                 <div className="flex gap-2">
@@ -733,7 +732,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
                     setNuevaNota(""); setShowNuevaConv(false);
                   }} disabled={!nuevaNota.trim()}
                     className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
-                    Guardar
+                    Enviar
                   </button>
                   <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }}
                     className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100">
@@ -744,20 +743,39 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
             ) : (
               <button onClick={() => setShowNuevaConv(true)}
                 className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                + Nueva conversación
+                + Nuevo mensaje
               </button>
             )}
+
             {conversaciones.length === 0
-              ? <p className="text-center text-gray-400 py-8">Aún no hay conversaciones</p>
-              : conversaciones.map(c => (
-                <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                  <p className="text-sm text-gray-700">{c.nota}</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
-                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕</button>
+              ? <p className="text-center text-gray-400 py-8">Aún no hay mensajes</p>
+              : conversaciones.map(c => {
+                const nombre = c.profiles?.nombre || "—";
+                const inicial = nombre[0]?.toUpperCase();
+                const fecha = new Date(c.created_at);
+                const hoy = new Date();
+                const esHoy = fecha.toDateString() === hoy.toDateString();
+                const horaStr = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+                const fechaStr = esHoy ? horaStr : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${horaStr}`;
+                return (
+                  <div key={c.id} className="flex gap-3 group">
+                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">
+                      {inicial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <span className="text-sm font-semibold text-gray-800">{nombre}</span>
+                        <span className="text-xs text-gray-400">{fechaStr}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
+                    </div>
+                    <button onClick={() => handleDeleteConv(c.id)}
+                      className="text-gray-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1">
+                      ✕
+                    </button>
                   </div>
-                </div>
-              ))
+                );
+              })
             }
           </>
         )}
