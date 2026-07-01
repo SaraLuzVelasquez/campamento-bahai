@@ -1332,7 +1332,7 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   );
 }
 
-function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel }) {
+function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel, draftMode }) {
   const [que, setQue] = useState(ofrecimiento?.que || "");
   const [fecha, setFecha] = useState(ofrecimiento?.fecha || "");
   const [familiaIdLocal, setFamiliaIdLocal] = useState(familiaId || ofrecimiento?.familia_id || "");
@@ -1342,9 +1342,14 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel 
   const handleSave = async () => {
     if (!que.trim()) { setError("Indica qué se ofrece"); return; }
     if (!fecha) { setError("Indica la fecha"); return; }
-    if (!familiaIdLocal) { setError("Selecciona una familia"); return; }
+    if (!draftMode && !familiaIdLocal) { setError("Selecciona una familia"); return; }
+
+    const payload = { familia_id: familiaIdLocal || null, que: que.trim(), fecha };
+
+    // In draft mode, just pass data up without inserting
+    if (draftMode) { onSave(payload); return; }
+
     setSaving(true);
-    const payload = { familia_id: familiaIdLocal, que: que.trim(), fecha };
     const { data, error } = ofrecimiento
       ? await supabase.from("ofrecimientos").update(payload).eq("id", ofrecimiento.id).select().single()
       : await supabase.from("ofrecimientos").insert(payload).select().single();
@@ -1386,7 +1391,7 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel 
       <div className="flex gap-2">
         <button onClick={handleSave} disabled={saving}
           className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
+          {saving ? "Un momento..." : draftMode ? "Continuar →" : "Guardar"}
         </button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
@@ -1548,7 +1553,7 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
   );
 }
 
-function TallerForm({ taller, onSave, onCancel, onDelete }) {
+function TallerForm({ taller, onSave, onCancel, onDelete, draftMode }) {
   const [quien, setQuien] = useState(taller?.quien || "");
   const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
   const [fecha, setFecha] = useState(taller?.fecha && taller.fecha !== "por-confirmar" ? taller.fecha : "");
@@ -1560,9 +1565,13 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
   const handleSave = async () => {
     if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
     if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
-    setSaving(true);
     const fechaFinal = fechaPorConfirmar ? null : (fecha || null);
     const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fechaFinal, necesita: necesita.trim() || null };
+
+    // In draft mode (step 1 of TwoStepForm), just pass data up without inserting
+    if (draftMode) { onSave(payload); return; }
+
+    setSaving(true);
     const { data, error } = taller
       ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
       : await supabase.from("talleres").insert(payload).select().single();
@@ -1612,7 +1621,7 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
       <div className="flex gap-2">
         <button onClick={handleSave} disabled={saving}
           className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
+          {saving ? "Un momento..." : draftMode ? "Continuar →" : "Guardar"}
         </button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
@@ -1890,8 +1899,8 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {step === 1 ? (
           tipo === "ofrecimiento"
-            ? <OfrecimientoForm familias={familias} onSave={handleStep1} onCancel={onCancel} />
-            : <TallerForm onSave={handleStep1} onCancel={onCancel} />
+            ? <OfrecimientoForm familias={familias} onSave={handleStep1} onCancel={onCancel} draftMode />
+            : <TallerForm onSave={handleStep1} onCancel={onCancel} draftMode />
         ) : (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
             <div className="bg-violet-50 rounded-xl p-3">
