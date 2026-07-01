@@ -1939,7 +1939,7 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
 
 // ── PUBLIC APP ────────────────────────────────────────────────────────────────
 
-function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onLogin, offline, showLogin, setShowLogin, onAuth }) {
+function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, offline, showLogin, setShowLogin, onAuth }) {
   const [menu, setMenu] = useState("home");
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [showTwoStep, setShowTwoStep] = useState(null);
@@ -1951,14 +1951,34 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
     ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
   ];
 
+  const handleSaveTwoStep = async (data) => {
+    if (showTwoStep === "ofrecimiento") {
+      const { data: saved } = await supabase.from("ofrecimientos").insert({
+        familia_id: data.familia_id || null,
+        que: data.que,
+        fecha: data.fecha,
+      }).select().single();
+      if (saved) onAddOfrecimiento(saved);
+    } else {
+      const { data: saved } = await supabase.from("talleres").insert({
+        quien: data.quien,
+        descripcion: data.descripcion,
+        fecha: data.fecha || null,
+        necesita: data.necesita || null,
+      }).select().single();
+      if (saved) onAddTaller(saved);
+    }
+    setShowTwoStep(null);
+  };
+
   if (showLogin) return (
     <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
         <button onClick={() => setShowLogin(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
         <h2 className="text-lg font-bold text-gray-900">Iniciar sesión</h2>
-        <p className="text-xs text-gray-400 mt-0.5">Accede como organizador</p>
+        <p className="text-xs text-gray-400 mt-0.5">Acceso para organizadores</p>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto">
         <AuthScreen onAuth={onAuth} />
       </div>
     </div>
@@ -1968,25 +1988,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
     <TwoStepForm
       tipo={showTwoStep}
       familias={familias}
-      onSave={async (data) => {
-        if (showTwoStep === "ofrecimiento") {
-          const { data: saved } = await supabase.from("ofrecimientos").insert({
-            familia_id: data.familia_id || null,
-            que: data.que,
-            fecha: data.fecha,
-          }).select().single();
-          if (saved) onAddOfrecimiento(saved);
-        } else {
-          const { data: saved } = await supabase.from("talleres").insert({
-            quien: data.quien,
-            descripcion: data.descripcion,
-            fecha: data.fecha || null,
-            necesita: data.necesita || null,
-          }).select().single();
-          if (saved) onAddTaller(saved);
-        }
-        setShowTwoStep(null);
-      }}
+      onSave={handleSaveTwoStep}
       onCancel={() => setShowTwoStep(null)}
     />
   );
@@ -2010,7 +2012,6 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
           </div>
         </div>
       )}
-
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
@@ -2020,9 +2021,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
               <span className="text-lg">👤</span>
             </button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">
-            {menu === "home" ? "Inicio" : "Servicios"}
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900">{menu === "home" ? "Inicio" : "Servicios"}</h1>
           {offline && (
             <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
               <span className="text-sm">📶</span>
@@ -2030,95 +2029,86 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
             </div>
           )}
         </div>
-
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
-        {menu === "home" && (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
-              <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
-              <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
-              <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }}
-                className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                <p className="text-2xl mb-2">🎁</p>
-                <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
-                <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
-              </button>
-              <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }}
-                className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                <p className="text-2xl mb-2">🎨</p>
-                <p className="text-sm font-semibold text-gray-800">Talleres</p>
-                <p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
-              </button>
-            </div>
-
-            {eventosHoy.length > 0 && (
-              <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
-                <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
-                {eventosHoy.map((e, i) => (
-                  <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
-                ))}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+          {menu === "home" && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
+                <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
+                <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
+                <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
               </div>
-            )}
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">¿Quieres participar?</p>
-              <button onClick={() => setShowTwoStep("ofrecimiento")}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
-                <span className="text-lg">🎁</span>
-                <span className="text-sm text-gray-700 font-medium">Ofrecer algo al campamento</span>
-                <span className="ml-auto text-gray-300">›</span>
-              </button>
-              <button onClick={() => setShowTwoStep("taller")}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
-                <span className="text-lg">🎨</span>
-                <span className="text-sm text-gray-700 font-medium">Proponer un taller</span>
-                <span className="ml-auto text-gray-300">›</span>
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }}
+                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">🎁</p>
+                  <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
+                </button>
+                <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }}
+                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">🎨</p>
+                  <p className="text-sm font-semibold text-gray-800">Talleres</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
+                </button>
+              </div>
+              {eventosHoy.length > 0 && (
+                <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
+                  <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
+                  {eventosHoy.map((e, i) => (
+                    <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
+                  ))}
+                </div>
+              )}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">¿Quieres participar?</p>
+                <button onClick={() => setShowTwoStep("ofrecimiento")}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
+                  <span className="text-lg">🎁</span>
+                  <span className="text-sm text-gray-700 font-medium">Ofrecer algo al campamento</span>
+                  <span className="ml-auto text-gray-300">›</span>
+                </button>
+                <button onClick={() => setShowTwoStep("taller")}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
+                  <span className="text-lg">🎨</span>
+                  <span className="text-sm text-gray-700 font-medium">Proponer un taller</span>
+                  <span className="ml-auto text-gray-300">›</span>
+                </button>
+              </div>
             </div>
+          )}
+          {menu === "servicios" && (
+            <ServiciosView
+              talleres={talleres}
+              ofrecimientos={ofrecimientos}
+              familias={familias}
+              onAddTaller={() => setShowTwoStep("taller")}
+              onEditTaller={() => {}}
+              onDeleteTaller={() => {}}
+              onAddOfrecimiento={() => setShowTwoStep("ofrecimiento")}
+              onDeleteOfrecimiento={() => {}}
+              initialTab={serviciosTab}
+            />
+          )}
+        </div>
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
+          <div className="flex max-w-lg mx-auto">
+            {[
+              { id: "home", label: "Inicio", icon: "🏠" },
+              { id: "servicios", label: "Servicios", icon: "🎨" },
+            ].map(item => (
+              <button key={item.id} onClick={() => setMenu(item.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-xs font-medium">{item.label}</span>
+              </button>
+            ))}
           </div>
-        )}
-
-        {menu === "servicios" && (
-          <ServiciosView
-            talleres={talleres}
-            ofrecimientos={ofrecimientos}
-            familias={familias}
-            onAddTaller={async (t) => { setShowTwoStep("taller"); }}
-            onEditTaller={() => {}}
-            onDeleteTaller={() => {}}
-            onAddOfrecimiento={async (o) => { setShowTwoStep("ofrecimiento"); }}
-            onDeleteOfrecimiento={() => {}}
-            publicMode={true}
-            onTwoStep={(tipo) => setShowTwoStep(tipo)}
-            initialTab={serviciosTab}
-          />
-        )}
-      </div>
-
-      <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
-        <div className="flex max-w-lg mx-auto">
-          {[
-            { id: "home", label: "Inicio", icon: "🏠" },
-            { id: "servicios", label: "Servicios", icon: "🎨" },
-          ].map(item => (
-            <button key={item.id} onClick={() => setMenu(item.id)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
-            </button>
-          ))}
         </div>
       </div>
-    </div>
     </>
   );
 }
 
-// ── OFRECIMIENTOS APP (limited role view) ────────────────────────────────────
 
 function OfrecimientosApp({ profile, talleres, ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onLogout, offline }) {
   const [menu, setMenu] = useState("home");
@@ -2476,7 +2466,6 @@ export default function App() {
         familias={familias}
         onAddOfrecimiento={handleAddOfrecimiento}
         onAddTaller={handleAddTaller}
-        onLogin={() => setShowLogin(true)}
         offline={offline}
         showLogin={showLogin}
         setShowLogin={setShowLogin}
