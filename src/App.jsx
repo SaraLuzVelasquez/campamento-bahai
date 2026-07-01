@@ -1794,6 +1794,10 @@ function HomeView({ familias, visitas, voluntarios, talleres, ofrecimientos, onN
 
 function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, initialTab }) {
   const [tab, setTab] = useState(initialTab || "ofrecimientos");
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
