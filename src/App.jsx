@@ -618,6 +618,28 @@ function VoluntarioForm({ voluntario, onSave, onCancel }) {
   );
 }
 
+function VoluntarioCard({ voluntario: v, isAdmin, onEdit }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{v.nombre[0]}</div>
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-gray-800">{v.nombre}</span>
+          {v.roles?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{v.roles.map(r => <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>)}</div>}
+        </div>
+        <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
+          {v.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{v.notas}</p>}
+          <ContactoButtons telefono={v.telefono} isAdmin={isAdmin} onEdit={onEdit} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -629,27 +651,9 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
     <div className="space-y-4">
       <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir voluntario</button>
       {voluntarios.length === 0 ? <p className="text-center text-gray-400 py-12">Sin voluntarios</p> : (
-        <div className="space-y-2.5">{voluntarios.map(v => {
-          const [expanded, setExpanded] = useState(false);
-          return (
-            <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{v.nombre[0]}</div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-gray-800">{v.nombre}</span>
-                  {v.roles?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{v.roles.map(r => <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>)}</div>}
-                </div>
-                <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
-              </button>
-              {expanded && (
-                <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
-                  {v.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{v.notas}</p>}
-                  <ContactoButtons telefono={v.telefono} isAdmin={isAdmin} onEdit={() => setEditTarget(v)} />
-                </div>
-              )}
-            </div>
-          );
-        })}</div>
+        <div className="space-y-2.5">{voluntarios.map(v => (
+          <VoluntarioCard key={v.id} voluntario={v} isAdmin={isAdmin} onEdit={() => setEditTarget(v)} />
+        ))}</div>
       )}
     </div>
   );
@@ -780,6 +784,29 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
   );
 }
 
+function TallerCard({ taller: t, onEdit }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
+        <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {t.fecha ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">📅 {new Date(t.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
+            : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">📅 Por confirmar</span>}
+          <span className="text-xs text-gray-500">· {t.quien}</span>
+        </div>
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+          {t.necesita ? <div className="bg-amber-50 rounded-xl px-3 py-2.5"><p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p><p className="text-sm text-gray-700">{t.necesita}</p></div>
+            : <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>}
+          <button onClick={onEdit} className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100">Editar</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -795,28 +822,9 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
       </div>
       <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir taller</button>
       {talleres.length === 0 ? <p className="text-center text-gray-400 py-12">Sin talleres</p> : (
-        <div className="space-y-3">{talleres.map(t => {
-          const [expanded, setExpanded] = useState(false);
-          return (
-            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
-                <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {t.fecha ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">📅 {new Date(t.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
-                    : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">📅 Por confirmar</span>}
-                  <span className="text-xs text-gray-500">· {t.quien}</span>
-                </div>
-              </button>
-              {expanded && (
-                <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
-                  {t.necesita ? <div className="bg-amber-50 rounded-xl px-3 py-2.5"><p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p><p className="text-sm text-gray-700">{t.necesita}</p></div>
-                    : <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>}
-                  <button onClick={() => setEditTarget(t)} className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100">Editar</button>
-                </div>
-              )}
-            </div>
-          );
-        })}</div>
+        <div className="space-y-3">{talleres.map(t => (
+          <TallerCard key={t.id} taller={t} onEdit={() => setEditTarget(t)} />
+        ))}</div>
       )}
     </div>
   );
