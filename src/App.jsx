@@ -6,6 +6,26 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZnpudWljbHh1ZXZjcHpud2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MDA4NjIsImV4cCI6MjA5ODI3Njg2Mn0.cqi5XePwSu7q192PZ2L15hOoRqmMvbQOpO3uZ8qwHvU"
 );
 
+
+// ── CACHE ─────────────────────────────────────────────────────────────────────
+
+const CACHE_KEY = "campamento_cache_v1";
+
+function saveCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() })); } catch {}
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    // Cache valid for 24h
+    if (Date.now() - data._ts > 86400000) { localStorage.removeItem(CACHE_KEY); return null; }
+    return data;
+  } catch { return null; }
+}
+
 const UNIDADES = {
   1: {
     nombre: "Comprensión de los Escritos bahá'ís",
@@ -1483,6 +1503,16 @@ export default function App() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1504,40 +1534,87 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
+
+    // Load from cache immediately for instant UI
+    const cached = loadCache();
+    if (cached) {
+      setFamilias(cached.familias || []);
+      setVisitas(cached.visitas || []);
+      setVoluntarios(cached.voluntarios || []);
+      setTalleres(cached.talleres || []);
+      setOfrecimientos(cached.ofrecimientos || []);
+      setLoading(false); // Show UI right away from cache
+    }
+
+    // Fetch fresh data with retry
+    const fetchWithRetry = async (fn, retries = 3) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const result = await fn();
+          if (!result.error) return result;
+          if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        } catch {
+          if (i < retries - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        }
+      }
+      return { data: null, error: true };
+    };
+
     const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", u.id).single(),
-      supabase.from("profiles").select("*"),
-      supabase.from("familias").select("*").order("created_at", { ascending: true }),
-      supabase.from("visitas").select("*, profiles(nombre)"),
-      supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
-      supabase.from("talleres").select("*").order("created_at", { ascending: false }),
-      supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
+      fetchWithRetry(() => supabase.from("profiles").select("*").eq("id", u.id).single()),
+      fetchWithRetry(() => supabase.from("profiles").select("*")),
+      fetchWithRetry(() => supabase.from("familias").select("*").order("created_at", { ascending: true })),
+      fetchWithRetry(() => supabase.from("visitas").select("*, profiles(nombre)")),
+      fetchWithRetry(() => supabase.from("voluntarios").select("*").order("created_at", { ascending: true })),
+      fetchWithRetry(() => supabase.from("talleres").select("*").order("created_at", { ascending: false })),
+      fetchWithRetry(() => supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true })),
     ]);
+
+    const newFamilias = fams || cached?.familias || [];
+    const newVisitas = vis || cached?.visitas || [];
+    const newVoluntarios = vols || cached?.voluntarios || [];
+    const newTalleres = talls || cached?.talleres || [];
+    const newOfrecimientos = ofrecs || cached?.ofrecimientos || [];
+
     setProfile(prof);
     setAllProfiles(profs || []);
-    setFamilias(fams || []);
-    setVisitas(vis || []);
-    setVoluntarios(vols || []);
-    setTalleres(talls || []);
-    setOfrecimientos(ofrecs || []);
+    setFamilias(newFamilias);
+    setVisitas(newVisitas);
+    setVoluntarios(newVoluntarios);
+    setTalleres(newTalleres);
+    setOfrecimientos(newOfrecimientos);
     setLoading(false);
+
+    // Save to cache
+    saveCache({
+      familias: newFamilias,
+      visitas: newVisitas,
+      voluntarios: newVoluntarios,
+      talleres: newTalleres,
+      ofrecimientos: newOfrecimientos,
+    });
   };
 
-  const handleAddVisita = (v) => setVisitas(prev => [...prev, v]);
+  const updateCache = (updates) => {
+    const cached = loadCache() || {};
+    saveCache({ ...cached, ...updates });
+  };
+
+  const handleAddVisita = (v) => setVisitas(prev => { const next = [...prev, v]; updateCache({ visitas: next }); return next; });
   const handleDeleteVisita = async (id) => {
+    setVisitas(prev => { const next = prev.filter(v => v.id !== id); updateCache({ visitas: next }); return next; }); // optimistic
     await supabase.from("visitas").delete().eq("id", id);
-    setVisitas(prev => prev.filter(v => v.id !== id));
   };
   const handleAddFamilia = (f) => {
-    setFamilias(prev => [f, ...prev]);
+    setFamilias(prev => { const next = [f, ...prev]; updateCache({ familias: next }); return next; });
     setShowNuevaFamilia(false);
   };
   const handleEditFamilia = (f) => {
-    setFamilias(prev => prev.map(x => x.id === f.id ? f : x));
+    setFamilias(prev => { const next = prev.map(x => x.id === f.id ? f : x); updateCache({ familias: next }); return next; });
   };
   const handleDeleteFamilia = async (id) => {
+    setFamilias(prev => { const next = prev.filter(f => f.id !== id); updateCache({ familias: next }); return next; }); // optimistic
     await supabase.from("familias").delete().eq("id", id);
-    setFamilias(prev => prev.filter(f => f.id !== id));
   };
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
@@ -1579,9 +1656,15 @@ export default function App() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <p className="text-violet-400">Cargando...</p>
+  if (loading && !loadCache()) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-3">
+        <div className="h-8 bg-gray-200 rounded-xl animate-pulse w-3/4 mx-auto"></div>
+        <div className="h-4 bg-gray-200 rounded-xl animate-pulse w-1/2 mx-auto"></div>
+        <div className="mt-6 space-y-2.5">
+          {[1,2,3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse border border-gray-100"></div>)}
+        </div>
+      </div>
     </div>
   );
 
@@ -1686,6 +1769,12 @@ export default function App() {
             {menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
           </h1>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
+          {offline && (
+            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+              <span className="text-sm">📶</span>
+              <p className="text-xs text-amber-700 font-medium">Sin conexión — mostrando datos guardados</p>
+            </div>
+          )}
 
           {menu === "confirmados" && (
             <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
