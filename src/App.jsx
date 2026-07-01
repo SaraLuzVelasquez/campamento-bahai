@@ -319,7 +319,7 @@ function AuthScreen({ onAuth }) {
 
 // ── FAMILIA FORM ──────────────────────────────────────────────────────────────
 
-function FamiliaForm({ familia, onSave, onCancel }) {
+function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   const [nombre, setNombre] = useState(familia?.nombre || "");
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Madre");
@@ -466,6 +466,13 @@ function FamiliaForm({ familia, onSave, onCancel }) {
         </button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">Cancelar</button>
       </div>
+
+      {familia && onDelete && (
+        <button onClick={() => onDelete(familia.id)}
+          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
+          Eliminar familia
+        </button>
+      )}
     </div>
   );
 }
@@ -796,7 +803,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, isAdmin, onAddOfrecimiento, onVerDetalle }) {
+function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, onDelete, isAdmin, onAddOfrecimiento, onVerDetalle }) {
   const [expanded, setExpanded] = useState(false);
   const [accion, setAccion] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -818,7 +825,10 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         <h2 className="text-lg font-bold text-gray-900">Editar familia</h2>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
+        <FamiliaForm familia={familia}
+          onSave={(f) => { onEdit(f); setShowEdit(false); }}
+          onCancel={() => setShowEdit(false)}
+          onDelete={(id) => { onDelete(id); setShowEdit(false); }} />
       </div>
     </div>
   );  return (
@@ -1917,6 +1927,10 @@ export default function App() {
   const handleEditFamilia = (f) => {
     setFamilias(prev => prev.map(x => x.id === f.id ? f : x));
   };
+  const handleDeleteFamilia = async (id) => {
+    await supabase.from("familias").delete().eq("id", id);
+    setFamilias(prev => prev.filter(f => f.id !== id));
+  };
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
   const handleAddVoluntario = (v) => setVoluntarios(prev => [...prev, v]);
@@ -1936,8 +1950,8 @@ export default function App() {
   const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
   const handleEditSolicitud = (s) => setSolicitudes(prev => prev.map(x => x.id === s.id ? s : x));
   const handleMarcarVisto = async (id) => {
-    await supabase.from("solicitudes").update({ visto: true }).eq("id", id);
-    setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: true } : s));
+    await supabase.from("solicitudes").delete().eq("id", id);
+    setSolicitudes(prev => prev.filter(s => s.id !== id));
   };
   const handleReactivar = async (id) => {
     await supabase.from("solicitudes").update({ visto: false }).eq("id", id);
@@ -2133,6 +2147,7 @@ export default function App() {
                     onAddVisita={handleAddVisita}
                     onDeleteVisita={handleDeleteVisita}
                     onEdit={handleEditFamilia}
+                    onDelete={handleDeleteFamilia}
                     isAdmin={isAdmin}
                     onAddOfrecimiento={handleAddOfrecimiento}
                     onVerDetalle={(f) => setDetalleTarget(f)} />
