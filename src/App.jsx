@@ -1626,6 +1626,45 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
   );
 }
 
+function TallerCard({ taller: t, onEdit }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
+        <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {t.fecha
+            ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+                📅 {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+              </span>
+            : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                📅 Por confirmar
+              </span>
+          }
+          <span className="text-xs text-gray-500">· {t.quien}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+          {t.necesita ? (
+            <div className="bg-amber-50 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
+              <p className="text-sm text-gray-700">{t.necesita}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>
+          )}
+          <button onClick={onEdit}
+            className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
+            Editar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -1676,34 +1715,7 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
       ) : (
         <div className="space-y-3">
           {talleres.map(t => (
-            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  {t.fecha
-                    ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full font-medium">
-                        📅 {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-                      </span>
-                    : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
-                        📅 Por confirmar
-                      </span>
-                  }
-                </div>
-                <p className="font-semibold text-gray-800 mb-1">{t.quien}</p>
-                <p className="text-sm text-gray-600 leading-relaxed">{t.descripcion}</p>
-                {t.necesita && (
-                  <div className="mt-3 bg-amber-50 rounded-xl px-3 py-2">
-                    <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
-                    <p className="text-sm text-gray-700">{t.necesita}</p>
-                  </div>
-                )}
-              </div>
-              <div className="border-t border-gray-50 px-4 py-2.5">
-                <button onClick={() => setEditTarget(t)}
-                  className="w-full py-2 rounded-xl text-sm text-violet-500 font-medium hover:bg-violet-50 transition-colors">
-                  Editar
-                </button>
-              </div>
-            </div>
+            <TallerCard key={t.id} taller={t} onEdit={() => setEditTarget(t)} />
           ))}
         </div>
       )}
