@@ -1915,7 +1915,8 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
 
 function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onLogin, offline, showLogin, setShowLogin, onAuth }) {
   const [menu, setMenu] = useState("home");
-  const [showTwoStep, setShowTwoStep] = useState(null); // "ofrecimiento" | "taller" | null
+  const [showTwoStep, setShowTwoStep] = useState(null);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
 
   const hoy = new Date();
   const eventosHoy = [
@@ -1930,7 +1931,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
         <h2 className="text-lg font-bold text-gray-900">Iniciar sesión</h2>
         <p className="text-xs text-gray-400 mt-0.5">Accede como organizador</p>
       </div>
-      <div className="flex-1 flex items-center justify-center px-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         <AuthScreen onAuth={onAuth} />
       </div>
     </div>
@@ -1950,25 +1951,44 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
   );
 
   return (
-    <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
-          <button onClick={() => setShowLogin(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
-            <span className="text-lg">👤</span>
-          </button>
-        </div>
-        <h1 className="text-xl font-bold text-gray-900">
-          {menu === "home" ? "Inicio" : "Servicios"}
-        </h1>
-        {offline && (
-          <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
-            <span className="text-sm">📶</span>
-            <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
+    <>
+      {showAvatarMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
+          <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-50">
+              <p className="text-xs text-gray-400">Campamento Bahá'í Madrid</p>
+            </div>
+            <button onClick={() => { setShowAvatarMenu(false); setShowLogin(true); }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
+              <span className="text-lg">🔑</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Iniciar sesión</p>
+                <p className="text-xs text-gray-400">Acceso para organizadores</p>
+              </div>
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
+            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
+              <span className="text-lg">👤</span>
+            </button>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {menu === "home" ? "Inicio" : "Servicios"}
+          </h1>
+          {offline && (
+            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+              <span className="text-sm">📶</span>
+              <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
+            </div>
+          )}
+        </div>
 
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
         {menu === "home" && (
@@ -2052,6 +2072,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
         </div>
       </div>
     </div>
+    </>
   );
 }
 
