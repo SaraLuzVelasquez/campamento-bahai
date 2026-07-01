@@ -1133,413 +1133,6 @@ function AdminView({ currentUserId }) {
   );
 }
 
-function SolicitudForm({ solicitud, onSave, onCancel }) {
-  const [nombre, setNombre] = useState(solicitud?.nombre || "");
-  const [telefono, setTelefono] = useState(solicitud?.telefono || "");
-  const [hijos, setHijos] = useState(solicitud?.hijos || []);
-  const [comentario, setComentario] = useState(solicitud?.comentario || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const addHijo = () => setHijos(prev => [...prev, { nombre: "", edad: "" }]);
-  const removeHijo = (i) => setHijos(prev => prev.filter((_, idx) => idx !== i));
-  const updateHijo = (i, field, value) => setHijos(prev => prev.map((h, idx) => idx === i ? { ...h, [field]: value } : h));
-
-  const handleSave = async () => {
-    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
-    setSaving(true);
-    const payload = { nombre: nombre.trim(), telefono: telefono.trim() || null, hijos, comentario: comentario.trim() || null };
-    const { data, error } = solicitud
-      ? await supabase.from("solicitudes").update(payload).eq("id", solicitud.id).select().single()
-      : await supabase.from("solicitudes").insert(payload).select().single();
-    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
-    else onSave(data);
-    setSaving(false);
-  };
-
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">Nueva solicitud</p>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
-        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
-        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-gray-500">Hijos</label>
-          <button onClick={addHijo} className="text-xs text-violet-500 font-medium">+ Añadir hijo</button>
-        </div>
-        <div className="space-y-2">
-          {hijos.map((h, i) => (
-            <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-gray-500">Hijo {i + 1}</p>
-                <button onClick={() => removeHijo(i)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
-              </div>
-              <input value={h.nombre} onChange={e => updateHijo(i, "nombre", e.target.value)}
-                placeholder="Nombre"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" />
-              <input value={h.edad} onChange={e => updateHijo(i, "edad", e.target.value)}
-                placeholder="Edad"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" />
-            </div>
-          ))}
-          {hijos.length === 0 && (
-            <button onClick={addHijo}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm">
-              + Añadir hijo
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Comentario</label>
-        <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={3}
-          placeholder="Detalles sobre esta solicitud..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar solicitud"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-function SolicitudCard({ solicitud, onMarcarVisto, onReactivar, onConvertir, isAdmin, onEdit }) {
-  const [expanded, setExpanded] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-
-  if (showEdit) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowEdit(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Editar solicitud</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <SolicitudForm solicitud={solicitud} onSave={(s) => { onEdit(s); setShowEdit(false); }} onCancel={() => setShowEdit(false)} />
-      </div>
-    </div>
-  );
-
-  return (
-    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${solicitud.visto ? "border-gray-100 opacity-60" : "border-gray-100"}`}>
-      {showConfirm && (
-        <ConfirmModal
-          title="¿Confirmar familia?"
-          message={`${solicitud.nombre} pasará a la sección de Confirmados con sus datos actuales.`}
-          confirmLabel="Sí, confirmar"
-          onConfirm={() => { onConvertir(solicitud); setShowConfirm(false); }}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold flex-shrink-0">
-          {solicitud.nombre[0]}
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className="font-semibold text-gray-800">{solicitud.nombre}</span>
-          {solicitud.hijos?.length > 0 && (
-            <p className="text-xs text-gray-500 truncate mt-0.5">
-              {solicitud.hijos.map(h => `${h.nombre || "—"}${h.edad ? ` (${h.edad}a)` : ""}`).join(" · ")}
-            </p>
-          )}
-        </div>
-        {solicitud.visto && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Visto</span>}
-        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
-      </button>
-      {expanded && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
-          {solicitud.telefono && <ContactoTelefono telefono={solicitud.telefono} isAdmin={isAdmin} />}
-          {solicitud.comentario && (
-            <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2">{solicitud.comentario}</p>
-          )}
-          <p className="text-xs text-gray-400">{new Date(solicitud.created_at).toLocaleDateString("es-ES")}</p>
-          <ContactoConEditar telefono={solicitud.telefono} isAdmin={isAdmin} onEditar={() => setShowEdit(true)} />
-          {isAdmin && (
-            <div className="flex gap-2 pt-1">
-              {solicitud.visto ? (
-                <button onClick={() => onReactivar(solicitud.id)}
-                  className="flex-1 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
-                  ↻ Activar solicitud
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => setShowConfirm(true)}
-                    className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
-                    ✓ Confirmar familia
-                  </button>
-                  <button onClick={() => onMarcarVisto(solicitud.id)}
-                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all whitespace-nowrap">
-                    Para otro momento
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SolicitudesView({ solicitudes, isAdmin, onAdd, onEdit, onMarcarVisto, onReactivar, onConvertir }) {
-  const [showForm, setShowForm] = useState(false);
-
-  return (
-    <div className="space-y-4">
-      {isAdmin && (showForm ? (
-        <SolicitudForm onSave={(s) => { onAdd(s); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      ) : (
-        <button onClick={() => setShowForm(true)}
-          className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-          + Añadir solicitud
-        </button>
-      ))}
-
-      {solicitudes.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin solicitudes pendientes</p>
-      ) : (
-        <div className="space-y-2.5">
-          {solicitudes.map(s => (
-            <SolicitudCard key={s.id} solicitud={s} isAdmin={isAdmin} onMarcarVisto={onMarcarVisto} onReactivar={onReactivar} onConvertir={onConvertir} onEdit={onEdit} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── TALLERES ──────────────────────────────────────────────────────────────────
-
-function TallerForm({ taller, onSave, onCancel }) {
-  const [quien, setQuien] = useState(taller?.quien || "");
-  const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
-  const [necesita, setNecesita] = useState(taller?.necesita || "");
-  const [fecha, setFecha] = useState(taller?.fecha || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSave = async () => {
-    if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
-    if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
-    setSaving(true);
-    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), necesita: necesita.trim() || null, fecha: fecha || null };
-    const { data, error } = taller
-      ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
-      : await supabase.from("talleres").insert(payload).select().single();
-    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
-    else onSave(data);
-    setSaving(false);
-  };
-
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">{taller ? "Editar taller" : "Nuevo taller"}</p>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
-        <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿De qué va el taller? *</label>
-        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
-          placeholder="Describe el taller..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Fecha de ejecución</label>
-        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
-        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
-          placeholder="Materiales, recursos, espacio..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
-  const [showForm, setShowForm] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-
-  if (showForm) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Nuevo taller</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      </div>
-    </div>
-  );
-
-  if (editTarget) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-        <span className="text-2xl">🎨</span>
-        <div>
-          <p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p>
-          <p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p>
-        </div>
-      </div>
-
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-        + Añadir taller
-      </button>
-      {talleres.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
-      ) : (
-        <div className="space-y-2.5">
-          {talleres.map(t => (
-            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="font-semibold text-gray-800">{t.quien}</p>
-                    {t.fecha && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{new Date(t.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>}
-                  </div>
-                  <p className="text-sm text-gray-600">{t.descripcion}</p>
-                  {t.necesita && (
-                    <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2">
-                      <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
-                      <p className="text-sm text-gray-700">{t.necesita}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button onClick={() => setEditTarget(t)} className="text-xs text-violet-500 font-medium">Editar</button>
-                  <button onClick={() => onDelete(t.id)} className="text-xs text-red-400 font-medium">✕</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── VOLUNTARIOS ───────────────────────────────────────────────────────────────
-
-function VoluntarioForm({ voluntario, onSave, onCancel }) {
-  const [nombre, setNombre] = useState(voluntario?.nombre || "");
-  const [telefono, setTelefono] = useState(voluntario?.telefono || "");
-  const [roles, setRoles] = useState(voluntario?.roles || []);
-  const [notas, setNotas] = useState(voluntario?.notas || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const toggleRol = (r) => setRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
-
-  const handleSave = async () => {
-    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
-    setSaving(true);
-    const payload = { nombre: nombre.trim(), telefono: telefono.trim() || null, roles, notas: notas.trim() || null };
-    const { data, error } = voluntario
-      ? await supabase.from("voluntarios").update(payload).eq("id", voluntario.id).select().single()
-      : await supabase.from("voluntarios").insert(payload).select().single();
-    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
-    else onSave(data);
-    setSaving(false);
-  };
-
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">{voluntario ? "Editar voluntario" : "Nuevo voluntario"}</p>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
-        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Ismael"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
-        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Roles</label>
-        <div className="flex flex-wrap gap-1.5">
-          {ROLES_VOLUNTARIO.map(r => (
-            <button key={r} onClick={() => toggleRol(r)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${roles.includes(r) ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-              {r}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Notas</label>
-        <textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={2}
-          placeholder="Disponibilidad, observaciones..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
 function VoluntarioCard({ voluntario, isAdmin, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -1867,7 +1460,6 @@ export default function App() {
   const [voluntarios, setVoluntarios] = useState([]);
   const [talleres, setTalleres] = useState([]);
   const [ofrecimientos, setOfrecimientos] = useState([]);
-  const [solicitudes, setSolicitudes] = useState([]);
   const [menu, setMenu] = useState("solicitudes"); // solicitudes | confirmados | admin
   const [tab, setTab] = useState("familias"); // sub-tab within confirmados
   const [busqueda, setBusqueda] = useState("");
@@ -1894,12 +1486,11 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: sols }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
+    const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.id).single(),
       supabase.from("profiles").select("*"),
       supabase.from("familias").select("*").order("created_at", { ascending: true }),
       supabase.from("visitas").select("*, profiles(nombre)"),
-      supabase.from("solicitudes").select("*").order("created_at", { ascending: false }),
       supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
       supabase.from("talleres").select("*").order("created_at", { ascending: false }),
       supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
@@ -1908,7 +1499,6 @@ export default function App() {
     setAllProfiles(profs || []);
     setFamilias(fams || []);
     setVisitas(vis || []);
-    setSolicitudes(sols || []);
     setVoluntarios(vols || []);
     setTalleres(talls || []);
     setOfrecimientos(ofrecs || []);
@@ -1995,7 +1585,6 @@ export default function App() {
   const isAdmin = profile?.is_admin;
 
   const NAV_ITEMS = [
-    { id: "solicitudes", label: "Solicitudes", icon: "📝", badge: solicitudes.filter(s => !s.visto).length },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "servicios", label: "Servicios", icon: "🎨" },
@@ -2076,7 +1665,7 @@ export default function App() {
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu === "solicitudes" ? "Solicitudes" : menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
+            {menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
           </h1>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
 
@@ -2097,17 +1686,6 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
-          {menu === "solicitudes" && (
-            <SolicitudesView
-              solicitudes={solicitudes}
-              isAdmin={isAdmin}
-              onAdd={handleAddSolicitud}
-              onEdit={handleEditSolicitud}
-              onMarcarVisto={handleMarcarVisto}
-              onReactivar={handleReactivar}
-              onConvertir={handleConvertirSolicitud}
-            />
-          )}
 
           {menu === "confirmados" && tab==="familias" && (
             <>
