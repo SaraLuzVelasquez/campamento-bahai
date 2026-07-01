@@ -1464,19 +1464,21 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
   );
 }
 
-function TallerForm({ taller, onSave, onCancel }) {
+function TallerForm({ taller, onSave, onCancel, onDelete }) {
   const [quien, setQuien] = useState(taller?.quien || "");
   const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
-  const [fecha, setFecha] = useState(taller?.fecha || "");
+  const [fecha, setFecha] = useState(taller?.fecha && taller.fecha !== "por-confirmar" ? taller.fecha : "");
   const [necesita, setNecesita] = useState(taller?.necesita || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fechaPorConfirmar, setFechaPorConfirmar] = useState(taller?.fecha === "por-confirmar");
 
   const handleSave = async () => {
     if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
     if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
     setSaving(true);
-    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fecha || null, necesita: necesita.trim() || null };
+    const fechaFinal = fechaPorConfirmar ? null : (fecha || null);
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fechaFinal, necesita: necesita.trim() || null };
     const { data, error } = taller
       ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
       : await supabase.from("talleres").insert(payload).select().single();
@@ -1500,9 +1502,21 @@ function TallerForm({ taller, onSave, onCancel }) {
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
       </div>
       <div>
-        <label className="text-xs text-gray-500 mb-1 block">Fecha de ejecución</label>
-        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <label className="text-xs text-gray-500 mb-2 block">Fecha de ejecución</label>
+        <div className="flex gap-2 mb-2">
+          <button onClick={() => { setFechaPorConfirmar(false); }}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+            Fecha concreta
+          </button>
+          <button onClick={() => { setFechaPorConfirmar(true); setFecha(""); }}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+            Por confirmar
+          </button>
+        </div>
+        {!fechaPorConfirmar && (
+          <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        )}
       </div>
       <div>
         <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
@@ -1518,6 +1532,12 @@ function TallerForm({ taller, onSave, onCancel }) {
         </button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
+      {taller && onDelete && (
+        <button onClick={() => onDelete(taller.id)}
+          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
+          Eliminar taller
+        </button>
+      )}
     </div>
   );
 }
@@ -1545,7 +1565,11 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
         <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
+        <TallerForm
+          taller={editTarget}
+          onSave={(t) => { onEdit(t); setEditTarget(null); }}
+          onCancel={() => setEditTarget(null)}
+          onDelete={(id) => { onDelete(id); setEditTarget(null); }} />
       </div>
     </div>
   );
@@ -1566,29 +1590,34 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
       {talleres.length === 0 ? (
         <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {talleres.map(t => (
-            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="font-semibold text-gray-800">{t.quien}</p>
-                    {t.fecha && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-                      {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-                    </span>}
+            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  {t.fecha
+                    ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full font-medium">
+                        📅 {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                      </span>
+                    : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
+                        📅 Por confirmar
+                      </span>
+                  }
+                </div>
+                <p className="font-semibold text-gray-800 mb-1">{t.quien}</p>
+                <p className="text-sm text-gray-600 leading-relaxed">{t.descripcion}</p>
+                {t.necesita && (
+                  <div className="mt-3 bg-amber-50 rounded-xl px-3 py-2">
+                    <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
+                    <p className="text-sm text-gray-700">{t.necesita}</p>
                   </div>
-                  <p className="text-sm text-gray-600">{t.descripcion}</p>
-                  {t.necesita && (
-                    <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2">
-                      <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
-                      <p className="text-sm text-gray-700">{t.necesita}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button onClick={() => setEditTarget(t)} className="text-xs text-violet-500 font-medium">Editar</button>
-                  <button onClick={() => onDelete(t.id)} className="text-xs text-red-400 font-medium">✕</button>
-                </div>
+                )}
+              </div>
+              <div className="border-t border-gray-50 px-4 py-2.5">
+                <button onClick={() => setEditTarget(t)}
+                  className="w-full py-2 rounded-xl text-sm text-violet-500 font-medium hover:bg-violet-50 transition-colors">
+                  Editar
+                </button>
               </div>
             </div>
           ))}
