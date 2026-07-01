@@ -1836,6 +1836,7 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
 function TwoStepForm({ tipo, familias, onSave, onCancel }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState(null);
+  const [authMode, setAuthMode] = useState("crear");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1845,29 +1846,26 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
   const handleStep1 = (data) => { setFormData(data); setStep(2); };
 
   const handleStep2 = async () => {
-    if (!nombre.trim()) { setError("Escribe tu nombre"); return; }
+    if (authMode === "crear" && !nombre.trim()) { setError("Escribe tu nombre"); return; }
     if (!email.trim()) { setError("Escribe tu correo"); return; }
     if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
     setSaving(true); setError("");
 
-    // Create user account
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { nombre, rol: "ofrecimientos" } }
-    });
-
-    if (authError) {
-      if (authError.message.includes("already registered")) {
-        // User exists, just sign in
-        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginError) { setError("Correo o contraseña incorrectos."); setSaving(false); return; }
-      } else {
+    if (authMode === "login") {
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) { setError("Correo o contraseña incorrectos."); setSaving(false); return; }
+    } else {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { nombre, rol: "ofrecimientos" } }
+      });
+      if (signUpError && !signUpError.message.includes("already registered")) {
         setError("No se ha podido crear la cuenta. Inténtalo de nuevo.");
         setSaving(false); return;
       }
     }
 
-    // Now save the form data (user is authenticated)
+    // Save the data (anon insert allowed, or now authenticated)
     await onSave(formData);
     setSaving(false);
   };
@@ -1898,13 +1896,25 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
             <div className="bg-violet-50 rounded-xl p-3">
               <p className="text-sm text-violet-700 font-medium">¡Casi listo! 🎉</p>
-              <p className="text-sm text-violet-600 mt-0.5">Crea una cuenta para guardar tu {tipo === "ofrecimiento" ? "ofrecimiento" : "taller"} y poder gestionarlo después.</p>
+              <p className="text-sm text-violet-600 mt-0.5">Identifícate para guardar tu {tipo === "ofrecimiento" ? "ofrecimiento" : "taller"}.</p>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+              {["crear","login"].map(m => (
+                <button key={m} onClick={() => { setAuthMode(m); setError(""); }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${authMode===m?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>
+                  {m==="crear"?"Crear cuenta":"Iniciar sesión"}
+                </button>
+              ))}
             </div>
+
+            {authMode === "crear" && (
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
+                <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              </div>
+            )}
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
               <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com"
@@ -1918,7 +1928,7 @@ function TwoStepForm({ tipo, familias, onSave, onCancel }) {
             {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
             <button onClick={handleStep2} disabled={saving}
               className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-              {saving ? "Guardando..." : "Guardar y crear cuenta"}
+              {saving ? "Guardando..." : authMode === "crear" ? "Crear cuenta y guardar" : "Iniciar sesión y guardar"}
             </button>
           </div>
         )}
@@ -1959,8 +1969,22 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAdd
       tipo={showTwoStep}
       familias={familias}
       onSave={async (data) => {
-        if (showTwoStep === "ofrecimiento") await onAddOfrecimiento(data);
-        else await onAddTaller(data);
+        if (showTwoStep === "ofrecimiento") {
+          const { data: saved } = await supabase.from("ofrecimientos").insert({
+            familia_id: data.familia_id || null,
+            que: data.que,
+            fecha: data.fecha,
+          }).select().single();
+          if (saved) onAddOfrecimiento(saved);
+        } else {
+          const { data: saved } = await supabase.from("talleres").insert({
+            quien: data.quien,
+            descripcion: data.descripcion,
+            fecha: data.fecha || null,
+            necesita: data.necesita || null,
+          }).select().single();
+          if (saved) onAddTaller(saved);
+        }
         setShowTwoStep(null);
       }}
       onCancel={() => setShowTwoStep(null)}
