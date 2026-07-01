@@ -1464,6 +1464,221 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
   );
 }
 
+function TallerForm({ taller, onSave, onCancel }) {
+  const [quien, setQuien] = useState(taller?.quien || "");
+  const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
+  const [fecha, setFecha] = useState(taller?.fecha || "");
+  const [necesita, setNecesita] = useState(taller?.necesita || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
+    if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
+    setSaving(true);
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fecha || null, necesita: necesita.trim() || null };
+    const { data, error } = taller
+      ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
+      : await supabase.from("talleres").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar.");
+    else onSave(data);
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+      <p className="font-semibold text-gray-800">{taller ? "Editar taller" : "Nuevo taller"}</p>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
+        <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
+        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
+          placeholder="Describe el taller..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Fecha de ejecución</label>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
+        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
+          placeholder="Materiales, recursos, espacio..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      </div>
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  if (showForm) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Nuevo taller</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+      </div>
+    </div>
+  );
+
+  if (editTarget) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl">🎨</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p>
+          <p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p>
+        </div>
+      </div>
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+        + Añadir taller
+      </button>
+      {talleres.length === 0 ? (
+        <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
+      ) : (
+        <div className="space-y-2.5">
+          {talleres.map(t => (
+            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="font-semibold text-gray-800">{t.quien}</p>
+                    {t.fecha && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                      {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                    </span>}
+                  </div>
+                  <p className="text-sm text-gray-600">{t.descripcion}</p>
+                  {t.necesita && (
+                    <div className="mt-2 bg-amber-50 rounded-xl px-3 py-2">
+                      <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
+                      <p className="text-sm text-gray-700">{t.necesita}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => setEditTarget(t)} className="text-xs text-violet-500 font-medium">Editar</button>
+                  <button onClick={() => onDelete(t.id)} className="text-xs text-red-400 font-medium">✕</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HomeView({ familias, visitas, voluntarios, talleres, ofrecimientos, onNavigate, profile }) {
+  const hoy = new Date();
+  const mesActual = hoy.getMonth();
+  const anioActual = hoy.getFullYear();
+
+  const eventosHoy = [
+    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
+    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
+  ];
+
+  const ultimasConvs = visitas.slice(0,3);
+  const talleresFaltan = Math.max(0, 16 - talleres.length);
+
+  return (
+    <div className="space-y-4">
+      {/* Saludo */}
+      <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
+        <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
+        <h2 className="text-xl font-bold mb-0.5">Hola, {profile?.nombre} 👋</h2>
+        <p className="text-sm opacity-70">6 – 31 julio · Madrid</p>
+      </div>
+
+      {/* Stats rápidas */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Familias", value: familias.length, icon: "👨‍👩‍👧", menu: "confirmados" },
+          { label: "Voluntarios", value: voluntarios.length, icon: "🙌", menu: "voluntarios" },
+          { label: "Talleres", value: talleres.length + "/16", icon: "🎨", menu: "servicios" },
+        ].map(s => (
+          <button key={s.label} onClick={() => onNavigate(s.menu)}
+            className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+            <p className="text-xl mb-1">{s.icon}</p>
+            <p className="text-lg font-bold text-violet-600">{s.value}</p>
+            <p className="text-xs text-gray-500">{s.label}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Accesos rápidos */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
+        {[
+          { label: "Ver familias confirmadas", icon: "👨‍👩‍👧", menu: "confirmados", tab: "familias" },
+          { label: "Ver participantes", icon: "🧒", menu: "confirmados", tab: "participantes" },
+          { label: "Conversaciones recientes", icon: "💬", menu: "confirmados", tab: "recientes" },
+          { label: "Calendario de servicios", icon: "📅", menu: "servicios" },
+        ].map((item, i) => (
+          <button key={i} onClick={() => onNavigate(item.menu, item.tab)}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
+            <span className="text-lg">{item.icon}</span>
+            <span className="text-sm text-gray-700 font-medium">{item.label}</span>
+            <span className="ml-auto text-gray-300">›</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Alertas */}
+      {talleresFaltan > 0 && (
+        <button onClick={() => onNavigate("servicios")}
+          className="w-full bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-left">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Faltan {talleresFaltan} talleres</p>
+            <p className="text-xs text-amber-600">Toca para ir a Servicios</p>
+          </div>
+          <span className="ml-auto text-amber-300">›</span>
+        </button>
+      )}
+
+      {eventosHoy.length > 0 && (
+        <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
+          <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
+          {eventosHoy.map((e, i) => (
+            <p key={i} className="text-sm text-violet-700">{e.quien || e.que || "Evento"}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento }) {
   const [tab, setTab] = useState("ofrecimientos");
   return (
@@ -1498,7 +1713,7 @@ export default function App() {
   const [voluntarios, setVoluntarios] = useState([]);
   const [talleres, setTalleres] = useState([]);
   const [ofrecimientos, setOfrecimientos] = useState([]);
-  const [menu, setMenu] = useState("solicitudes"); // solicitudes | confirmados | admin
+  const [menu, setMenu] = useState("home");
   const [tab, setTab] = useState("familias"); // sub-tab within confirmados
   const [busqueda, setBusqueda] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
@@ -1686,6 +1901,7 @@ export default function App() {
   const isAdmin = profile?.is_admin;
 
   const NAV_ITEMS = [
+    { id: "home", label: "Inicio", icon: "🏠" },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "servicios", label: "Servicios", icon: "🎨" },
@@ -1766,7 +1982,7 @@ export default function App() {
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
+            {menu === "home" ? "Inicio" : menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
           </h1>
           <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
           {offline && (
@@ -1793,6 +2009,18 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
+
+          {menu === "home" && (
+            <HomeView
+              familias={familias}
+              visitas={visitas}
+              voluntarios={voluntarios}
+              talleres={talleres}
+              ofrecimientos={ofrecimientos}
+              profile={profile}
+              onNavigate={(m, t) => { setMenu(m); if (t) setTab(t); }}
+            />
+          )}
 
           {menu === "confirmados" && tab==="familias" && (
             <>
