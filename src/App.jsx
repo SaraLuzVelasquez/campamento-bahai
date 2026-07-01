@@ -299,7 +299,7 @@ function AuthScreen({ onAuth }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="flex-1 flex items-center justify-center px-4 py-8 bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✨</div>
@@ -2026,19 +2026,6 @@ export default function App() {
   const [detalleTarget, setDetalleTarget] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) initUser(session.user);
-      else loadPublicData();
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (_e === "PASSWORD_RECOVERY") { setShowResetPassword(true); return; }
-      if (session?.user) initUser(session.user);
-      else { setUser(null); setProfile(null); setLoading(false); }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   const loadPublicData = async () => {
     const cached = loadCache();
     if (cached) {
@@ -2060,8 +2047,6 @@ export default function App() {
 
   const initUser = async (u) => {
     setUser(u);
-
-    // Load from cache immediately for instant UI
     const cached = loadCache();
     if (cached) {
       setFamilias(cached.familias || []);
@@ -2069,10 +2054,9 @@ export default function App() {
       setVoluntarios(cached.voluntarios || []);
       setTalleres(cached.talleres || []);
       setOfrecimientos(cached.ofrecimientos || []);
-      setLoading(false); // Show UI right away from cache
+      setLoading(false);
     }
 
-    // Fetch fresh data with retry
     const fetchWithRetry = async (fn, retries = 3) => {
       for (let i = 0; i < retries; i++) {
         try {
@@ -2111,15 +2095,21 @@ export default function App() {
     setOfrecimientos(newOfrecimientos);
     setLoading(false);
 
-    // Save to cache
-    saveCache({
-      familias: newFamilias,
-      visitas: newVisitas,
-      voluntarios: newVoluntarios,
-      talleres: newTalleres,
-      ofrecimientos: newOfrecimientos,
-    });
+    saveCache({ familias: newFamilias, visitas: newVisitas, voluntarios: newVoluntarios, talleres: newTalleres, ofrecimientos: newOfrecimientos });
   };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) initUser(session.user);
+      else loadPublicData();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (_e === "PASSWORD_RECOVERY") { setShowResetPassword(true); return; }
+      if (session?.user) initUser(session.user);
+      else { setUser(null); setProfile(null); setLoading(false); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const updateCache = (updates) => {
     const cached = loadCache() || {};
