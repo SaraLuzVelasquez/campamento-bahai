@@ -6,148 +6,47 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1ZnpudWljbHh1ZXZjcHpud2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MDA4NjIsImV4cCI6MjA5ODI3Njg2Mn0.cqi5XePwSu7q192PZ2L15hOoRqmMvbQOpO3uZ8qwHvU"
 );
 
-
-// ── CACHE ─────────────────────────────────────────────────────────────────────
-
-const CACHE_KEY = "campamento_cache_v2";
-
-function saveCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() })); } catch {}
-}
-
-function loadCache() {
-  try {
-    // Clear old cache versions
-    localStorage.removeItem("campamento_cache_v1");
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (Date.now() - data._ts > 86400000) { localStorage.removeItem(CACHE_KEY); return null; }
-    return data;
-  } catch { return null; }
-}
-
-const UNIDADES = {
-  1: {
-    nombre: "Comprensión de los Escritos bahá'ís",
-    secciones: {
-      1: "Leer y reflexionar sobre los Escritos sagrados cada día",
-      2: "Ejercicios sobre conducta loable y veracidad",
-      3: "La veracidad como base de todas las virtudes",
-      4: "Honradez, lealtad y claridad de corazón",
-      5: "La lengua amable y la unidad",
-      6: "Conflicto, disputa y amorosa bondad",
-      7: "La murmuración apaga la luz del corazón",
-      8: "Efectos de la murmuración en la comunidad",
-      9: "El hábito de leer los Escritos sagrados cada día",
-    },
-  },
-  2: {
-    nombre: "La oración",
-    secciones: {
-      1: "El doble propósito: crecer espiritualmente y servir",
-      2: "La nobleza del alma y la oración como alimento espiritual",
-      3: "Por qué oramos: amor a Dios",
-      4: "La oración como fuego, luz y fuente de vida",
-      5: "La oración como conversación con Dios",
-      6: "Entonar los versículos de Dios",
-      7: "Oraciones de Bahá'u'lláh para memorizar",
-      8: "Orar y alinear la voluntad con Dios",
-      9: "Las tres oraciones obligatorias",
-      10: "Reuniones devocionales y adoración comunitaria",
-      11: "Ser anfitrión de una reunión devocional",
-    },
-  },
-  3: {
-    nombre: "La vida y la muerte",
-    secciones: {
-      1: "El alma no es una entidad física; es inmortal",
-      2: "El alma comienza con la formación del embrión",
-      3: "La conexión entre el alma y el cuerpo: luz y espejo",
-      4: "El alma progresa eternamente después de la muerte",
-      5: "El alma actúa con y sin instrumentos corporales",
-      6: "El alma es independiente de la enfermedad del cuerpo",
-      7: "El alma continúa progresando hacia la presencia de Dios",
-      8: "La muerte como mensajera de alegría",
-      9: "Este mundo prepara el alma para el siguiente",
-      10: "Recibir la porción de gracia que Dios nos destina",
-      11: "El alma es un signo de Dios",
-      12: "El alma como pájaro que se remonta al cielo",
-      13: "El alma puede reflejar todos los atributos de Dios",
-      14: "Los poderes del alma están latentes; necesitan educación",
-      15: "Las Manifestaciones de Dios como guías del alma",
-      16: "El ser humano como talismán; la educación espiritual",
-      17: "El alma fiel alcanzará una estación gloriosa",
-      18: "El alma purificada y sus compañeros en el otro mundo",
-      19: "Orar por el progreso de las almas de los difuntos",
-      20: "Al partir, caen los velos y se revelan las realidades",
-      21: "Las almas se reconocen y comulgan en el otro mundo",
-      22: "No apenarse; días de alegría celestial nos esperan",
-      23: "Reflexión final: cualidades espirituales y servicio",
-    },
-  },
-};
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
 const GRADOS = ["Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
-
-const ROLES_VOLUNTARIO = ["Logística", "Maestro", "Animador", "Tesorería", "Camisetas", "Meriendas/Excursiones", "Otros"];
-
 const GRADO_COLOR = {
   "Madre": "bg-pink-100 text-pink-700",
   "Padre": "bg-blue-100 text-blue-700",
   "Abuela": "bg-rose-100 text-rose-700",
   "Abuelo": "bg-cyan-100 text-cyan-700",
   "Voluntario": "bg-gray-100 text-gray-700",
-  "Huevito": "bg-blue-100 text-blue-700",
+  "Huevito": "bg-yellow-100 text-yellow-700",
   "Grado 1": "bg-green-100 text-green-700",
   "Grado 2": "bg-orange-100 text-orange-700",
   "Grado 3": "bg-red-100 text-red-700",
   "Prejuvenil": "bg-purple-100 text-purple-700",
 };
+const CURSOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
+const ROLES_VOLUNTARIO = ["Logística", "Maestro", "Animador", "Tesorería", "Camisetas", "Meriendas/Excursiones", "Otros"];
+const UNIDADES = {
+  1: { nombre: "Comprensión de los Escritos bahá'ís", secciones: { 1:"Leer y reflexionar cada día", 2:"Veracidad", 3:"La veracidad como base", 4:"Honradez y lealtad", 5:"La lengua amable", 6:"Amorosa bondad", 7:"La murmuración apaga la luz", 8:"Efectos en la comunidad", 9:"El hábito de leer" } },
+  2: { nombre: "La oración", secciones: { 1:"Doble propósito", 2:"Nobleza del alma", 3:"Por qué oramos", 4:"La oración como fuego y luz", 5:"Conversación con Dios", 6:"Entonar los versículos", 7:"Oraciones para memorizar", 8:"Alinear la voluntad", 9:"Tres oraciones obligatorias", 10:"Reuniones devocionales", 11:"Ser anfitrión" } },
+  3: { nombre: "La vida y la muerte", secciones: { 1:"El alma es inmortal", 2:"El alma comienza con el embrión", 3:"Alma y cuerpo", 4:"El alma progresa eternamente", 5:"El alma sin instrumentos", 6:"El alma e independiente", 7:"Progresa hacia Dios", 8:"La muerte como mensajera", 9:"Este mundo prepara al alma", 10:"Recibir la gracia", 11:"El alma es signo de Dios", 12:"El alma como pájaro", 13:"Refleja los atributos de Dios", 14:"Los poderes del alma", 15:"Las Manifestaciones", 16:"El ser humano como talismán", 17:"Estación gloriosa", 18:"El alma purificada", 19:"Orar por los difuntos", 20:"Caen los velos", 21:"Las almas se reconocen", 22:"No apenarse", 23:"Reflexión final" } },
+};
 
-function ContactoTelefono({ telefono }) {
-  if (!telefono) return null;
-  const limpio = telefono.replace(/\D/g, "");
-  return (
-    <div className="flex gap-2">
-      <a href={`https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}`} target="_blank" rel="noopener noreferrer"
-        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
-        💬 WhatsApp
-      </a>
-      <a href={`tel:${telefono}`}
-        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all">
-        📞 Llamar
-      </a>
-    </div>
-  );
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+
+function Badge({ text }) {
+  const cls = GRADO_COLOR[text?.split(" / ")[0]] || "bg-gray-100 text-gray-600";
+  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{text}</span>;
 }
 
-function ContactoConEditar({ telefono, isAdmin, onEditar }) {
-  if (telefono && isAdmin) {
-    const limpio = telefono.replace(/\D/g, "");
-    const wa = `https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}`;
-    return (
-      <div className="flex gap-2">
-        <a href={wa} target="_blank" rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
-          💬 WA
-        </a>
-        <a href={`tel:${telefono}`}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all">
-          📞 Llamar
-        </a>
-        <button onClick={onEditar}
-          className="flex-1 flex items-center justify-center bg-violet-50 text-violet-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">
-          Editar
-        </button>
-      </div>
-    );
-  }
+function FullScreen({ title, onBack, children }) {
   return (
-    <button onClick={onEditar}
-      className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-      Editar
-    </button>
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={onBack} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        {title && <h2 className="text-lg font-bold text-gray-900">{title}</h2>}
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -155,29 +54,32 @@ function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4">
-        <div>
-          <p className="font-semibold text-gray-800 mb-1">{title}</p>
-          <p className="text-sm text-gray-500">{message}</p>
-        </div>
+        <p className="font-semibold text-gray-800">{title}</p>
+        {message && <p className="text-sm text-gray-500">{message}</p>}
         <div className="flex gap-2">
-          <button onClick={onConfirm}
-            className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 transition-all">
-            {confirmLabel}
-          </button>
-          <button onClick={onCancel}
-            className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
-            Cancelar
-          </button>
+          <button onClick={onConfirm} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold">{confirmLabel}</button>
+          <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100">Cancelar</button>
         </div>
       </div>
     </div>
   );
 }
 
-function Badge({ text }) {
-  const base = text.split(" / ")[0];
-  const cls = GRADO_COLOR[base] || "bg-gray-100 text-gray-600";
-  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{text}</span>;
+function ContactoButtons({ telefono, isAdmin, onEdit }) {
+  const limpio = telefono?.replace(/\D/g, "") || "";
+  const wa = `https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}`;
+  if (telefono && isAdmin) {
+    return (
+      <div className="flex gap-2">
+        <a href={wa} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">💬 WA</a>
+        <a href={`tel:${telefono}`} className="flex-1 flex items-center justify-center bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all">📞 Llamar</a>
+        {onEdit && <button onClick={onEdit} className="flex-1 flex items-center justify-center bg-violet-50 text-violet-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all">Editar</button>}
+      </div>
+    );
+  }
+  return onEdit ? (
+    <button onClick={onEdit} className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">Editar</button>
+  ) : null;
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -190,41 +92,24 @@ function ResetPasswordScreen({ onDone }) {
   const [success, setSuccess] = useState("");
 
   const handleReset = async () => {
-    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (password.length < 6) { setError("Mínimo 6 caracteres"); return; }
     if (password !== confirm) { setError("Las contraseñas no coinciden"); return; }
     setLoading(true); setError("");
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) setError("No se ha podido actualizar. Inténtalo de nuevo.");
-    else { setSuccess("¡Contraseña actualizada! Ya puedes entrar."); setTimeout(onDone, 2000); }
+    if (error) setError("No se ha podido actualizar.");
+    else { setSuccess("¡Contraseña actualizada!"); setTimeout(onDone, 2000); }
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🔑</div>
-          <h1 className="text-2xl font-bold text-gray-900">Nueva contraseña</h1>
-          <p className="text-sm text-gray-500 mt-1">Elige una contraseña nueva para tu cuenta</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Nueva contraseña</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Confirmar contraseña</label>
-            <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repite la contraseña"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          </div>
-          {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-          {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
-          <button onClick={handleReset} disabled={loading}
-            className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
-            {loading ? "Guardando..." : "Guardar contraseña"}
-          </button>
-        </div>
+      <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <div className="text-center mb-2"><span className="text-4xl">🔑</span><h1 className="text-xl font-bold text-gray-900 mt-2">Nueva contraseña</h1></div>
+        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nueva contraseña" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Confirmar contraseña" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+        {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
+        <button onClick={handleReset} disabled={loading} className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{loading ? "Guardando..." : "Guardar contraseña"}</button>
       </div>
     </div>
   );
@@ -233,18 +118,12 @@ function ResetPasswordScreen({ onDone }) {
 function PendienteAprobacion({ email, onLogout }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center">
-        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏳</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Cuenta pendiente</h1>
-        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          Tu cuenta está pendiente de aprobación. El administrador revisará tu solicitud y recibirás un correo en <span className="font-medium text-gray-700">{email}</span> cuando se apruebe.
-        </p>
-        <div className="bg-violet-50 rounded-2xl p-4 mb-6">
-          <p className="text-sm text-violet-700">💛 Gracias por querer participar en el Campamento Urbano Comunitario</p>
-        </div>
-        <button onClick={onLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-          Cerrar sesión
-        </button>
+      <div className="w-full max-w-sm text-center space-y-4">
+        <div className="text-6xl">⏳</div>
+        <h1 className="text-2xl font-bold text-gray-900">Cuenta pendiente</h1>
+        <p className="text-sm text-gray-500">Tu solicitud está siendo revisada. Recibirás un correo en <span className="font-medium text-gray-700">{email}</span> cuando se apruebe.</p>
+        <div className="bg-violet-50 rounded-2xl p-4"><p className="text-sm text-violet-700">💛 Gracias por querer participar en el Campamento Urbano Comunitario</p></div>
+        <button onClick={onLogout} className="text-sm text-gray-400 hover:text-gray-600">Cerrar sesión</button>
       </div>
     </div>
   );
@@ -255,52 +134,40 @@ function AuthScreen({ onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
-  const [rol, setRol] = useState("organizador");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const handleLogin = async () => {
-    if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
-    if (!password.trim()) { setError("Escribe tu contraseña"); return; }
+    if (!email.trim() || !password.trim()) { setError("Rellena todos los campos"); return; }
     setLoading(true); setError("");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError("Correo o contraseña incorrectos. ¿Has creado una cuenta?");
+    if (error) setError("Correo o contraseña incorrectos");
     else onAuth(data.user);
     setLoading(false);
   };
 
   const handleRegister = async () => {
     if (!nombre.trim()) { setError("Escribe tu nombre"); return; }
-    if (nombre.includes("@")) { setError("El nombre no puede ser un correo. Escribe solo tu nombre"); return; }
-    if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
-    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (!email.trim() || password.length < 6) { setError("Correo válido y contraseña de al menos 6 caracteres"); return; }
     setLoading(true); setError("");
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { nombre, rol } }
-    });
-    if (error) {
-      if (error.message.includes("already registered")) setError("Este correo ya tiene una cuenta. Prueba a entrar directamente.");
-      else setError("Algo ha salido mal. Inténtalo de nuevo.");
-    } else {
-      setSuccess("¡Cuenta creada! Ya puedes entrar.");
-      setMode("login");
-    }
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { nombre, rol: "organizador" } } });
+    if (error) setError(error.message.includes("already registered") ? "Este correo ya tiene cuenta" : "Error al crear cuenta");
+    else { setSuccess("¡Cuenta creada! Espera la aprobación del admin."); setMode("login"); }
     setLoading(false);
   };
 
   const handleRecover = async () => {
-    if (!email.trim()) { setError("Escribe tu correo para recuperar la contraseña"); return; }
+    if (!email.trim()) { setError("Escribe tu correo"); return; }
     setLoading(true); setError("");
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-    if (error) setError("No hemos podido enviar el correo. Comprueba la dirección.");
-    else setSuccess("Te hemos enviado un correo para restablecer tu contraseña.");
+    if (error) setError("No se pudo enviar el correo");
+    else setSuccess("Correo enviado. Revisa tu bandeja.");
     setLoading(false);
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-8 bg-gray-50">
+    <div className="flex items-center justify-center px-4 py-8 min-h-screen bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✨</div>
@@ -321,21 +188,16 @@ function AuthScreen({ onAuth }) {
           )}
           {mode === "recover" && (
             <div>
-              <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-                className="text-sm text-violet-500 hover:text-violet-700 mb-2">← Volver</button>
-              <p className="font-semibold text-gray-800 mb-1">Recuperar contraseña</p>
-              <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo.</p>
+              <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }} className="text-sm text-violet-500 mb-2">← Volver</button>
+              <p className="font-semibold text-gray-800">Recuperar contraseña</p>
             </div>
           )}
           {mode === "register" && (
-            <>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-                <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
-                  autoComplete="off" autoCorrect="off" spellCheck="false"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              </div>
-            </>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
+              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
           )}
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
@@ -352,14 +214,12 @@ function AuthScreen({ onAuth }) {
           {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
           {success && <p className="text-emerald-600 text-sm bg-emerald-50 rounded-xl px-3 py-2">{success}</p>}
           <button onClick={mode==="login"?handleLogin:mode==="register"?handleRegister:handleRecover} disabled={loading}
-            className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
+            className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40">
             {loading?"Un momento...":mode==="login"?"Entrar":mode==="register"?"Crear cuenta":"Enviar enlace"}
           </button>
           {mode==="login" && (
             <button onClick={() => { setMode("recover"); setError(""); setSuccess(""); }}
-              className="w-full text-center text-sm text-gray-400 hover:text-violet-500 transition-colors">
-              ¿Olvidaste tu contraseña?
-            </button>
+              className="w-full text-center text-sm text-gray-400 hover:text-violet-500">¿Olvidaste tu contraseña?</button>
           )}
         </div>
       </div>
@@ -367,30 +227,20 @@ function AuthScreen({ onAuth }) {
   );
 }
 
-// ── FAMILIA FORM ──────────────────────────────────────────────────────────────
+// ── FAMILIAS ──────────────────────────────────────────────────────────────────
 
 function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   const [nombre, setNombre] = useState(familia?.nombre || "");
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Madre");
   const [servicio, setServicio] = useState(familia?.servicio || "");
-  const [hijos, setHijos] = useState(
-    (familia?.hijos || []).map(h =>
-      typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h
-    )
-  );
-  const [showContacto2, setShowContacto2] = useState(!!(familia?.contacto2_nombre));
-  const [contacto2Nombre, setContacto2Nombre] = useState(familia?.contacto2_nombre || "");
-  const [contacto2Parentesco, setContacto2Parentesco] = useState(familia?.contacto2_parentesco || "Madre");
-  const [contacto2Telefono, setContacto2Telefono] = useState(familia?.contacto2_telefono || "");
+  const [hijos, setHijos] = useState((familia?.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h));
+  const [c2nombre, setC2nombre] = useState(familia?.contacto2_nombre || "");
+  const [c2parentesco, setC2parentesco] = useState(familia?.contacto2_parentesco || "Madre");
+  const [c2telefono, setC2telefono] = useState(familia?.contacto2_telefono || "");
+  const [showC2, setShowC2] = useState(!!familia?.contacto2_nombre);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const CURSOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
-
-  const addHijo = () => setHijos(prev => [...prev, { nombre: "", edad: "", curso: "Huevito" }]);
-  const removeHijo = (i) => setHijos(prev => prev.filter((_, idx) => idx !== i));
-  const updateHijo = (i, field, value) => setHijos(prev => prev.map((h, idx) => idx === i ? { ...h, [field]: value } : h));
 
   const handleSave = async () => {
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
@@ -398,136 +248,81 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
     const id = familia?.id || nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
     const payload = {
       id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, servicio: servicio.trim(), hijos,
-      contacto2_nombre: showContacto2 ? contacto2Nombre.trim() || null : null,
-      contacto2_parentesco: showContacto2 ? contacto2Parentesco : null,
-      contacto2_telefono: showContacto2 ? contacto2Telefono.trim() || null : null,
+      contacto2_nombre: showC2 ? c2nombre.trim() || null : null,
+      contacto2_parentesco: showC2 ? c2parentesco : null,
+      contacto2_telefono: showC2 ? c2telefono.trim() || null : null,
     };
     const { data, error } = familia
       ? await supabase.from("familias").update(payload).eq("id", familia.id).select().single()
       : await supabase.from("familias").insert(payload).select().single();
-    if (error) setError("No se ha podido guardar. Inténtalo de nuevo.");
+    if (error) setError("No se ha podido guardar.");
     else onSave(data);
     setSaving(false);
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">{familia ? "Editar familia" : "Nueva familia"}</p>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Nombre del padre/madre *</label>
+    <div className="space-y-4">
+      <div><label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
         <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
         <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Parentesco</label>
+        <div className="flex flex-wrap gap-1.5">{GRADOS.map(g => (
+          <button key={g} onClick={()=>setGrado(g)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${grado===g?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{g}</button>
+        ))}</div></div>
 
-      {showContacto2 ? (
+      {showC2 ? (
         <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-500">Segundo contacto</p>
-            <button onClick={() => setShowContacto2(false)} className="text-gray-300 hover:text-red-400 text-xs">✕ Quitar</button>
-          </div>
-          <input value={contacto2Nombre} onChange={e=>setContacto2Nombre(e.target.value)} placeholder="Nombre"
+          <div className="flex items-center justify-between"><p className="text-xs font-medium text-gray-500">Segundo contacto</p>
+            <button onClick={() => setShowC2(false)} className="text-xs text-red-400">✕ Quitar</button></div>
+          <input value={c2nombre} onChange={e=>setC2nombre(e.target.value)} placeholder="Nombre"
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          <div className="flex flex-wrap gap-1.5">
-            {GRADOS.map(g => (
-              <button key={g} onClick={() => setContacto2Parentesco(g)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${contacto2Parentesco === g ? "bg-violet-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
-                {g}
-              </button>
-            ))}
-          </div>
-          <input value={contacto2Telefono} onChange={e=>setContacto2Telefono(e.target.value)} placeholder="Teléfono" type="tel"
+          <div className="flex flex-wrap gap-1.5">{GRADOS.map(g => (
+            <button key={g} onClick={() => setC2parentesco(g)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${c2parentesco===g?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>{g}</button>
+          ))}</div>
+          <input value={c2telefono} onChange={e=>setC2telefono(e.target.value)} placeholder="Teléfono" type="tel"
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
         </div>
       ) : (
-        <button onClick={() => setShowContacto2(true)}
-          className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">
-          + Añadir segundo contacto
-        </button>
+        <button onClick={() => setShowC2(true)} className="text-xs text-violet-500 font-medium">+ Añadir segundo contacto</button>
       )}
 
       <div>
-        <label className="text-xs text-gray-500 mb-2 block">Parentesco (contacto principal)</label>
-        <div className="flex flex-wrap gap-1.5">
-          {GRADOS.map(g => (
-            <button key={g} onClick={()=>setGrado(g)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${grado===g?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-              {g}
-            </button>
-          ))}
-        </div>
+        <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500">Hijos</label>
+          <button onClick={() => setHijos(prev => [...prev, { nombre: "", edad: "", curso: "Huevito" }])} className="text-xs text-violet-500 font-medium">+ Añadir hijo</button></div>
+        <div className="space-y-3">{hijos.map((h, i) => (
+          <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between"><p className="text-xs font-medium text-gray-500">Hijo {i+1}</p>
+              <button onClick={() => setHijos(prev => prev.filter((_,idx) => idx!==i))} className="text-xs text-red-400">✕</button></div>
+            <input value={h.nombre} onChange={e => setHijos(prev => prev.map((x,idx) => idx===i?{...x,nombre:e.target.value}:x))} placeholder="Nombre"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <input value={h.edad} onChange={e => setHijos(prev => prev.map((x,idx) => idx===i?{...x,edad:e.target.value}:x))} placeholder="Edad"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <div className="flex flex-wrap gap-1.5">{CURSOS.map(c => (
+              <button key={c} onClick={() => setHijos(prev => prev.map((x,idx) => idx===i?{...x,curso:c}:x))}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${h.curso===c?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>{c}</button>
+            ))}</div>
+          </div>
+        ))}</div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-gray-500">Hijos</label>
-          <button onClick={addHijo} className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors">+ Añadir hijo</button>
-        </div>
-        <div className="space-y-3">
-          {hijos.map((h, i) => (
-            <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-medium text-gray-500">Hijo {i + 1}</p>
-                <button onClick={() => removeHijo(i)} className="text-gray-300 hover:text-red-400 transition-colors text-xs">✕ Eliminar</button>
-              </div>
-              <input value={h.nombre} onChange={e => updateHijo(i, "nombre", e.target.value)}
-                placeholder="Nombre"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-              <input value={h.edad} onChange={e => updateHijo(i, "edad", e.target.value)}
-                placeholder="Edad"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-              <div className="flex flex-wrap gap-1.5">
-                {CURSOS.map(c => (
-                  <button key={c} onClick={() => updateHijo(i, "curso", c)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${h.curso === c ? "bg-violet-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {hijos.length === 0 && (
-            <button onClick={addHijo}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-sm hover:border-violet-300 hover:text-violet-500 transition-all">
-              + Añadir hijo
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Colaboración</label>
+      <div><label className="text-xs text-gray-500 mb-1 block">Colaboración</label>
         <input value={servicio} onChange={e=>setServicio(e.target.value)} placeholder="Ej: Limpieza una vez a la semana"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
 
       {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-
       <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">Cancelar</button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
-
       {familia && onDelete && (
-        <button onClick={() => onDelete(familia.id)}
-          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
-          Eliminar familia
-        </button>
+        <button onClick={() => onDelete(familia.id)} className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 font-medium">Eliminar familia</button>
       )}
     </div>
   );
 }
-
-// ── VISITA FORM ───────────────────────────────────────────────────────────────
 
 function VisitaForm({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
   const [unidad, setUnidad] = useState(1);
@@ -538,150 +333,43 @@ function VisitaForm({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
   const [comentario, setComentario] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const secciones = UNIDADES[unidad].secciones;
-
   const handleSave = async () => {
     setSaving(true);
-    const { data, error } = await supabase.from("visitas").insert({
-      familia_id: familiaId, fecha, unidad, seccion,
-      visitador_id: visitadorId, completada,
-      comentario: comentario || null,
+    const { data } = await supabase.from("visitas").insert({
+      familia_id: familiaId, fecha, unidad, seccion, visitador_id: visitadorId, completada, comentario: comentario || null,
     }).select("*, profiles(nombre)").single();
-    if (!error) onSave(data);
+    if (data) onSave(data);
     setSaving(false);
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">Nueva visita</p>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
-        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">¿Quién fue?</label>
-        <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-300">
-          {allProfiles.map(p => (
-            <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Unidad</label>
-        <div className="flex gap-2">
-          {[1,2,3].map(u => (
-            <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${unidad===u?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{u}</button>
-          ))}
-        </div>
-        <p className="text-xs text-violet-600 mt-1.5 font-medium">{UNIDADES[unidad].nombre}</p>
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Sección</label>
-        <div className="flex flex-wrap gap-1.5">
-          {Object.keys(secciones).map(s => (
-            <button key={s} onClick={()=>setSeccion(Number(s))}
-              className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{s}</button>
-          ))}
-        </div>
-        <p className="text-sm text-gray-500 mt-2 italic leading-snug">{secciones[seccion]}</p>
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Estado</label>
-        <button onClick={()=>setCompletada(!completada)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${completada?"bg-emerald-500 text-white":"bg-gray-100 text-gray-500"}`}>
-          {completada?"✓ Completada":"En progreso"}
-        </button>
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Comentario (opcional)</label>
-        <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} placeholder="Observaciones..."
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm w-full resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
+    <div className="space-y-4">
+      <div><label className="text-xs text-gray-500 mb-1 block">Fecha</label>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">¿Quién fue?</label>
+        <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+          {allProfiles.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>)}</select></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Unidad</label>
+        <div className="flex gap-2">{[1,2,3].map(u => (
+          <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${unidad===u?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{u}</button>
+        ))}</div>
+        <p className="text-xs text-violet-600 mt-1.5 font-medium">{UNIDADES[unidad].nombre}</p></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Sección</label>
+        <div className="flex flex-wrap gap-1.5">{Object.keys(UNIDADES[unidad].secciones).map(s => (
+          <button key={s} onClick={()=>setSeccion(Number(s))}
+            className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
+        ))}</div>
+        <p className="text-xs text-gray-500 mt-1.5 italic">{UNIDADES[unidad].secciones[seccion]}</p></div>
+      <button onClick={()=>setCompletada(!completada)}
+        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${completada?"bg-emerald-500 text-white":"bg-gray-100 text-gray-500"}`}>
+        {completada?"✓ Completada":"En progreso"}</button>
+      <div><label className="text-xs text-gray-500 mb-1 block">Comentario (opcional)</label>
+        <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
       <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
-          {saving?"Guardando...":"Guardar visita"}
-        </button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">Cancelar</button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar visita"}</button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
-    </div>
-  );
-}
-
-function VisitaCard({ visita, onDelete }) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-700">{visita.fecha}</span>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${visita.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>
-            {visita.completada?"Completada":"En progreso"}
-          </span>
-          <button onClick={onDelete} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
-        </div>
-      </div>
-      <p className="text-xs text-violet-600 font-medium">U{visita.unidad} · S{visita.seccion} · {UNIDADES[visita.unidad]?.nombre}</p>
-      <p className="text-xs text-gray-500 italic">{UNIDADES[visita.unidad]?.secciones[visita.seccion]}</p>
-      <p className="text-xs text-gray-600"><span className="font-medium">Fue:</span> {visita.profiles?.nombre}</p>
-      {visita.comentario && <p className="text-xs text-gray-500 bg-white rounded-lg px-2 py-1.5 border border-gray-100">💬 {visita.comentario}</p>}
-    </div>
-  );
-}
-
-function ConversacionesSection({ familiaId, currentUser }) {
-  const [conversaciones, setConversaciones] = useState([]);
-  const [nota, setNota] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!loaded) {
-      supabase.from("conversaciones").select("*, profiles(nombre)").eq("familia_id", familiaId)
-        .order("created_at", { ascending: false })
-        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
-    }
-  }, [familiaId, loaded]);
-
-  const handleSave = async () => {
-    if (!nota.trim()) return;
-    setSaving(true);
-    const { data } = await supabase.from("conversaciones").insert({
-      familia_id: familiaId, nota: nota.trim(), autor_id: currentUser.id,
-    }).select("*, profiles(nombre)").single();
-    if (data) setConversaciones(prev => [data, ...prev]);
-    setNota("");
-    setSaving(false);
-  };
-
-  const handleDelete = async (id) => {
-    await supabase.from("conversaciones").delete().eq("id", id);
-    setConversaciones(prev => prev.filter(c => c.id !== id));
-  };
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Conversaciones</p>
-      <div className="flex gap-2">
-        <textarea value={nota} onChange={e=>setNota(e.target.value)} rows={2}
-          placeholder="Anota algo sobre esta familia..."
-          className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-        <button onClick={handleSave} disabled={saving || !nota.trim()}
-          className="px-3 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all self-end">
-          {saving?"...":"Guardar"}
-        </button>
-      </div>
-      {conversaciones.map(c => (
-        <div key={c.id} className="bg-amber-50 rounded-xl p-3 space-y-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm text-gray-700 flex-1">{c.nota}</p>
-            <button onClick={()=>handleDelete(c.id)} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">✕</button>
-          </div>
-          <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString("es-ES")} · {c.profiles?.nombre}</p>
-        </div>
-      ))}
     </div>
   );
 }
@@ -707,111 +395,71 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
     setConversaciones(prev => prev.filter(c => c.id !== id));
   };
 
+  const handleSaveConv = async () => {
+    if (!nuevaNota.trim()) return;
+    const { data } = await supabase.from("conversaciones").insert({
+      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
+    }).select("*, profiles(nombre)").single();
+    if (data) setConversaciones(prev => [data, ...prev]);
+    setNuevaNota(""); setShowNuevaConv(false);
+  };
+
   const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   return (
     <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
-      {/* Header compacto */}
       <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-3 flex-shrink-0">
-        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-3 flex items-center gap-1">
-          ← Volver
-        </button>
-
+        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-3">← Volver</button>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-            {familia.nombre[0]}
-          </div>
+          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{familia.nombre[0]}</div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-gray-900">{familia.nombre}</span>
-              <Badge text={familia.grado} />
-            </div>
-            {familia.hijos?.length > 0 && (
-              <p className="text-xs text-gray-500 truncate mt-0.5">
-                {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"}${h.edad ? `, ${h.edad}a` : ""}`).join(" · ")}
-              </p>
-            )}
-            {familia.servicio && <p className="text-xs text-gray-400 mt-0.5 truncate">{familia.servicio}</p>}
+            <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900">{familia.nombre}</span><Badge text={familia.grado} /></div>
+            {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre}${h.edad?`, ${h.edad}a`:""}`).join(" · ")}</p>}
+            {familia.servicio && <p className="text-xs text-gray-400 truncate">{familia.servicio}</p>}
           </div>
         </div>
-
-        {familia.telefono && (
-          <div className="mb-2">
-            <ContactoConEditar telefono={familia.telefono} isAdmin={isAdmin} onEditar={() => {}} />
-          </div>
-        )}
-
+        {familia.telefono && <div className="mb-2"><ContactoButtons telefono={familia.telefono} isAdmin={isAdmin} /></div>}
         {familia.contacto2_nombre && (
           <div className="mb-2 bg-gray-50 rounded-xl p-2.5 flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
             <Badge text={familia.contacto2_parentesco} />
           </div>
         )}
-
-        {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           {[
             { id: "conversaciones", label: `💬 Conv.${conversaciones.length > 0 ? ` (${conversaciones.length})` : ""}` },
             { id: "visitas", label: `📖 Visitas${visitas.length > 0 ? ` (${visitas.length})` : ""}` },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500"}`}>
-              {t.label}
-            </button>
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
           ))}
         </div>
       </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {tab === "conversaciones" && (
           <>
             {showNuevaConv ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                <textarea value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} rows={3}
-                  placeholder="Escribe un mensaje..."
-                  autoFocus
+              <div className="space-y-2">
+                <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
                 <div className="flex gap-2">
-                  <button onClick={async () => {
-                    if (!nuevaNota.trim()) return;
-                    const { data } = await supabase.from("conversaciones").insert({
-                      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
-                    }).select("*, profiles(nombre)").single();
-                    if (data) setConversaciones(prev => [data, ...prev]);
-                    setNuevaNota(""); setShowNuevaConv(false);
-                  }} disabled={!nuevaNota.trim()}
-                    className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
-                    Enviar
-                  </button>
-                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }}
-                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100">
-                    Cancelar
-                  </button>
+                  <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
+                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setShowNuevaConv(true)}
-                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                + Nuevo mensaje
-              </button>
+              <button onClick={() => setShowNuevaConv(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nuevo mensaje</button>
             )}
-
-            {conversaciones.length === 0
-              ? <p className="text-center text-gray-400 py-8">Aún no hay mensajes</p>
-              : conversaciones.map(c => {
+            {conversaciones.length === 0 ? <p className="text-center text-gray-400 py-8">Sin mensajes aún</p> :
+              conversaciones.map(c => {
                 const nombre = c.profiles?.nombre || "—";
-                const inicial = nombre[0]?.toUpperCase();
                 const fecha = new Date(c.created_at);
-                const hoy = new Date();
-                const esHoy = fecha.toDateString() === hoy.toDateString();
-                const horaStr = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-                const fechaStr = esHoy ? horaStr : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${horaStr}`;
+                const esHoy = fecha.toDateString() === new Date().toDateString();
+                const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+                const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
                 return (
                   <div key={c.id} className="flex gap-3 group">
-                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">
-                      {inicial}
-                    </div>
+                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 mb-0.5">
                         <span className="text-sm font-semibold text-gray-800">{nombre}</span>
@@ -819,51 +467,36 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
                       </div>
                       <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
                     </div>
-                    <button onClick={() => handleDeleteConv(c.id)}
-                      className="text-gray-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1">
-                      ✕
-                    </button>
+                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1">✕</button>
                   </div>
                 );
-              })
-            }
+              })}
           </>
         )}
         {tab === "visitas" && (
           <>
             {showNuevaVisita ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <p className="text-sm font-semibold text-gray-800 mb-3">Nueva visita</p>
-                <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-                  onSave={(v) => { onAddVisita(v); setShowNuevaVisita(false); }}
-                  onCancel={() => setShowNuevaVisita(false)} />
-              </div>
+              <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
+                onSave={(v) => { onAddVisita(v); setShowNuevaVisita(false); }} onCancel={() => setShowNuevaVisita(false)} />
             ) : (
-              <button onClick={() => setShowNuevaVisita(true)}
-                className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                + Nueva visita
-              </button>
+              <button onClick={() => setShowNuevaVisita(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nueva visita</button>
             )}
-            {sorted.length === 0
-              ? <p className="text-center text-gray-400 py-8">Aún no hay visitas</p>
-              : sorted.map(v => (
-                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+            {sorted.length === 0 ? <p className="text-center text-gray-400 py-8">Sin visitas aún</p> :
+              sorted.map(v => (
+                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {v.completada ? "Completada" : "En progreso"}
-                      </span>
-                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{v.completada?"Completada":"En progreso"}</span>
+                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400">✕</button>
                     </div>
                   </div>
                   <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
-                  <p className="text-sm text-gray-700">Sección {v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
+                  <p className="text-sm text-gray-700">S{v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
                   <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
                   {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
                 </div>
-              ))
-            }
+              ))}
           </>
         )}
       </div>
@@ -877,8 +510,6 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   const [showEdit, setShowEdit] = useState(false);
   const [totalConv, setTotalConv] = useState(null);
 
-  const totalActividad = visitas.length + (totalConv || 0);
-
   useEffect(() => {
     if (expanded && totalConv === null) {
       supabase.from("conversaciones").select("id", { count: "exact", head: true }).eq("familia_id", familia.id)
@@ -887,121 +518,52 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   }, [expanded, familia.id, totalConv]);
 
   if (showEdit) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowEdit(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Editar familia</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <FamiliaForm familia={familia}
-          onSave={(f) => { onEdit(f); setShowEdit(false); }}
-          onCancel={() => setShowEdit(false)}
-          onDelete={(id) => { onDelete(id); setShowEdit(false); }} />
-      </div>
-    </div>
-  );  return (
+    <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
+      <FamiliaForm familia={familia} onSave={(f) => { onEdit(f); setShowEdit(false); }} onCancel={() => setShowEdit(false)} onDelete={(id) => { onDelete(id); setShowEdit(false); }} />
+    </FullScreen>
+  );
+
+  if (accion === "ofrecimiento") return (
+    <FullScreen title="Nuevo ofrecimiento" onBack={() => setAccion(null)}>
+      <OfrecimientoForm familiaId={familia.id} familias={[]} onSave={(o) => { onAddOfrecimiento(o); setAccion(null); }} onCancel={() => setAccion(null)} />
+    </FullScreen>
+  );
+
+  return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-          {familia.nombre[0]}
-        </div>
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{familia.nombre[0]}</div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-gray-800">{familia.nombre}</span>
-            <Badge text={familia.grado} />
-          </div>
-          {familia.hijos?.length > 0 && (
-            <p className="text-xs text-gray-500 truncate mt-0.5">
-              {familia.hijos.map(h => typeof h === "string" ? h : `${h.nombre || "—"} · ${h.edad ? h.edad + "a" : "—"} · ${h.curso || ""}`).join(" | ")}
-            </p>
-          )}
+          <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.nombre}</span><Badge text={familia.grado} /></div>
+          {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre||"—"}${h.edad?`, ${h.edad}a`:""} · ${h.curso||""}`).join(" | ")}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {visitas.length > 0 && (
-            <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-              {visitas.length} visita{visitas.length !== 1 ? "s" : ""}
-            </span>
-          )}
-          <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+          {visitas.length > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length} visita{visitas.length!==1?"s":""}</span>}
+          <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
         </div>
       </button>
-
       {expanded && (
         <div className="border-t border-gray-50">
-          <div className="px-4 pt-3 pb-2">
-            <p className="text-xs text-gray-400 mb-0.5">Colaboración</p>
-            <p className="text-sm text-gray-700">{familia.servicio || "—"}</p>
-          </div>
-
+          <div className="px-4 pt-3 pb-2"><p className="text-xs text-gray-400 mb-0.5">Colaboración</p><p className="text-sm text-gray-700">{familia.servicio || "—"}</p></div>
           <div className="px-4 pb-3">
-            <ContactoConEditar telefono={familia.telefono} isAdmin={isAdmin} onEditar={() => setShowEdit(true)} />
+            <ContactoButtons telefono={familia.telefono} isAdmin={isAdmin} onEdit={() => setShowEdit(true)} />
           </div>
-
           {familia.contacto2_nombre && (
             <div className="px-4 pb-3">
               <div className="bg-gray-50 rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
-                  <Badge text={familia.contacto2_parentesco} />
-                </div>
-                {familia.contacto2_telefono && <ContactoTelefono telefono={familia.contacto2_telefono} isAdmin={isAdmin} />}
+                <div className="flex items-center gap-2 mb-2"><span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
+                {familia.contacto2_telefono && isAdmin && (
+                  <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg inline-block">💬 WhatsApp</a>
+                )}
               </div>
             </div>
           )}
-
-          {/* Opciones del dropdown */}
-          <div className="px-4 pb-4 space-y-2 mt-1">
-            {/* Escribir comentario */}
-            {accion === "comentario" ? (
-              <div className="space-y-2">
-                <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3}
-                  placeholder="Escribe tu comentario..."
-                  autoFocus
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                <div className="flex gap-2">
-                  <button onClick={handleSaveNota} disabled={savingNota || !nota.trim()}
-                    className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-40 transition-all">
-                    {savingNota ? "Guardando..." : "Guardar comentario"}
-                  </button>
-                  <button onClick={() => setAccion(null)}
-                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : accion === "ofrecimiento" ? (
-              <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-                <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-                  <button onClick={() => setAccion(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-                  <h2 className="text-lg font-bold text-gray-900">Nuevo ofrecimiento</h2>
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 py-4">
-                  <OfrecimientoForm
-                    familiaId={familia.id}
-                    familias={[]}
-                    onSave={(o) => { onAddOfrecimiento(o); setAccion(null); }}
-                    onCancel={() => setAccion(null)} />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <button onClick={() => setAccion("ofrecimiento")}
-                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-all text-left px-4 flex items-center gap-2">
-                  🎁 Ofrecimiento
-                </button>
-                <button
-                  onClick={() => onVerDetalle(familia)}
-                  className="w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between bg-violet-50 hover:bg-violet-100 text-violet-700">
-                  <span>📋 Ver conversaciones y visitas</span>
-                  {totalActividad > 0 && (
-                    <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">
-                      {totalActividad}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
+          <div className="px-4 pb-4 space-y-2">
+            <button onClick={() => setAccion("ofrecimiento")} className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 text-left px-4">🎁 Ofrecimiento</button>
+            <button onClick={() => onVerDetalle(familia)} className="w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between bg-violet-50 hover:bg-violet-100 text-violet-700">
+              <span>📋 Ver conversaciones y visitas</span>
+              {(visitas.length + (totalConv || 0)) > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length + (totalConv || 0)}</span>}
+            </button>
           </div>
         </div>
       )}
@@ -1009,279 +571,49 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   );
 }
 
-function FeedItem({ item, familia, onVerPerfil }) {
-  const esVisita = item.tipo === "visita";
+// ── VOLUNTARIOS ───────────────────────────────────────────────────────────────
 
-  const preview = esVisita
-    ? `U${item.unidad} · S${item.seccion} · ${UNIDADES[item.unidad]?.secciones[item.seccion]}`
-    : item.nota;
+function VoluntarioForm({ voluntario, onSave, onCancel }) {
+  const [nombre, setNombre] = useState(voluntario?.nombre || "");
+  const [telefono, setTelefono] = useState(voluntario?.telefono || "");
+  const [roles, setRoles] = useState(voluntario?.roles || []);
+  const [notas, setNotas] = useState(voluntario?.notas || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const fecha = esVisita
-    ? item.fecha
-    : new Date(item.created_at).toLocaleDateString("es-ES");
-
-  const autor = item.profiles?.nombre;
-
-  return (
-    <button
-      onClick={() => onVerPerfil(familia?.id)}
-      className="w-full text-left bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 active:bg-gray-50 transition-colors">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
-          {esVisita ? "📖 Visita" : "💬 Conversación"}
-        </span>
-        {familia && <Badge text={familia.grado} />}
-      </div>
-      <p className="text-sm text-gray-700 line-clamp-2 mb-1.5">{preview}</p>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400">{fecha}</span>
-        <span className="text-gray-200">·</span>
-        <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
-        <span className="text-gray-200">·</span>
-        <span className="text-xs text-gray-400">{autor}</span>
-      </div>
-    </button>
-  );
-}
-
-function RecientesView({ visitas, familias, onVerPerfil }) {
-  const [conversaciones, setConversaciones] = useState([]);
-  const [loadedConv, setLoadedConv] = useState(false);
-
-  useEffect(() => {
-    if (!loadedConv) {
-      supabase.from("conversaciones").select("*, profiles(nombre)")
-        .order("created_at", { ascending: false })
-        .then(({ data }) => { setConversaciones(data || []); setLoadedConv(true); });
-    }
-  }, [loadedConv]);
-
-  const feed = [
-    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha })),
-    ...conversaciones.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
-  ].sort((a, b) => b._sort.localeCompare(a._sort));
-
-  return (
-    <div className="space-y-3">
-      {feed.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Aún no hay actividad registrada</div>
-      ) : (
-        feed.map(item => (
-          <FeedItem
-            key={item.id}
-            item={item}
-            familia={familias.find(f => f.id === item.familia_id)}
-            onVerPerfil={onVerPerfil}
-          />
-        ))
-      )}
-    </div>
-  );
-}
-
-function ParticipantesView({ familias }) {
-  const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState("Todos");
-  const [showFiltro, setShowFiltro] = useState(false);
-  const CURSOS = ["Todos", "Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
-
-  const participantes = familias.flatMap(f =>
-    (f.hijos || []).map(h => ({
-      ...(typeof h === "string" ? { nombre: h, edad: "", curso: "" } : h),
-      madre: f.nombre,
-      familiaId: f.id,
-    }))
-  ).filter(p => {
-    const q = busqueda.toLowerCase();
-    const matchQ = !q || p.nombre?.toLowerCase().includes(q) || p.madre?.toLowerCase().includes(q);
-    const matchF = filtro === "Todos" || p.curso === filtro;
-    return matchQ && matchF;
-  });
+  const handleSave = async () => {
+    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
+    setSaving(true);
+    const payload = { nombre: nombre.trim(), telefono: telefono.trim() || null, roles, notas: notas.trim() || null };
+    const { data, error } = voluntario
+      ? await supabase.from("voluntarios").update(payload).eq("id", voluntario.id).select().single()
+      : await supabase.from("voluntarios").insert(payload).select().single();
+    if (error) setError("No se ha podido guardar.");
+    else onSave(data);
+    setSaving(false);
+  };
 
   return (
     <div className="space-y-4">
+      <div><label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
+        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Ismael"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+        <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Ej: 612 345 678" type="tel"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Roles</label>
+        <div className="flex flex-wrap gap-1.5">{ROLES_VOLUNTARIO.map(r => (
+          <button key={r} onClick={() => setRoles(prev => prev.includes(r) ? prev.filter(x=>x!==r) : [...prev, r])}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${roles.includes(r)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{r}</button>
+        ))}</div></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">Notas</label>
+        <textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={2} placeholder="Disponibilidad, observaciones..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
       <div className="flex gap-2">
-        <input type="text" placeholder="Buscar participante..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-        <div className="relative">
-          <button onClick={() => setShowFiltro(!showFiltro)}
-            className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtro !== "Todos" ? "bg-violet-600 text-white border-violet-600" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
-            🔽 {filtro === "Todos" ? "Filtrar" : filtro}
-          </button>
-          {showFiltro && (
-            <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
-              {CURSOS.map(c => (
-                <button key={c} onClick={() => { setFiltro(c); setShowFiltro(false); }}
-                  className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtro === c ? "bg-violet-50 text-violet-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
-
-      {participantes.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin participantes</p>
-      ) : (
-        <div className="space-y-2.5">
-          {participantes.map((p, i) => (
-            <div key={i} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-                {(p.nombre || "?")[0]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-800">{p.nombre || "—"}</span>
-                  {p.curso && <Badge text={p.curso} />}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {p.edad && <span className="text-xs text-gray-400">{p.edad} años</span>}
-                  <span className="text-xs text-gray-400">· {p.madre}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AdminView({ currentUserId }) {
-  const [usuarios, setUsuarios] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [procesando, setProcesando] = useState(null);
-
-  useEffect(() => {
-    supabase.from("profiles").select("*").order("created_at", { ascending: true })
-      .then(({ data }) => { setUsuarios(data || []); setLoading(false); });
-  }, []);
-
-  const handleAprobar = async (u) => {
-    setProcesando(u.id);
-    await supabase.from("profiles").update({ aprobado: true, aprobado_at: new Date().toISOString() }).eq("id", u.id);
-    // Send approval email via Supabase Auth admin (we update metadata to trigger notification)
-    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, aprobado: true } : x));
-    setProcesando(null);
-  };
-
-  const handleRechazar = async (u) => {
-    setProcesando(u.id);
-    await supabase.from("profiles").update({ aprobado: false }).eq("id", u.id);
-    await supabase.auth.admin?.deleteUser?.(u.id); // best-effort
-    setUsuarios(prev => prev.filter(x => x.id !== u.id));
-    setProcesando(null);
-  };
-
-  const toggleAdmin = async (u) => {
-    const nuevoValor = !u.is_admin;
-    await supabase.from("profiles").update({ is_admin: nuevoValor }).eq("id", u.id);
-    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: nuevoValor } : x));
-  };
-
-  const pendientes = usuarios.filter(u => !u.aprobado && !u.is_admin);
-  const aprobados = usuarios.filter(u => u.aprobado || u.is_admin);
-
-  if (loading) return <p className="text-center text-gray-400 py-12">Cargando...</p>;
-
-  return (
-    <div className="space-y-5">
-      {pendientes.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-gray-800">Pendientes de aprobación</p>
-            <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{pendientes.length}</span>
-          </div>
-          {pendientes.map(u => (
-            <div key={u.id} className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 font-bold flex-shrink-0">
-                  {(u.nombre || "?")[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800">{u.nombre}</p>
-                  <p className="text-xs text-gray-500 truncate">{u.email}</p>
-                  <span className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full mt-0.5 inline-block">
-                    {u.rol === "ofrecimientos" ? "🎁 Ofrecimientos" : "🏕️ Organizador"}
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleAprobar(u)} disabled={procesando === u.id}
-                  className="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-all">
-                  {procesando === u.id ? "..." : "✓ Aprobar"}
-                </button>
-                <button onClick={() => handleRechazar(u)} disabled={procesando === u.id}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all">
-                  Rechazar
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-2.5">
-        <p className="text-sm font-bold text-gray-800">Usuarios activos</p>
-        {aprobados.map(u => (
-          <div key={u.id} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-              {(u.nombre || "?")[0].toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-800">{u.nombre}</p>
-              <p className="text-xs text-gray-400 truncate">{u.email}</p>
-              <span className="text-xs text-gray-500">{u.rol === "ofrecimientos" ? "🎁 Ofrecimientos" : "🏕️ Organizador"}</span>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {u.is_admin && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>}
-              {u.id !== currentUserId && (
-                <div className="flex gap-1">
-                  <button onClick={() => toggleAdmin(u)}
-                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${u.is_admin ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"}`}>
-                    {u.is_admin ? "Quitar admin" : "Admin"}
-                  </button>
-                  <button onClick={() => handleRechazar(u)}
-                    className="text-xs px-2 py-1.5 rounded-full text-red-400 hover:bg-red-50 transition-all">
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function VoluntarioCard({ voluntario, isAdmin, onEdit }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
-          {voluntario.nombre[0]}
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className="font-semibold text-gray-800">{voluntario.nombre}</span>
-          {voluntario.roles?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {voluntario.roles.map(r => (
-                <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
-          {voluntario.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{voluntario.notas}</p>}
-          <ContactoConEditar telefono={voluntario.telefono} isAdmin={isAdmin} onEditar={() => onEdit(voluntario)} />
-        </div>
-      )}
     </div>
   );
 }
@@ -1290,48 +622,40 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  if (showForm) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Nuevo voluntario</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      </div>
-    </div>
-  );
-
-  if (editTarget) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Editar voluntario</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <VoluntarioForm voluntario={editTarget} onSave={(v) => { onEdit(v); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
-      </div>
-    </div>
-  );
+  if (showForm) return <FullScreen title="Nuevo voluntario" onBack={() => setShowForm(false)}><VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
+  if (editTarget) return <FullScreen title="Editar voluntario" onBack={() => setEditTarget(null)}><VoluntarioForm voluntario={editTarget} onSave={(v) => { onEdit(v); setEditTarget(null); }} onCancel={() => setEditTarget(null)} /></FullScreen>;
 
   return (
     <div className="space-y-4">
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-        + Añadir voluntario
-      </button>
-      {voluntarios.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin voluntarios registrados</p>
-      ) : (
-        <div className="space-y-2.5">
-          {voluntarios.map(v => (
-            <VoluntarioCard key={v.id} voluntario={v} isAdmin={isAdmin} onEdit={setEditTarget} />
-          ))}
-        </div>
+      <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir voluntario</button>
+      {voluntarios.length === 0 ? <p className="text-center text-gray-400 py-12">Sin voluntarios</p> : (
+        <div className="space-y-2.5">{voluntarios.map(v => {
+          const [expanded, setExpanded] = useState(false);
+          return (
+            <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{v.nombre[0]}</div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-gray-800">{v.nombre}</span>
+                  {v.roles?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{v.roles.map(r => <span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>)}</div>}
+                </div>
+                <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
+              </button>
+              {expanded && (
+                <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-2">
+                  {v.notas && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">{v.notas}</p>}
+                  <ContactoButtons telefono={v.telefono} isAdmin={isAdmin} onEdit={() => setEditTarget(v)} />
+                </div>
+              )}
+            </div>
+          );
+        })}</div>
       )}
     </div>
   );
 }
+
+// ── SERVICIOS ─────────────────────────────────────────────────────────────────
 
 function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel }) {
   const [que, setQue] = useState(ofrecimiento?.que || "");
@@ -1354,233 +678,53 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel 
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <p className="font-semibold text-gray-800">{ofrecimiento ? "Editar ofrecimiento" : "Nuevo ofrecimiento"}</p>
-
+    <div className="space-y-4">
       {!familiaId && familias?.length > 0 && (
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">Familia (opcional)</label>
-          <select value={familiaIdLocal} onChange={e => setFamiliaIdLocal(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
+        <div><label className="text-xs text-gray-500 mb-1 block">Familia (opcional)</label>
+          <select value={familiaIdLocal} onChange={e=>setFamiliaIdLocal(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
             <option value="">Sin familia asociada</option>
             {familias.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-          </select>
-        </div>
+          </select></div>
       )}
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Qué ofreces? *</label>
-        <textarea value={que} onChange={e=>setQue(e.target.value)} rows={3}
-          placeholder="Ej: Organizar merienda para los niños..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
-        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-
+      <div><label className="text-xs text-gray-500 mb-1 block">¿Qué ofreces? *</label>
+        <textarea value={que} onChange={e=>setQue(e.target.value)} rows={3} placeholder="Ej: Organizar merienda..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
       {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-
       <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
     </div>
   );
 }
 
-function Ofrecimientos({ ofrecimientos, familias, onAdd, onDelete }) {
+function OfrecimientosView({ ofrecimientos, familias, onAdd, onDelete }) {
   const [showForm, setShowForm] = useState(false);
-
-  if (showForm) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Nuevo ofrecimiento</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <OfrecimientoForm familias={familias} onSave={(o) => { onAdd(o); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      </div>
-    </div>
-  );
-
+  if (showForm) return <FullScreen title="Nuevo ofrecimiento" onBack={() => setShowForm(false)}><OfrecimientoForm familias={familias} onSave={(o) => { onAdd(o); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
   return (
     <div className="space-y-4">
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-        + Añadir ofrecimiento
-      </button>
-      {ofrecimientos.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin ofrecimientos registrados</p>
-      ) : (
-        <div className="space-y-2.5">
-          {[...ofrecimientos].sort((a,b) => a.fecha.localeCompare(b.fecha)).map(o => {
-            const familia = familias?.find(f => f.id === o.familia_id);
-            return (
-              <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
-                        {new Date(o.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-                      </span>
-                      {familia && <Badge text={familia.grado} />}
-                    </div>
-                    {familia && <p className="font-semibold text-gray-800">{familia.nombre}</p>}
-                    <p className="text-sm text-gray-600 mt-0.5">{o.que}</p>
+      <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir ofrecimiento</button>
+      {ofrecimientos.length === 0 ? <p className="text-center text-gray-400 py-12">Sin ofrecimientos</p> : (
+        <div className="space-y-2.5">{[...ofrecimientos].sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(o => {
+          const familia = familias?.find(f=>f.id===o.familia_id);
+          return (
+            <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">{new Date(o.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
+                    {familia && <Badge text={familia.grado} />}
                   </div>
-                  {onDelete && <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400 transition-colors">✕</button>}
+                  {familia && <p className="font-semibold text-gray-800">{familia.nombre}</p>}
+                  <p className="text-sm text-gray-600 mt-0.5">{o.que}</p>
                 </div>
+                {onDelete && <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400">✕</button>}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CalendarioView({ ofrecimientos, talleres, familias }) {
-  const hoy = new Date();
-  const [mes, setMes] = useState(hoy.getMonth());
-  const [anio, setAnio] = useState(hoy.getFullYear());
-
-  const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-  const primerDia = new Date(anio, mes, 1).getDay();
-  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-
-  const eventosDelMes = [
-    ...(ofrecimientos || []).filter(o => {
-      const d = new Date(o.fecha + "T12:00:00");
-      return d.getMonth() === mes && d.getFullYear() === anio;
-    }).map(o => ({ ...o, tipo: "ofrecimiento", dia: new Date(o.fecha + "T12:00:00").getDate() })),
-    ...(talleres || []).filter(t => t.fecha).filter(t => {
-      const d = new Date(t.fecha + "T12:00:00");
-      return d.getMonth() === mes && d.getFullYear() === anio;
-    }).map(t => ({ ...t, tipo: "taller", dia: new Date(t.fecha + "T12:00:00").getDate() })),
-  ];
-
-  const porDia = {};
-  eventosDelMes.forEach(e => {
-    if (!porDia[e.dia]) porDia[e.dia] = [];
-    porDia[e.dia].push(e);
-  });
-
-  const celdas = [];
-  const offset = primerDia === 0 ? 6 : primerDia - 1;
-  for (let i = 0; i < offset; i++) celdas.push(null);
-  for (let d = 1; d <= diasEnMes; d++) celdas.push(d);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
-        <button onClick={() => { if (mes === 0) { setMes(11); setAnio(a => a-1); } else setMes(m => m-1); }}
-          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-600 font-bold">‹</button>
-        <p className="font-semibold text-gray-800">{MESES[mes]} {anio}</p>
-        <button onClick={() => { if (mes === 11) { setMes(0); setAnio(a => a+1); } else setMes(m => m+1); }}
-          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-600 font-bold">›</button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-100">
-          {["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map(d => (
-            <div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {celdas.map((dia, i) => {
-            const eventos = dia ? (porDia[dia] || []) : [];
-            const esHoy = dia && dia === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-            return (
-              <div key={i} className={`min-h-12 p-1 border-b border-r border-gray-50 ${!dia ? "bg-gray-50" : ""}`}>
-                {dia && (
-                  <>
-                    <p className={`text-xs font-medium text-center mb-0.5 w-6 h-6 flex items-center justify-center rounded-full mx-auto ${esHoy ? "bg-violet-600 text-white" : "text-gray-600"}`}>
-                      {dia}
-                    </p>
-                    {eventos.map((e, j) => (
-                      <div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo === "taller" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
-                        {e.tipo === "taller" ? e.quien : (familias?.find(f => f.id === e.familia_id)?.nombre || "—")}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
-      </div>
-
-      {eventosDelMes.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
-          {[...eventosDelMes].sort((a,b) => a.dia - b.dia).map((e, i) => (
-            <div key={i} className="bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3">
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo === "taller" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
-                {e.dia}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {e.tipo === "taller" ? e.quien : (familias?.find(f => f.id === e.familia_id)?.nombre || "—")}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{e.tipo === "taller" ? e.descripcion : e.que}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo === "taller" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>
-                {e.tipo === "taller" ? "Taller" : "Ofrecimiento"}
-              </span>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TallerCard({ taller: t, onEdit }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
-        <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          {t.fecha
-            ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
-                📅 {new Date(t.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-              </span>
-            : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
-                📅 Por confirmar
-              </span>
-          }
-          <span className="text-xs text-gray-500">· {t.quien}</span>
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
-          {t.necesita ? (
-            <div className="bg-amber-50 rounded-xl px-3 py-2.5">
-              <p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p>
-              <p className="text-sm text-gray-700">{t.necesita}</p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>
-          )}
-          {onEdit && (
-            <button onClick={onEdit}
-              className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100 transition-colors">
-              Editar
-            </button>
-          )}
-        </div>
+          );
+        })}</div>
       )}
     </div>
   );
@@ -1591,7 +735,7 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
   const [descripcion, setDescripcion] = useState(taller?.descripcion || "");
   const [fecha, setFecha] = useState(taller?.fecha || "");
   const [necesita, setNecesita] = useState(taller?.necesita || "");
-  const [fechaPorConfirmar, setFechaPorConfirmar] = useState(!taller?.fecha);
+  const [porConfirmar, setPorConfirmar] = useState(!taller?.fecha);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1599,8 +743,7 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
     if (!quien.trim()) { setError("Indica quién sostiene el taller"); return; }
     if (!descripcion.trim()) { setError("Indica de qué va el taller"); return; }
     setSaving(true);
-    const fechaFinal = fechaPorConfirmar ? null : (fecha || null);
-    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: fechaFinal, necesita: necesita.trim() || null };
+    const payload = { quien: quien.trim(), descripcion: descripcion.trim(), fecha: porConfirmar ? null : (fecha || null), necesita: necesita.trim() || null };
     const { data, error } = taller
       ? await supabase.from("talleres").update(payload).eq("id", taller.id).select().single()
       : await supabase.from("talleres").insert(payload).select().single();
@@ -1610,55 +753,29 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
+    <div className="space-y-4">
+      <div><label className="text-xs text-gray-500 mb-1 block">¿Quién lo sostiene? *</label>
         <input value={quien} onChange={e=>setQuien(e.target.value)} placeholder="Ej: Miriam"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
-        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3}
-          placeholder="Describe el taller..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-2 block">Fecha</label>
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
+        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3} placeholder="Describe el taller..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Fecha</label>
         <div className="flex gap-2 mb-2">
-          <button onClick={() => setFechaPorConfirmar(false)}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
-            Fecha concreta
-          </button>
-          <button onClick={() => setFechaPorConfirmar(true)}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${fechaPorConfirmar ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-500"}`}>
-            Por confirmar
-          </button>
+          <button onClick={() => setPorConfirmar(false)} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!porConfirmar?"bg-violet-600 text-white":"bg-gray-100 text-gray-500"}`}>Fecha concreta</button>
+          <button onClick={() => setPorConfirmar(true)} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${porConfirmar?"bg-violet-600 text-white":"bg-gray-100 text-gray-500"}`}>Por confirmar</button>
         </div>
-        {!fechaPorConfirmar && (
-          <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-        )}
+        {!porConfirmar && <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />}
       </div>
-      <div>
-        <label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
-        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2}
-          placeholder="Materiales, recursos, espacio..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      </div>
+      <div><label className="text-xs text-gray-500 mb-1 block">¿Qué necesita?</label>
+        <textarea value={necesita} onChange={e=>setNecesita(e.target.value)} rows={2} placeholder="Materiales, recursos, espacio..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
       {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving}
-          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
         <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
-      {taller && onDelete && (
-        <button onClick={() => onDelete(taller.id)}
-          className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors font-medium">
-          Eliminar taller
-        </button>
-      )}
+      {taller && onDelete && <button onClick={() => onDelete(taller.id)} className="w-full py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 font-medium">Eliminar taller</button>}
     </div>
   );
 }
@@ -1667,52 +784,96 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  if (showForm) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowForm(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Nuevo taller</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
-      </div>
-    </div>
-  );
-
-  if (editTarget) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setEditTarget(null)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Editar taller</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <TallerForm taller={editTarget}
-          onSave={(t) => { onEdit(t); setEditTarget(null); }}
-          onCancel={() => setEditTarget(null)}
-          onDelete={(id) => { onDelete(id); setEditTarget(null); }} />
-      </div>
-    </div>
-  );
+  if (showForm) return <FullScreen title="Nuevo taller" onBack={() => setShowForm(false)}><TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
+  if (editTarget) return <FullScreen title="Editar taller" onBack={() => setEditTarget(null)}><TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} onDelete={(id) => { onDelete(id); setEditTarget(null); }} /></FullScreen>;
 
   return (
     <div className="space-y-4">
       <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
         <span className="text-2xl">🎨</span>
-        <div>
-          <p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p>
-          <p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p>
-        </div>
+        <div><p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p><p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p></div>
       </div>
-      <button onClick={() => setShowForm(true)}
-        className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-        + Añadir taller
-      </button>
-      {talleres.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">Sin talleres registrados</p>
-      ) : (
-        <div className="space-y-3">
-          {talleres.map(t => (
-            <TallerCard key={t.id} taller={t} onEdit={onEdit ? () => setEditTarget(t) : null} />
+      <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir taller</button>
+      {talleres.length === 0 ? <p className="text-center text-gray-400 py-12">Sin talleres</p> : (
+        <div className="space-y-3">{talleres.map(t => {
+          const [expanded, setExpanded] = useState(false);
+          return (
+            <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
+                <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {t.fecha ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">📅 {new Date(t.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
+                    : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">📅 Por confirmar</span>}
+                  <span className="text-xs text-gray-500">· {t.quien}</span>
+                </div>
+              </button>
+              {expanded && (
+                <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+                  {t.necesita ? <div className="bg-amber-50 rounded-xl px-3 py-2.5"><p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p><p className="text-sm text-gray-700">{t.necesita}</p></div>
+                    : <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>}
+                  <button onClick={() => setEditTarget(t)} className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100">Editar</button>
+                </div>
+              )}
+            </div>
+          );
+        })}</div>
+      )}
+    </div>
+  );
+}
+
+function CalendarioView({ ofrecimientos, talleres, familias }) {
+  const hoy = new Date();
+  const [mes, setMes] = useState(hoy.getMonth());
+  const [anio, setAnio] = useState(hoy.getFullYear());
+  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const diasEnMes = new Date(anio, mes+1, 0).getDate();
+  const primerDia = new Date(anio, mes, 1).getDay();
+  const offset = primerDia === 0 ? 6 : primerDia - 1;
+
+  const eventos = [
+    ...(ofrecimientos||[]).filter(o=>{const d=new Date(o.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(o=>({...o,tipo:"ofrecimiento",dia:new Date(o.fecha+"T12:00:00").getDate()})),
+    ...(talleres||[]).filter(t=>t.fecha).filter(t=>{const d=new Date(t.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(t=>({...t,tipo:"taller",dia:new Date(t.fecha+"T12:00:00").getDate()})),
+  ];
+  const porDia = {};
+  eventos.forEach(e=>{ if(!porDia[e.dia]) porDia[e.dia]=[]; porDia[e.dia].push(e); });
+
+  const celdas = [...Array(offset).fill(null), ...Array.from({length:diasEnMes},(_,i)=>i+1)];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+        <button onClick={()=>mes===0?[setMes(11),setAnio(a=>a-1)]:setMes(m=>m-1)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 font-bold text-gray-600">‹</button>
+        <p className="font-semibold text-gray-800">{MESES[mes]} {anio}</p>
+        <button onClick={()=>mes===11?[setMes(0),setAnio(a=>a+1)]:setMes(m=>m+1)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 font-bold text-gray-600">›</button>
+      </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-gray-100">{["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map(d=><div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">{d}</div>)}</div>
+        <div className="grid grid-cols-7">{celdas.map((dia,i)=>{
+          const evs = dia?(porDia[dia]||[]):[];
+          const esHoy = dia&&dia===hoy.getDate()&&mes===hoy.getMonth()&&anio===hoy.getFullYear();
+          return <div key={i} className={`min-h-12 p-1 border-b border-r border-gray-50 ${!dia?"bg-gray-50":""}`}>
+            {dia&&<><p className={`text-xs font-medium text-center mb-0.5 w-6 h-6 flex items-center justify-center rounded-full mx-auto ${esHoy?"bg-violet-600 text-white":"text-gray-600"}`}>{dia}</p>
+            {evs.map((e,j)=><div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo==="taller"?"bg-amber-100 text-amber-700":"bg-violet-100 text-violet-700"}`}>{e.tipo==="taller"?e.quien:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</div>)}</>}
+          </div>;
+        })}</div>
+      </div>
+      <div className="flex gap-3">
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
+      </div>
+      {eventos.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
+          {[...eventos].sort((a,b)=>a.dia-b.dia).map((e,i)=>(
+            <div key={i} className="bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3">
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo==="taller"?"bg-amber-100 text-amber-700":"bg-violet-100 text-violet-700"}`}>{e.dia}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{e.tipo==="taller"?e.quien:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</p>
+                <p className="text-xs text-gray-500 truncate">{e.tipo==="taller"?e.descripcion:e.que}</p>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo==="taller"?"bg-amber-50 text-amber-600":"bg-violet-50 text-violet-600"}`}>{e.tipo==="taller"?"Taller":"Ofrecimiento"}</span>
+            </div>
           ))}
         </div>
       )}
@@ -1722,269 +883,162 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
 
 function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, initialTab }) {
   const [tab, setTab] = useState(initialTab || "ofrecimientos");
-
-  useEffect(() => {
-    if (initialTab) setTab(initialTab);
-  }, [initialTab]);
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[
-          { id: "ofrecimientos", label: "Ofrecimientos" },
-          { id: "talleres", label: "Talleres" },
-          { id: "calendario", label: "Calendario" },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-gray-500"}`}>
-            {t.label}
-          </button>
+        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"},{id:"calendario",label:"Calendario"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
         ))}
       </div>
-      {tab === "ofrecimientos" && <Ofrecimientos ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
-      {tab === "talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
-      {tab === "calendario" && <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />}
+      {tab==="ofrecimientos" && <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
+      {tab==="talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
+      {tab==="calendario" && <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />}
     </div>
   );
 }
 
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+
+function AdminView({ currentUserId }) {
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("profiles").select("*").order("created_at", { ascending: true })
+      .then(({ data }) => { setUsuarios(data || []); setLoading(false); });
+  }, []);
+
+  const handleAprobar = async (u) => {
+    await supabase.from("profiles").update({ aprobado: true, aprobado_at: new Date().toISOString() }).eq("id", u.id);
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, aprobado: true } : x));
+  };
+
+  const handleEliminar = async (u) => {
+    await supabase.from("profiles").delete().eq("id", u.id);
+    setUsuarios(prev => prev.filter(x => x.id !== u.id));
+  };
+
+  const toggleAdmin = async (u) => {
+    const val = !u.is_admin;
+    await supabase.from("profiles").update({ is_admin: val }).eq("id", u.id);
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: val } : x));
+  };
+
+  if (loading) return <p className="text-center text-gray-400 py-12">Cargando...</p>;
+
+  const pendientes = usuarios.filter(u => !u.aprobado && !u.is_admin);
+  const activos = usuarios.filter(u => u.aprobado || u.is_admin);
+
+  return (
+    <div className="space-y-5">
+      {pendientes.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2"><p className="text-sm font-bold text-gray-800">Pendientes</p><span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{pendientes.length}</span></div>
+          {pendientes.map(u => (
+            <div key={u.id} className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 font-bold flex-shrink-0">{(u.nombre||"?")[0].toUpperCase()}</div>
+                <div className="flex-1 min-w-0"><p className="font-semibold text-gray-800">{u.nombre}</p><p className="text-xs text-gray-500 truncate">{u.email}</p></div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleAprobar(u)} className="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600">✓ Aprobar</button>
+                <button onClick={() => handleEliminar(u)} className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50">Rechazar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="space-y-2.5">
+        <p className="text-sm font-bold text-gray-800">Usuarios activos</p>
+        {activos.map(u => (
+          <div key={u.id} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{(u.nombre||"?")[0].toUpperCase()}</div>
+            <div className="flex-1 min-w-0"><p className="font-semibold text-gray-800">{u.nombre}</p><p className="text-xs text-gray-400 truncate">{u.email}</p></div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {u.is_admin && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>}
+              {u.id !== currentUserId && (
+                <>
+                  <button onClick={() => toggleAdmin(u)} className={`text-xs px-2 py-1.5 rounded-full font-medium transition-all ${u.is_admin?"bg-red-50 text-red-500":"bg-gray-100 text-gray-600"}`}>{u.is_admin?"−Admin":"+Admin"}</button>
+                  <button onClick={() => handleEliminar(u)} className="text-xs px-2 py-1.5 rounded-full text-red-400 hover:bg-red-50">✕</button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── PUBLIC APP ────────────────────────────────────────────────────────────────
 
-function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onDeleteOfrecimiento, offline, showLogin, setShowLogin, onAuth }) {
+function PublicApp({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin }) {
   const [menu, setMenu] = useState("home");
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
 
-  const hoy = new Date();
-  const eventosHoy = [
-    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
-    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
-  ];
-
-  if (showLogin) return (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-        <button onClick={() => setShowLogin(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-        <h2 className="text-lg font-bold text-gray-900">Iniciar sesión</h2>
-        <p className="text-xs text-gray-400 mt-0.5">Acceso para organizadores</p>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        <AuthScreen onAuth={onAuth} />
-      </div>
-    </div>
-  );
+  const hoy = new Date().toISOString().slice(0,10);
+  const eventosHoy = [...(ofrecimientos||[]).filter(o=>o.fecha===hoy), ...(talleres||[]).filter(t=>t.fecha===hoy)];
 
   return (
     <>
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
-          <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-50">
-              <p className="text-xs text-gray-400">Campamento Bahá\'í Madrid</p>
-            </div>
-            <button onClick={() => { setShowAvatarMenu(false); setShowLogin(true); }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
-              <span className="text-lg">🔑</span>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Iniciar sesión</p>
-                <p className="text-xs text-gray-400">Acceso para organizadores</p>
-              </div>
+          <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e=>e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-50"><p className="text-xs text-gray-400">Campamento Bahá'í Madrid</p></div>
+            <button onClick={() => { setShowAvatarMenu(false); onLogin(); }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 text-left">
+              <span className="text-lg">🔑</span><div><p className="text-sm font-semibold text-gray-800">Iniciar sesión</p><p className="text-xs text-gray-400">Acceso para organizadores</p></div>
             </button>
           </div>
         </div>
       )}
-      <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá\'í</p>
-            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
-              <span className="text-lg">👤</span>
-            </button>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">{menu === "home" ? "Inicio" : "Servicios"}</h1>
-          {offline && (
-            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
-              <span className="text-sm">📶</span>
-              <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
-          {menu === "home" && (
-            <div className="space-y-4">
-              <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
-                <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
-                <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
-                <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá\'í de Estudios · Madrid</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }}
-                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">🎁</p>
-                  <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
-                </button>
-                <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }}
-                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">🎨</p>
-                  <p className="text-sm font-semibold text-gray-800">Talleres</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
-                </button>
-              </div>
-              {eventosHoy.length > 0 && (
-                <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
-                  <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
-                  {eventosHoy.map((e, i) => (
-                    <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {menu === "servicios" && (
-            <ServiciosView
-              talleres={talleres}
-              ofrecimientos={ofrecimientos}
-              familias={familias}
-              onAddTaller={onAddTaller}
-              onEditTaller={onEditTaller}
-              onDeleteTaller={onDeleteTaller}
-              onAddOfrecimiento={onAddOfrecimiento}
-              onDeleteOfrecimiento={onDeleteOfrecimiento}
-              initialTab={serviciosTab}
-            />
-          )}
-        </div>
-        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
-          <div className="flex max-w-lg mx-auto">
-            {[{ id: "home", label: "Inicio", icon: "🏠" }, { id: "servicios", label: "Servicios", icon: "🎨" }].map(item => (
-              <button key={item.id} onClick={() => setMenu(item.id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-xs font-medium">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-
-function OfrecimientosApp({ profile, talleres, ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onLogout, offline }) {
-  const [menu, setMenu] = useState("home");
-  const [showMenu, setShowMenu] = useState(false);
-
-  const NAV_ITEMS = [
-    { id: "home", label: "Inicio", icon: "🏠" },
-    { id: "servicios", label: "Servicios", icon: "🎨" },
-  ];
-
-  const hoy = new Date();
-  const eventosHoy = [
-    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
-    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
-  ];
-
-  return (
-    <>
-      {showMenu && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowMenu(false)}>
-          <div className="absolute top-0 right-0 w-64 bg-white shadow-xl h-full flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-5 pt-8 pb-5 border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg mb-3">
-                {profile?.nombre?.[0] || "?"}
-              </div>
-              <p className="font-bold text-gray-900 text-lg">Hola, {profile?.nombre} 👋</p>
-              <p className="text-xs text-gray-400 mt-0.5">{profile?.email || ""}</p>
-              <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full mt-1 inline-block">🎁 Ofrecimientos</span>
-            </div>
-            <div className="flex-1"></div>
-            <div className="px-3 pb-6">
-              <button onClick={onLogout} className="w-full px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors text-left flex items-center gap-3">
-                <span>🚪</span> Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
-            <button onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-sm">
-              {profile?.nombre?.[0]?.toUpperCase() || "?"}
-            </button>
+            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)} className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors"><span className="text-lg">👤</span></button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">
-            {menu === "home" ? "Inicio" : "Servicios"}
-          </h1>
-          {offline && (
-            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
-              <span className="text-sm">📶</span>
-              <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
-            </div>
-          )}
+          <h1 className="text-xl font-bold text-gray-900">{menu==="home"?"Inicio":"Servicios"}</h1>
+          {offline && <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2"><span className="text-sm">📶</span><p className="text-xs text-amber-700 font-medium">Sin conexión</p></div>}
         </div>
-
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
-          {menu === "home" && (
+          {menu==="home" && (
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
                 <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
-                <h2 className="text-xl font-bold mb-0.5">Hola, {profile?.nombre} 👋</h2>
-                <p className="text-sm opacity-70">6 – 31 julio · Madrid</p>
+                <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
+                <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setMenu("servicios")}
-                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">🎁</p>
-                  <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
+                <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }} className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">🎁</p><p className="text-sm font-semibold text-gray-800">Ofrecimientos</p><p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
                 </button>
-                <button onClick={() => setMenu("servicios")}
-                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">📅</p>
-                  <p className="text-sm font-semibold text-gray-800">Calendario</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Ver actividades</p>
+                <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }} className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">🎨</p><p className="text-sm font-semibold text-gray-800">Talleres</p><p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
                 </button>
               </div>
               {eventosHoy.length > 0 && (
                 <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
                   <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
-                  {eventosHoy.map((e, i) => (
-                    <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
-                  ))}
+                  {eventosHoy.map((e,i) => <p key={i} className="text-sm text-violet-700">{e.quien||e.que}</p>)}
                 </div>
               )}
             </div>
           )}
-          {menu === "servicios" && (
-            <ServiciosView
-              talleres={talleres}
-              ofrecimientos={ofrecimientos}
-              familias={familias}
-              onAddTaller={onAddTaller}
-              onEditTaller={onEditTaller}
-              onDeleteTaller={onDeleteTaller}
-              onAddOfrecimiento={onAddOfrecimiento}
-              onDeleteOfrecimiento={onDeleteOfrecimiento}
-            />
+          {menu==="servicios" && (
+            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+              onAddTaller={onAddTaller} onEditTaller={onEditTaller} onDeleteTaller={onDeleteTaller}
+              onAddOfrecimiento={onAddOfrecimiento} onDeleteOfrecimiento={onDeleteOfrecimiento}
+              initialTab={serviciosTab} />
           )}
         </div>
-
         <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
-            {NAV_ITEMS.map(item => (
-              <button key={item.id} onClick={() => setMenu(item.id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-xs font-medium">{item.label}</span>
+            {[{id:"home",label:"Inicio",icon:"🏠"},{id:"servicios",label:"Servicios",icon:"🎨"}].map(item=>(
+              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
           </div>
@@ -1994,7 +1048,7 @@ function OfrecimientosApp({ profile, talleres, ofrecimientos, familias, onAddOfr
   );
 }
 
-// ── APP ───────────────────────────────────────────────────────────────────────
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -2006,11 +1060,18 @@ export default function App() {
   const [talleres, setTalleres] = useState([]);
   const [ofrecimientos, setOfrecimientos] = useState([]);
   const [menu, setMenu] = useState("home");
-  const [tab, setTab] = useState("familias"); // sub-tab within confirmados
+  const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
-  const [filtroGrado, setFiltroGrado] = useState("Todos");
+  const [filtroRol, setFiltroRol] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
+  const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [detalleTarget, setDetalleTarget] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(!navigator.onLine);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -2020,45 +1081,22 @@ export default function App() {
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [detalleTarget, setDetalleTarget] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   const loadPublicData = async () => {
-    const cached = loadCache();
-    if (cached) {
-      setTalleres(cached.talleres || []);
-      setOfrecimientos(cached.ofrecimientos || []);
-      setFamilias(cached.familias || []);
-      setLoading(false);
-    }
-    const [{ data: talls }, { data: ofrecs }, { data: fams }] = await Promise.all([
-      supabase.from("talleres").select("*").order("created_at", { ascending: false }),
-      supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
-      supabase.from("familias").select("id, nombre, grado"),
-    ]);
-    setTalleres(talls || []);
-    setOfrecimientos(ofrecs || []);
-    setFamilias(fams || []);
+    try {
+      const [{ data: talls }, { data: ofrecs }, { data: fams }] = await Promise.all([
+        supabase.from("talleres").select("*").order("created_at", { ascending: false }),
+        supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
+        supabase.from("familias").select("id, nombre, grado"),
+      ]);
+      setTalleres(talls || []);
+      setOfrecimientos(ofrecs || []);
+      setFamilias(fams || []);
+    } catch(e) { console.error(e); }
     setLoading(false);
   };
 
   const initUser = async (u) => {
     setUser(u);
-
-    const cached = loadCache();
-    if (cached) {
-      setFamilias(cached.familias || []);
-      setVisitas(cached.visitas || []);
-      setVoluntarios(cached.voluntarios || []);
-      setTalleres(cached.talleres || []);
-      setOfrecimientos(cached.ofrecimientos || []);
-      setLoading(false);
-    }
-
     try {
       const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", u.id).single(),
@@ -2069,21 +1107,10 @@ export default function App() {
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
         supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
       ]);
-
-      setProfile(prof);
-      setAllProfiles(profs || []);
-      setFamilias(fams || []);
-      setVisitas(vis || []);
-      setVoluntarios(vols || []);
-      setTalleres(talls || []);
-      setOfrecimientos(ofrecs || []);
-      setLoading(false);
-
-      saveCache({ familias: fams || [], visitas: vis || [], voluntarios: vols || [], talleres: talls || [], ofrecimientos: ofrecs || [] });
-    } catch (err) {
-      console.error("Error loading data:", err);
-      setLoading(false);
-    }
+      setProfile(prof); setAllProfiles(profs || []); setFamilias(fams || []);
+      setVisitas(vis || []); setVoluntarios(vols || []); setTalleres(talls || []); setOfrecimientos(ofrecs || []);
+    } catch(e) { console.error(e); }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -2094,143 +1121,59 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (_e === "PASSWORD_RECOVERY") { setShowResetPassword(true); return; }
       if (session?.user) initUser(session.user);
-      else { setUser(null); setProfile(null); setLoading(false); }
+      else { setUser(null); setProfile(null); loadPublicData(); }
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const updateCache = (updates) => {
-    const cached = loadCache() || {};
-    saveCache({ ...cached, ...updates });
-  };
+  const isAdmin = profile?.is_admin;
 
-  const handleAddVisita = (v) => setVisitas(prev => { const next = [...prev, v]; updateCache({ visitas: next }); return next; });
-  const handleDeleteVisita = async (id) => {
-    setVisitas(prev => { const next = prev.filter(v => v.id !== id); updateCache({ visitas: next }); return next; }); // optimistic
-    await supabase.from("visitas").delete().eq("id", id);
-  };
-  const handleAddFamilia = (f) => {
-    setFamilias(prev => { const next = [f, ...prev]; updateCache({ familias: next }); return next; });
-    setShowNuevaFamilia(false);
-  };
-  const handleEditFamilia = (f) => {
-    setFamilias(prev => { const next = prev.map(x => x.id === f.id ? f : x); updateCache({ familias: next }); return next; });
-  };
-  const handleDeleteFamilia = async (id) => {
-    setFamilias(prev => { const next = prev.filter(f => f.id !== id); updateCache({ familias: next }); return next; }); // optimistic
-    await supabase.from("familias").delete().eq("id", id);
-  };
-  const handleLogout = async () => { await supabase.auth.signOut(); };
-
+  // Handlers
+  const handleAddVisita = (v) => setVisitas(prev => [...prev, v]);
+  const handleDeleteVisita = async (id) => { await supabase.from("visitas").delete().eq("id", id); setVisitas(prev => prev.filter(v=>v.id!==id)); };
+  const handleAddFamilia = (f) => { setFamilias(prev => [f, ...prev]); setShowNuevaFamilia(false); };
+  const handleEditFamilia = (f) => setFamilias(prev => prev.map(x=>x.id===f.id?f:x));
+  const handleDeleteFamilia = async (id) => { await supabase.from("familias").delete().eq("id", id); setFamilias(prev => prev.filter(f=>f.id!==id)); };
   const handleAddVoluntario = (v) => setVoluntarios(prev => [...prev, v]);
-  const handleEditVoluntario = (v) => setVoluntarios(prev => prev.map(x => x.id === v.id ? v : x));
+  const handleEditVoluntario = (v) => setVoluntarios(prev => prev.map(x=>x.id===v.id?v:x));
   const handleAddTaller = (t) => setTalleres(prev => [t, ...prev]);
-  const handleEditTaller = (t) => setTalleres(prev => prev.map(x => x.id === t.id ? t : x));
-  const handleDeleteTaller = async (id) => {
-    await supabase.from("talleres").delete().eq("id", id);
-    setTalleres(prev => prev.filter(t => t.id !== id));
-  };
+  const handleEditTaller = (t) => setTalleres(prev => prev.map(x=>x.id===t.id?t:x));
+  const handleDeleteTaller = async (id) => { await supabase.from("talleres").delete().eq("id", id); setTalleres(prev => prev.filter(t=>t.id!==id)); };
   const handleAddOfrecimiento = (o) => setOfrecimientos(prev => [...prev, o]);
-  const handleDeleteOfrecimiento = async (id) => {
-    await supabase.from("ofrecimientos").delete().eq("id", id);
-    setOfrecimientos(prev => prev.filter(o => o.id !== id));
-  };
-
-  const handleAddSolicitud = (s) => setSolicitudes(prev => [s, ...prev]);
-  const handleEditSolicitud = (s) => setSolicitudes(prev => prev.map(x => x.id === s.id ? s : x));
-  const handleMarcarVisto = async (id) => {
-    await supabase.from("solicitudes").delete().eq("id", id);
-    setSolicitudes(prev => prev.filter(s => s.id !== id));
-  };
-  const handleReactivar = async (id) => {
-    await supabase.from("solicitudes").update({ visto: false }).eq("id", id);
-    setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, visto: false } : s));
-  };
-  const handleConvertirSolicitud = async (s) => {
-    const id = s.nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
-    const { data } = await supabase.from("familias").insert({
-      id, nombre: s.nombre, telefono: s.telefono, hijos: s.hijos, grado: "Madre", servicio: "",
-    }).select().single();
-    if (data) {
-      setFamilias(prev => [data, ...prev]);
-      await supabase.from("solicitudes").delete().eq("id", s.id);
-      setSolicitudes(prev => prev.filter(x => x.id !== s.id));
-      setMenu("confirmados");
-      setTab("familias");
-    }
-  };
+  const handleDeleteOfrecimiento = async (id) => { await supabase.from("ofrecimientos").delete().eq("id", id); setOfrecimientos(prev => prev.filter(o=>o.id!==id)); };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setProfile(null); };
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-3">
-        <div className="h-8 bg-gray-200 rounded-xl animate-pulse w-3/4 mx-auto"></div>
-        <div className="h-4 bg-gray-200 rounded-xl animate-pulse w-1/2 mx-auto"></div>
-        <div className="mt-6 space-y-2.5">
-          {[1,2,3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse border border-gray-100"></div>)}
-        </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="space-y-3 w-64">
+        {[1,2,3].map(i => <div key={i} className="h-14 bg-white rounded-2xl animate-pulse border border-gray-100"></div>)}
       </div>
     </div>
   );
 
   if (showResetPassword) return <ResetPasswordScreen onDone={() => setShowResetPassword(false)} />;
 
-  // Not approved and not admin → show pending screen
-  if (user && profile && !profile.aprobado && !profile.is_admin) {
-    return <PendienteAprobacion email={user.email} onLogout={handleLogout} />;
-  }
-
-  // Ofrecimientos role → limited app (logged in)
-  if (user && profile?.rol === "ofrecimientos" && !profile?.is_admin) {
-    return (
-      <OfrecimientosApp
-        profile={profile}
-        talleres={talleres}
-        ofrecimientos={ofrecimientos}
-        familias={familias}
-        onAddOfrecimiento={handleAddOfrecimiento}
-        onDeleteOfrecimiento={handleDeleteOfrecimiento}
-        onAddTaller={handleAddTaller}
-        onEditTaller={handleEditTaller}
-        onDeleteTaller={handleDeleteTaller}
-        onLogout={handleLogout}
-        offline={offline}
-      />
-    );
-  }
-
-  // No user → public app (home + servicios only)
+  // PUBLIC: no user → show public app
   if (!user) {
+    if (showLogin) return (
+      <FullScreen title="Iniciar sesión" onBack={() => setShowLogin(false)}>
+        <AuthScreen onAuth={(u) => { setShowLogin(false); initUser(u); }} />
+      </FullScreen>
+    );
     return (
       <PublicApp
-        talleres={talleres}
-        ofrecimientos={ofrecimientos}
-        familias={familias}
-        onAddOfrecimiento={handleAddOfrecimiento}
-        onAddTaller={handleAddTaller}
-        onEditTaller={handleEditTaller}
-        onDeleteTaller={handleDeleteTaller}
-        onDeleteOfrecimiento={handleDeleteOfrecimiento}
-        offline={offline}
-        showLogin={showLogin}
-        setShowLogin={setShowLogin}
-        onAuth={(u) => initUser(u)}
+        talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+        onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
+        onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento}
+        offline={offline} onLogin={() => setShowLogin(true)}
       />
     );
   }
 
-  const roles = ["Todos", "Madre", "Padre", "Voluntario"];
-  const familiasFiltradas = familias.filter(f => {
-    const q = busqueda.toLowerCase();
-    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => {
-      const nombre = typeof h === "string" ? h : h.nombre;
-      return nombre?.toLowerCase().includes(q);
-    });
-    const matchR = filtroGrado === "Todos" || f.grado === filtroGrado;
-    return matchQ && matchR;
-  });
+  // PENDING APPROVAL
+  if (profile && !profile.aprobado && !isAdmin) return <PendienteAprobacion email={user.email} onLogout={handleLogout} />;
 
-  const isAdmin = profile?.is_admin;
-
+  // LOGGED IN APP
   const NAV_ITEMS = [
     { id: "home", label: "Inicio", icon: "🏠" },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
@@ -2238,221 +1181,276 @@ export default function App() {
     { id: "servicios", label: "Servicios", icon: "🎨" },
   ];
 
+  const roles = ["Todos", "Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
+  const familiasFiltradas = familias.filter(f => {
+    const q = busqueda.toLowerCase();
+    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
+    const matchR = filtroRol==="Todos" || f.grado===filtroRol;
+    return matchQ && matchR;
+  });
+
+  const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
+
   return (
     <>
       {detalleTarget && (
-        <DetalleScreen
-          familia={detalleTarget}
-          visitas={visitas.filter(v => v.familia_id === detalleTarget.id)}
-          currentUser={user}
-          allProfiles={allProfiles}
-          onAddVisita={handleAddVisita}
-          onDeleteVisita={handleDeleteVisita}
-          onClose={() => setDetalleTarget(null)}
-          isAdmin={isAdmin}
-        />
+        <DetalleScreen familia={detalleTarget} visitas={visitas.filter(v=>v.familia_id===detalleTarget.id)}
+          currentUser={user} allProfiles={allProfiles} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
+          onClose={() => setDetalleTarget(null)} isAdmin={isAdmin} />
       )}
-
-      {showMenu && (
-        <div className="fixed inset-0 z-50" onClick={() => setShowMenu(false)}>
-          <div className="absolute top-0 right-0 w-64 bg-white shadow-xl h-full flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-5 pt-8 pb-5 border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg mb-3">
-                {profile?.nombre?.[0] || "?"}
-              </div>
-              <p className="font-bold text-gray-900 text-lg">Hola, {profile?.nombre} 👋</p>
-              <p className="text-xs text-gray-400 mt-0.5">{profile?.email || ""}</p>
+      {showNuevaFamilia && (
+        <FullScreen title="Nueva familia" onBack={() => setShowNuevaFamilia(false)}>
+          <FamiliaForm onSave={handleAddFamilia} onCancel={() => setShowNuevaFamilia(false)} />
+        </FullScreen>
+      )}
+      {showAdmin && isAdmin && (
+        <FullScreen title="Administración" onBack={() => setShowAdmin(false)}>
+          <AdminView currentUserId={user.id} />
+        </FullScreen>
+      )}
+      {showAvatarMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
+          <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden" onClick={e=>e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+              <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold mb-2">{profile?.nombre?.[0]||"?"}</div>
+              <p className="font-bold text-gray-900">{profile?.nombre} 👋</p>
+              <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
             </div>
-            <div className="flex-1 px-3 py-4 space-y-1">
-              {isAdmin && (
-                <button onClick={() => { setMenu("admin"); setShowMenu(false); }}
-                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-violet-50 hover:text-violet-700 transition-colors flex items-center gap-3">
-                  <span>⚙️</span> Administración
-                </button>
-              )}
-            </div>
-            <div className="px-3 pb-6">
-              <button onClick={handleLogout}
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors text-left flex items-center gap-3">
-                <span>🚪</span> Cerrar sesión
-              </button>
+            <div className="px-2 py-2">
+              {isAdmin && <button onClick={() => { setShowAvatarMenu(false); setShowAdmin(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>⚙️</span><p className="text-sm font-semibold text-gray-800">Administración</p></button>}
+              <button onClick={() => { setShowAvatarMenu(false); handleLogout(); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 text-left"><span>🚪</span><p className="text-sm font-medium text-red-500">Cerrar sesión</p></button>
             </div>
           </div>
         </div>
       )}
 
-      {menu === "admin" && isAdmin && (
-        <div className="fixed inset-0 bg-gray-50 z-40 flex flex-col overflow-hidden">
-          <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-            <button onClick={() => setMenu("confirmados")} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-            <h2 className="text-lg font-bold text-gray-900">Administración</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <AdminView currentUserId={user.id} />
-          </div>
-        </div>
-      )}
-      {menu === "confirmados" && showNuevaFamilia && (
-        <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
-          <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
-            <button onClick={()=>setShowNuevaFamilia(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
-            <h2 className="text-lg font-bold text-gray-900">Nueva familia</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <FamiliaForm onSave={handleAddFamilia} onCancel={()=>setShowNuevaFamilia(false)} />
-          </div>
-        </div>
-      )}
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+        {/* Header */}
         <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
-            <button onClick={() => setShowMenu(!showMenu)}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-sm hover:bg-violet-200 transition-colors flex-shrink-0">
-              {profile?.nombre?.[0]?.toUpperCase() || "?"}
+            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-sm hover:bg-violet-200 transition-colors">
+              {profile?.nombre?.[0]?.toUpperCase()||"?"}
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu === "home" ? "Inicio" : menu === "voluntarios" ? "Voluntarios" : menu === "servicios" ? "Servicios" : "Familias"}
+            {menu==="home"?"Inicio":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">6 – 31 julio · Centro Bahá'í de Estudios</p>
-          {offline && (
-            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
-              <span className="text-sm">📶</span>
-              <p className="text-xs text-amber-700 font-medium">Sin conexión — mostrando datos guardados</p>
-            </div>
-          )}
-
-          {menu === "confirmados" && (
-            <div className="flex gap-1 mt-4 bg-gray-100 rounded-xl p-1">
-              {[
-                {id:"familias",label:"Familias"},
-                {id:"recientes",label:"Conversaciones"},
-                {id:"participantes",label:"Participantes"},
-              ].map(t=>(
-                <button key={t.id} onClick={()=>setTab(t.id)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
-                  {t.label}
-                </button>
+          {offline && <div className="mt-1 text-xs text-amber-600">📶 Sin conexión</div>}
+          {menu==="confirmados" && (
+            <div className="flex gap-1 mt-3 bg-gray-100 rounded-xl p-1">
+              {[{id:"familias",label:"Familias"},{id:"recientes",label:"Conversaciones"},{id:"participantes",label:"Participantes"}].map(t=>(
+                <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-4 w-full max-w-lg mx-auto space-y-4">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
 
-          {menu === "home" && (
-            <HomeView
-              familias={familias}
-              visitas={visitas}
-              voluntarios={voluntarios}
-              talleres={talleres}
-              ofrecimientos={ofrecimientos}
-              profile={profile}
-              onNavigate={(m, t) => { setMenu(m); if (t) setTab(t); }}
-            />
-          )}
-
-          {menu === "confirmados" && tab==="familias" && (
-            <>
-              {!showNuevaFamilia && (
-                <button onClick={()=>setShowNuevaFamilia(true)}
-                  className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
-                  + Nueva familia
+          {/* HOME */}
+          {menu==="home" && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
+                <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
+                <h2 className="text-xl font-bold mb-0.5">Hola, {profile?.nombre} 👋</h2>
+                <p className="text-sm opacity-70">6 – 31 julio · Madrid</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
+                  {label:"Voluntarios",value:voluntarios.length,icon:"🙌",m:"voluntarios"},
+                  {label:"Talleres",value:`${talleres.length}/16`,icon:"🎨",m:"servicios"},
+                ].map(s=>(
+                  <button key={s.label} onClick={() => setMenu(s.m)} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                    <p className="text-xl mb-1">{s.icon}</p><p className="text-lg font-bold text-violet-600">{s.value}</p><p className="text-xs text-gray-500">{s.label}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
+                {[
+                  {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
+                  {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
+                  {label:"Conversaciones recientes",icon:"💬",m:"confirmados",t:"recientes"},
+                  {label:"Calendario de servicios",icon:"📅",m:"servicios"},
+                ].map((item,i)=>(
+                  <button key={i} onClick={() => { setMenu(item.m); if(item.t) setTab(item.t); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
+                    <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-300">›</span>
+                  </button>
+                ))}
+              </div>
+              {talleres.length < 16 && (
+                <button onClick={() => setMenu("servicios")} className="w-full bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-left">
+                  <span className="text-xl">⚠️</span><div><p className="text-sm font-semibold text-amber-800">Faltan {16-talleres.length} talleres</p><p className="text-xs text-amber-600">Toca para ir a Servicios</p></div><span className="ml-auto text-amber-300">›</span>
                 </button>
               )}
+            </div>
+          )}
 
+          {/* FAMILIAS */}
+          {menu==="confirmados" && tab==="familias" && (
+            <>
+              <button onClick={() => setShowNuevaFamilia(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Nueva familia</button>
               <div className="flex gap-2">
                 <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
                 <div className="relative">
-                  <button onClick={()=>setShowFiltro(!showFiltro)}
-                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroGrado!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
-                    🔽 {filtroGrado==="Todos"?"Filtrar":filtroGrado}
+                  <button onClick={() => setShowFiltro(!showFiltro)}
+                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroRol!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                    🔽 {filtroRol==="Todos"?"Filtrar":filtroRol}
                   </button>
                   {showFiltro && (
                     <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
-                      {roles.map(g=>(
-                        <button key={g} onClick={()=>{ setFiltroGrado(g); setShowFiltro(false); }}
-                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${filtroGrado===g?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
-                          {g}
-                        </button>
+                      {roles.map(r=>(
+                        <button key={r} onClick={() => { setFiltroRol(r); setShowFiltro(false); }}
+                          className={`w-full text-left px-4 py-3 text-sm ${filtroRol===r?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{r}</button>
                       ))}
                     </div>
                   )}
                 </div>
               </div>
-
               <div className="space-y-2.5">
                 {familiasFiltradas.map(f=>(
-                  <FamiliaCard key={f.id} familia={f}
-                    visitas={visitas.filter(v=>v.familia_id===f.id)}
-                    currentUser={user} allProfiles={allProfiles}
-                    onAddVisita={handleAddVisita}
-                    onDeleteVisita={handleDeleteVisita}
-                    onEdit={handleEditFamilia}
-                    onDelete={handleDeleteFamilia}
-                    isAdmin={isAdmin}
-                    onAddOfrecimiento={handleAddOfrecimiento}
-                    onVerDetalle={(f) => setDetalleTarget(f)} />
+                  <FamiliaCard key={f.id} familia={f} visitas={visitas.filter(v=>v.familia_id===f.id)}
+                    currentUser={user} allProfiles={allProfiles} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
+                    onEdit={handleEditFamilia} onDelete={handleDeleteFamilia} isAdmin={isAdmin}
+                    onAddOfrecimiento={handleAddOfrecimiento} onVerDetalle={setDetalleTarget} />
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
               </div>
             </>
           )}
-          {menu === "confirmados" && tab==="recientes" && (
-            <RecientesView
-              visitas={visitas}
-              familias={familias}
-              onVerPerfil={(id) => {
-                const f = familias.find(x => x.id === id);
-                if (f) setDetalleTarget(f);
-              }}
-            />
-          )}
-          {menu === "confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
 
-          {menu === "voluntarios" && (
-            <VoluntariosView
-              voluntarios={voluntarios}
-              isAdmin={isAdmin}
-              onAdd={handleAddVoluntario}
-              onEdit={handleEditVoluntario}
-            />
+          {/* CONVERSACIONES RECIENTES */}
+          {menu==="confirmados" && tab==="recientes" && (
+            <RecientesView visitas={visitas} familias={familias} onVerPerfil={(f) => setDetalleTarget(f)} />
           )}
 
-          {menu === "servicios" && (
-            <ServiciosView
-              talleres={talleres}
-              ofrecimientos={ofrecimientos}
-              familias={familias}
-              onAddTaller={handleAddTaller}
-              onEditTaller={handleEditTaller}
-              onDeleteTaller={handleDeleteTaller}
-              onAddOfrecimiento={handleAddOfrecimiento}
-              onDeleteOfrecimiento={handleDeleteOfrecimiento}
-            />
+          {/* PARTICIPANTES */}
+          {menu==="confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
+
+          {/* VOLUNTARIOS */}
+          {menu==="voluntarios" && <VoluntariosView voluntarios={voluntarios} isAdmin={isAdmin} onAdd={handleAddVoluntario} onEdit={handleEditVoluntario} />}
+
+          {/* SERVICIOS */}
+          {menu==="servicios" && (
+            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+              onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
+              onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento} />
           )}
         </div>
 
-        {/* Bottom navigation */}
+        {/* Bottom Nav */}
         <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
-            {NAV_ITEMS.map(item => (
+            {NAV_ITEMS.map(item=>(
               <button key={item.id} onClick={() => setMenu(item.id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 relative transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-xs font-medium">{item.label}</span>
-                {item.badge > 0 && (
-                  <span className="absolute top-1 right-1/4 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {item.badge}
-                  </span>
-                )}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+// ── RECIENTES Y PARTICIPANTES ─────────────────────────────────────────────────
+
+function RecientesView({ visitas, familias, onVerPerfil }) {
+  const [conversaciones, setConversaciones] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) {
+      supabase.from("conversaciones").select("*, profiles(nombre)").order("created_at", { ascending: false })
+        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
+    }
+  }, [loaded]);
+
+  const feed = [
+    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha })),
+    ...conversaciones.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
+  ].sort((a,b) => b._sort.localeCompare(a._sort));
+
+  return (
+    <div className="space-y-3">
+      {feed.length === 0 ? <p className="text-center text-gray-400 py-12">Sin actividad</p> :
+        feed.map(item => {
+          const familia = familias.find(f => f.id === item.familia_id);
+          const esVisita = item.tipo === "visita";
+          const preview = esVisita ? `U${item.unidad} · S${item.seccion} · ${UNIDADES[item.unidad]?.secciones[item.seccion]}` : item.nota;
+          const fecha = esVisita ? item.fecha : new Date(item.created_at).toLocaleDateString("es-ES");
+          return (
+            <button key={item.id} onClick={() => familia && onVerPerfil(familia)} className="w-full text-left bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 active:bg-gray-50 transition-colors">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita?"bg-violet-100 text-violet-700":"bg-amber-100 text-amber-700"}`}>{esVisita?"📖 Visita":"💬 Conversación"}</span>
+                {familia && <Badge text={familia.grado} />}
+              </div>
+              <p className="text-sm text-gray-700 line-clamp-2 mb-1.5">{preview}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{fecha}</span>
+                <span className="text-gray-200">·</span>
+                <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
+                <span className="text-gray-200">·</span>
+                <span className="text-xs text-gray-400">{item.profiles?.nombre}</span>
+              </div>
+            </button>
+          );
+        })}
+    </div>
+  );
+}
+
+function ParticipantesView({ familias }) {
+  const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState("Todos");
+  const [showFiltro, setShowFiltro] = useState(false);
+
+  const participantes = familias.flatMap(f =>
+    (f.hijos || []).map(h => ({ ...(typeof h==="string"?{nombre:h,edad:"",curso:""}:h), madre: f.nombre }))
+  ).filter(p => {
+    const q = busqueda.toLowerCase();
+    const matchQ = !q || p.nombre?.toLowerCase().includes(q) || p.madre?.toLowerCase().includes(q);
+    const matchF = filtro==="Todos" || p.curso===filtro;
+    return matchQ && matchF;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <input type="text" placeholder="Buscar participante..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+        <div className="relative">
+          <button onClick={() => setShowFiltro(!showFiltro)}
+            className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtro!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+            🔽 {filtro==="Todos"?"Filtrar":filtro}
+          </button>
+          {showFiltro && (
+            <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
+              {["Todos",...CURSOS].map(c=>(
+                <button key={c} onClick={() => { setFiltro(c); setShowFiltro(false); }}
+                  className={`w-full text-left px-4 py-3 text-sm ${filtro===c?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{c}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {participantes.length === 0 ? <p className="text-center text-gray-400 py-12">Sin participantes</p> : (
+        <div className="space-y-2.5">{participantes.map((p,i)=>(
+          <div key={i} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{(p.nombre||"?")[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{p.nombre||"—"}</span>{p.curso&&<Badge text={p.curso}/>}</div>
+              <div className="flex items-center gap-2 mt-0.5">{p.edad&&<span className="text-xs text-gray-400">{p.edad} años</span>}<span className="text-xs text-gray-400">· {p.madre}</span></div>
+            </div>
+          </div>
+        ))}</div>
+      )}
+    </div>
   );
 }
