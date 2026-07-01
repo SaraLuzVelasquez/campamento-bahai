@@ -334,21 +334,6 @@ function AuthScreen({ onAuth }) {
                   autoComplete="off" autoCorrect="off" spellCheck="false"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
               </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-2 block">¿Cómo quieres participar?</label>
-                <div className="space-y-2">
-                  <button onClick={() => setRol("organizador")}
-                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${rol==="organizador"?"border-violet-500 bg-violet-50":"border-gray-200 hover:border-gray-300"}`}>
-                    <p className="text-sm font-semibold text-gray-800">🏕️ Organizador del campus</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Gestiona familias, voluntarios y actividades</p>
-                  </button>
-                  <button onClick={() => setRol("ofrecimientos")}
-                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${rol==="ofrecimientos"?"border-violet-500 bg-violet-50":"border-gray-200 hover:border-gray-300"}`}>
-                    <p className="text-sm font-semibold text-gray-800">🎁 Ofrecer un servicio</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Registra y gestiona tus ofrecimientos</p>
-                  </button>
-                </div>
-              </div>
             </>
           )}
           <div>
@@ -1251,10 +1236,16 @@ function AdminView({ currentUserId }) {
             <div className="flex items-center gap-2 flex-shrink-0">
               {u.is_admin && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>}
               {u.id !== currentUserId && (
-                <button onClick={() => toggleAdmin(u)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${u.is_admin ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"}`}>
-                  {u.is_admin ? "Quitar admin" : "Hacer admin"}
-                </button>
+                <div className="flex gap-1">
+                  <button onClick={() => toggleAdmin(u)}
+                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${u.is_admin ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"}`}>
+                    {u.is_admin ? "Quitar admin" : "Admin"}
+                  </button>
+                  <button onClick={() => handleRechazar(u)}
+                    className="text-xs px-2 py-1.5 rounded-full text-red-400 hover:bg-red-50 transition-all">
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1824,6 +1815,246 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   );
 }
 
+// ── TWO STEP FORM ─────────────────────────────────────────────────────────────
+
+function TwoStepForm({ tipo, familias, onSave, onCancel }) {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState(null);
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleStep1 = (data) => { setFormData(data); setStep(2); };
+
+  const handleStep2 = async () => {
+    if (!nombre.trim()) { setError("Escribe tu nombre"); return; }
+    if (!email.trim()) { setError("Escribe tu correo"); return; }
+    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    setSaving(true); setError("");
+
+    // Create user account
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { nombre, rol: "ofrecimientos" } }
+    });
+
+    if (authError) {
+      if (authError.message.includes("already registered")) {
+        // User exists, just sign in
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginError) { setError("Correo o contraseña incorrectos."); setSaving(false); return; }
+      } else {
+        setError("No se ha podido crear la cuenta. Inténtalo de nuevo.");
+        setSaving(false); return;
+      }
+    }
+
+    // Now save the form data (user is authenticated)
+    await onSave(formData);
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={step === 1 ? onCancel : () => setStep(1)}
+          className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">
+            {tipo === "ofrecimiento" ? "Nuevo ofrecimiento" : "Nuevo taller"}
+          </h2>
+          <div className="flex gap-1.5">
+            {[1,2].map(s => (
+              <div key={s} className={`w-2 h-2 rounded-full ${step >= s ? "bg-violet-600" : "bg-gray-200"}`} />
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">Paso {step} de 2</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {step === 1 ? (
+          tipo === "ofrecimiento"
+            ? <OfrecimientoForm familias={familias} onSave={handleStep1} onCancel={onCancel} />
+            : <TallerForm onSave={handleStep1} onCancel={onCancel} />
+        ) : (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+            <div className="bg-violet-50 rounded-xl p-3">
+              <p className="text-sm text-violet-700 font-medium">¡Casi listo! 🎉</p>
+              <p className="text-sm text-violet-600 mt-0.5">Crea una cuenta para guardar tu {tipo === "ofrecimiento" ? "ofrecimiento" : "taller"} y poder gestionarlo después.</p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
+              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: María"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
+            {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+            <button onClick={handleStep2} disabled={saving}
+              className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+              {saving ? "Guardando..." : "Guardar y crear cuenta"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PUBLIC APP ────────────────────────────────────────────────────────────────
+
+function PublicApp({ talleres, ofrecimientos, familias, onAddOfrecimiento, onAddTaller, onLogin, offline, showLogin, setShowLogin, onAuth }) {
+  const [menu, setMenu] = useState("home");
+  const [showTwoStep, setShowTwoStep] = useState(null); // "ofrecimiento" | "taller" | null
+
+  const hoy = new Date();
+  const eventosHoy = [
+    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
+    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
+  ];
+
+  if (showLogin) return (
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <button onClick={() => setShowLogin(false)} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900">Iniciar sesión</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Accede como organizador</p>
+      </div>
+      <div className="flex-1 flex items-center justify-center px-4">
+        <AuthScreen onAuth={onAuth} />
+      </div>
+    </div>
+  );
+
+  if (showTwoStep) return (
+    <TwoStepForm
+      tipo={showTwoStep}
+      familias={familias}
+      onSave={async (data) => {
+        if (showTwoStep === "ofrecimiento") await onAddOfrecimiento(data);
+        else await onAddTaller(data);
+        setShowTwoStep(null);
+      }}
+      onCancel={() => setShowTwoStep(null)}
+    />
+  );
+
+  return (
+    <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
+          <button onClick={() => setShowLogin(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
+            <span className="text-lg">👤</span>
+          </button>
+        </div>
+        <h1 className="text-xl font-bold text-gray-900">
+          {menu === "home" ? "Inicio" : "Servicios"}
+        </h1>
+        {offline && (
+          <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span className="text-sm">📶</span>
+            <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+        {menu === "home" && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
+              <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
+              <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
+              <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setMenu("servicios"); }}
+                className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                <p className="text-2xl mb-2">🎁</p>
+                <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
+                <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
+              </button>
+              <button onClick={() => { setMenu("servicios"); }}
+                className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                <p className="text-2xl mb-2">🎨</p>
+                <p className="text-sm font-semibold text-gray-800">Talleres</p>
+                <p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
+              </button>
+            </div>
+
+            {eventosHoy.length > 0 && (
+              <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
+                <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
+                {eventosHoy.map((e, i) => (
+                  <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">¿Quieres participar?</p>
+              <button onClick={() => setShowTwoStep("ofrecimiento")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
+                <span className="text-lg">🎁</span>
+                <span className="text-sm text-gray-700 font-medium">Ofrecer algo al campamento</span>
+                <span className="ml-auto text-gray-300">›</span>
+              </button>
+              <button onClick={() => setShowTwoStep("taller")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 text-left">
+                <span className="text-lg">🎨</span>
+                <span className="text-sm text-gray-700 font-medium">Proponer un taller</span>
+                <span className="ml-auto text-gray-300">›</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {menu === "servicios" && (
+          <ServiciosView
+            talleres={talleres}
+            ofrecimientos={ofrecimientos}
+            familias={familias}
+            onAddTaller={async (t) => { setShowTwoStep("taller"); }}
+            onEditTaller={() => {}}
+            onDeleteTaller={() => {}}
+            onAddOfrecimiento={async (o) => { setShowTwoStep("ofrecimiento"); }}
+            onDeleteOfrecimiento={() => {}}
+            publicMode={true}
+            onTwoStep={(tipo) => setShowTwoStep(tipo)}
+          />
+        )}
+      </div>
+
+      <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
+        <div className="flex max-w-lg mx-auto">
+          {[
+            { id: "home", label: "Inicio", icon: "🏠" },
+            { id: "servicios", label: "Servicios", icon: "🎨" },
+          ].map(item => (
+            <button key={item.id} onClick={() => setMenu(item.id)}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-xs font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── OFRECIMIENTOS APP (limited role view) ────────────────────────────────────
 
 function OfrecimientosApp({ profile, talleres, ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onLogout, offline }) {
@@ -1973,6 +2204,7 @@ export default function App() {
   }, []);
 
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
@@ -1981,7 +2213,7 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) initUser(session.user);
-      else setLoading(false);
+      else loadPublicData();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (_e === "PASSWORD_RECOVERY") { setShowResetPassword(true); return; }
@@ -1990,6 +2222,25 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadPublicData = async () => {
+    const cached = loadCache();
+    if (cached) {
+      setTalleres(cached.talleres || []);
+      setOfrecimientos(cached.ofrecimientos || []);
+      setFamilias(cached.familias || []);
+      setLoading(false);
+    }
+    const [{ data: talls }, { data: ofrecs }, { data: fams }] = await Promise.all([
+      supabase.from("talleres").select("*").order("created_at", { ascending: false }),
+      supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
+      supabase.from("familias").select("id, nombre, grado"),
+    ]);
+    setTalleres(talls || []);
+    setOfrecimientos(ofrecs || []);
+    setFamilias(fams || []);
+    setLoading(false);
+  };
 
   const initUser = async (u) => {
     setUser(u);
@@ -2129,15 +2380,13 @@ export default function App() {
 
   if (showResetPassword) return <ResetPasswordScreen onDone={() => setShowResetPassword(false)} />;
 
-  if (!user) return <AuthScreen onAuth={(u) => initUser(u)} />;
-
   // Not approved and not admin → show pending screen
-  if (profile && !profile.aprobado && !profile.is_admin) {
+  if (user && profile && !profile.aprobado && !profile.is_admin) {
     return <PendienteAprobacion email={user.email} onLogout={handleLogout} />;
   }
 
-  // Ofrecimientos role → limited app
-  if (profile?.rol === "ofrecimientos" && !profile?.is_admin) {
+  // Ofrecimientos role → limited app (logged in)
+  if (user && profile?.rol === "ofrecimientos" && !profile?.is_admin) {
     return (
       <OfrecimientosApp
         profile={profile}
@@ -2151,6 +2400,24 @@ export default function App() {
         onDeleteTaller={handleDeleteTaller}
         onLogout={handleLogout}
         offline={offline}
+      />
+    );
+  }
+
+  // No user → public app (home + servicios only)
+  if (!user) {
+    return (
+      <PublicApp
+        talleres={talleres}
+        ofrecimientos={ofrecimientos}
+        familias={familias}
+        onAddOfrecimiento={handleAddOfrecimiento}
+        onAddTaller={handleAddTaller}
+        onLogin={() => setShowLogin(true)}
+        offline={offline}
+        showLogin={showLogin}
+        setShowLogin={setShowLogin}
+        onAuth={(u) => initUser(u)}
       />
     );
   }
