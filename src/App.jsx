@@ -229,11 +229,32 @@ function ResetPasswordScreen({ onDone }) {
   );
 }
 
+function PendienteAprobacion({ email, onLogout }) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm text-center">
+        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏳</div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Cuenta pendiente</h1>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Tu cuenta está pendiente de aprobación. El administrador revisará tu solicitud y recibirás un correo en <span className="font-medium text-gray-700">{email}</span> cuando se apruebe.
+        </p>
+        <div className="bg-violet-50 rounded-2xl p-4 mb-6">
+          <p className="text-sm text-violet-700">💛 Gracias por querer participar en el Campamento Urbano Comunitario</p>
+        </div>
+        <button onClick={onLogout} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
+  const [rol, setRol] = useState("organizador");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -250,15 +271,21 @@ function AuthScreen({ onAuth }) {
 
   const handleRegister = async () => {
     if (!nombre.trim()) { setError("Escribe tu nombre"); return; }
-    if (nombre.includes("@")) { setError("El nombre no puede ser un correo. Escribe solo tu nombre, por ejemplo: Sara"); return; }
+    if (nombre.includes("@")) { setError("El nombre no puede ser un correo. Escribe solo tu nombre"); return; }
     if (!email.trim()) { setError("Escribe tu correo electrónico"); return; }
     if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
     setLoading(true); setError("");
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } });
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { nombre, rol } }
+    });
     if (error) {
       if (error.message.includes("already registered")) setError("Este correo ya tiene una cuenta. Prueba a entrar directamente.");
       else setError("Algo ha salido mal. Inténtalo de nuevo.");
-    } else { setSuccess("¡Cuenta creada! Ya puedes entrar."); setMode("login"); }
+    } else {
+      setSuccess("¡Cuenta creada! Ya puedes entrar.");
+      setMode("login");
+    }
     setLoading(false);
   };
 
@@ -299,13 +326,30 @@ function AuthScreen({ onAuth }) {
               <p className="text-sm text-gray-500">Te enviaremos un enlace a tu correo.</p>
             </div>
           )}
-          {mode==="register" && (
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
-              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
-                autoComplete="off" autoCorrect="off" spellCheck="false"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-            </div>
+          {mode === "register" && (
+            <>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Tu nombre</label>
+                <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Sara"
+                  autoComplete="off" autoCorrect="off" spellCheck="false"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-2 block">¿Cómo quieres participar?</label>
+                <div className="space-y-2">
+                  <button onClick={() => setRol("organizador")}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${rol==="organizador"?"border-violet-500 bg-violet-50":"border-gray-200 hover:border-gray-300"}`}>
+                    <p className="text-sm font-semibold text-gray-800">🏕️ Organizador del campus</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Gestiona familias, voluntarios y actividades</p>
+                  </button>
+                  <button onClick={() => setRol("ofrecimientos")}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${rol==="ofrecimientos"?"border-violet-500 bg-violet-50":"border-gray-200 hover:border-gray-300"}`}>
+                    <p className="text-sm font-semibold text-gray-800">🎁 Ofrecer un servicio</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Registra y gestiona tus ofrecimientos</p>
+                  </button>
+                </div>
+              </div>
+            </>
           )}
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
@@ -1121,11 +1165,28 @@ function ParticipantesView({ familias }) {
 function AdminView({ currentUserId }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [procesando, setProcesando] = useState(null);
 
   useEffect(() => {
     supabase.from("profiles").select("*").order("created_at", { ascending: true })
       .then(({ data }) => { setUsuarios(data || []); setLoading(false); });
   }, []);
+
+  const handleAprobar = async (u) => {
+    setProcesando(u.id);
+    await supabase.from("profiles").update({ aprobado: true, aprobado_at: new Date().toISOString() }).eq("id", u.id);
+    // Send approval email via Supabase Auth admin (we update metadata to trigger notification)
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, aprobado: true } : x));
+    setProcesando(null);
+  };
+
+  const handleRechazar = async (u) => {
+    setProcesando(u.id);
+    await supabase.from("profiles").update({ aprobado: false }).eq("id", u.id);
+    await supabase.auth.admin?.deleteUser?.(u.id); // best-effort
+    setUsuarios(prev => prev.filter(x => x.id !== u.id));
+    setProcesando(null);
+  };
 
   const toggleAdmin = async (u) => {
     const nuevoValor = !u.is_admin;
@@ -1133,32 +1194,64 @@ function AdminView({ currentUserId }) {
     setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: nuevoValor } : x));
   };
 
+  const pendientes = usuarios.filter(u => !u.aprobado && !u.is_admin);
+  const aprobados = usuarios.filter(u => u.aprobado || u.is_admin);
+
   if (loading) return <p className="text-center text-gray-400 py-12">Cargando...</p>;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
-        <p className="text-sm text-amber-700 font-medium">Sección de administración</p>
-        <p className="text-xs text-amber-600 mt-0.5">Solo visible para administradores. Puedes ver los usuarios registrados y gestionar permisos.</p>
-      </div>
+    <div className="space-y-5">
+      {pendientes.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold text-gray-800">Pendientes de aprobación</p>
+            <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{pendientes.length}</span>
+          </div>
+          {pendientes.map(u => (
+            <div key={u.id} className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 font-bold flex-shrink-0">
+                  {(u.nombre || "?")[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800">{u.nombre}</p>
+                  <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                  <span className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                    {u.rol === "ofrecimientos" ? "🎁 Ofrecimientos" : "🏕️ Organizador"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleAprobar(u)} disabled={procesando === u.id}
+                  className="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-all">
+                  {procesando === u.id ? "..." : "✓ Aprobar"}
+                </button>
+                <button onClick={() => handleRechazar(u)} disabled={procesando === u.id}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all">
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-2.5">
-        {usuarios.map(u => (
+        <p className="text-sm font-bold text-gray-800">Usuarios activos</p>
+        {aprobados.map(u => (
           <div key={u.id} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">
               {(u.nombre || "?")[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-800">{u.nombre}</p>
-              <p className="text-xs text-gray-400 truncate">{u.email || "—"}</p>
+              <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              <span className="text-xs text-gray-500">{u.rol === "ofrecimientos" ? "🎁 Ofrecimientos" : "🏕️ Organizador"}</span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {u.is_admin && (
-                <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
-              )}
+              {u.is_admin && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>}
               {u.id !== currentUserId && (
-                <button
-                  onClick={() => toggleAdmin(u)}
+                <button onClick={() => toggleAdmin(u)}
                   className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${u.is_admin ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"}`}>
                   {u.is_admin ? "Quitar admin" : "Hacer admin"}
                 </button>
@@ -1731,6 +1824,128 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   );
 }
 
+// ── OFRECIMIENTOS APP (limited role view) ────────────────────────────────────
+
+function OfrecimientosApp({ profile, talleres, ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento, onAddTaller, onEditTaller, onDeleteTaller, onLogout, offline }) {
+  const [menu, setMenu] = useState("home");
+  const [showMenu, setShowMenu] = useState(false);
+
+  const NAV_ITEMS = [
+    { id: "home", label: "Inicio", icon: "🏠" },
+    { id: "servicios", label: "Servicios", icon: "🎨" },
+  ];
+
+  const hoy = new Date();
+  const eventosHoy = [
+    ...(ofrecimientos || []).filter(o => o.fecha === hoy.toISOString().slice(0,10)),
+    ...(talleres || []).filter(t => t.fecha === hoy.toISOString().slice(0,10)),
+  ];
+
+  return (
+    <>
+      {showMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowMenu(false)}>
+          <div className="absolute top-0 right-0 w-64 bg-white shadow-xl h-full flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-8 pb-5 border-b border-gray-100">
+              <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg mb-3">
+                {profile?.nombre?.[0] || "?"}
+              </div>
+              <p className="font-bold text-gray-900 text-lg">Hola, {profile?.nombre} 👋</p>
+              <p className="text-xs text-gray-400 mt-0.5">{profile?.email || ""}</p>
+              <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full mt-1 inline-block">🎁 Ofrecimientos</span>
+            </div>
+            <div className="flex-1"></div>
+            <div className="px-3 pb-6">
+              <button onClick={onLogout} className="w-full px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors text-left flex items-center gap-3">
+                <span>🚪</span> Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
+        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
+            <button onClick={() => setShowMenu(!showMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-sm">
+              {profile?.nombre?.[0]?.toUpperCase() || "?"}
+            </button>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {menu === "home" ? "Inicio" : "Servicios"}
+          </h1>
+          {offline && (
+            <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+              <span className="text-sm">📶</span>
+              <p className="text-xs text-amber-700 font-medium">Sin conexión — datos guardados</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+          {menu === "home" && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
+                <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
+                <h2 className="text-xl font-bold mb-0.5">Hola, {profile?.nombre} 👋</h2>
+                <p className="text-sm opacity-70">6 – 31 julio · Madrid</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setMenu("servicios")}
+                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">🎁</p>
+                  <p className="text-sm font-semibold text-gray-800">Ofrecimientos</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
+                </button>
+                <button onClick={() => setMenu("servicios")}
+                  className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <p className="text-2xl mb-2">📅</p>
+                  <p className="text-sm font-semibold text-gray-800">Calendario</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Ver actividades</p>
+                </button>
+              </div>
+              {eventosHoy.length > 0 && (
+                <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
+                  <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
+                  {eventosHoy.map((e, i) => (
+                    <p key={i} className="text-sm text-violet-700">{e.quien || e.que}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {menu === "servicios" && (
+            <ServiciosView
+              talleres={talleres}
+              ofrecimientos={ofrecimientos}
+              familias={familias}
+              onAddTaller={onAddTaller}
+              onEditTaller={onEditTaller}
+              onDeleteTaller={onDeleteTaller}
+              onAddOfrecimiento={onAddOfrecimiento}
+              onDeleteOfrecimiento={onDeleteOfrecimiento}
+            />
+          )}
+        </div>
+
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
+          <div className="flex max-w-lg mx-auto">
+            {NAV_ITEMS.map(item => (
+              <button key={item.id} onClick={() => setMenu(item.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu === item.id ? "text-violet-600" : "text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-xs font-medium">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -1915,6 +2130,30 @@ export default function App() {
   if (showResetPassword) return <ResetPasswordScreen onDone={() => setShowResetPassword(false)} />;
 
   if (!user) return <AuthScreen onAuth={(u) => initUser(u)} />;
+
+  // Not approved and not admin → show pending screen
+  if (profile && !profile.aprobado && !profile.is_admin) {
+    return <PendienteAprobacion email={user.email} onLogout={handleLogout} />;
+  }
+
+  // Ofrecimientos role → limited app
+  if (profile?.rol === "ofrecimientos" && !profile?.is_admin) {
+    return (
+      <OfrecimientosApp
+        profile={profile}
+        talleres={talleres}
+        ofrecimientos={ofrecimientos}
+        familias={familias}
+        onAddOfrecimiento={handleAddOfrecimiento}
+        onDeleteOfrecimiento={handleDeleteOfrecimiento}
+        onAddTaller={handleAddTaller}
+        onEditTaller={handleEditTaller}
+        onDeleteTaller={handleDeleteTaller}
+        onLogout={handleLogout}
+        offline={offline}
+      />
+    );
+  }
 
   const roles = ["Todos", "Madre", "Padre", "Voluntario"];
   const familiasFiltradas = familias.filter(f => {
