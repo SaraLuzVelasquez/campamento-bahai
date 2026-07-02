@@ -29,7 +29,7 @@ const UNIDADES = {
   3: { nombre: "La vida y la muerte", secciones: { 1:"El alma es inmortal", 2:"El alma comienza con el embrión", 3:"Alma y cuerpo", 4:"El alma progresa eternamente", 5:"El alma sin instrumentos", 6:"El alma e independiente", 7:"Progresa hacia Dios", 8:"La muerte como mensajera", 9:"Este mundo prepara al alma", 10:"Recibir la gracia", 11:"El alma es signo de Dios", 12:"El alma como pájaro", 13:"Refleja los atributos de Dios", 14:"Los poderes del alma", 15:"Las Manifestaciones", 16:"El ser humano como talismán", 17:"Estación gloriosa", 18:"El alma purificada", 19:"Orar por los difuntos", 20:"Caen los velos", 21:"Las almas se reconocen", 22:"No apenarse", 23:"Reflexión final" } },
 };
 
-// ── UTILS ─────────────────────────────────────────────────────────────────────----
+// ── UTILS ─────────────────────────────────────────────────────────────────────
 
 function Badge({ text }) {
   const cls = GRADO_COLOR[text?.split(" / ")[0]] || "bg-gray-100 text-gray-600";
@@ -896,13 +896,12 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"},{id:"calendario",label:"Calendario"}].map(t=>(
+        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
         ))}
       </div>
       {tab==="ofrecimientos" && <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
       {tab==="talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
-      {tab==="calendario" && <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />}
     </div>
   );
 }
@@ -1033,6 +1032,12 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddTaller, onEditTalle
                   {eventosHoy.map((e,i) => <p key={i} className="text-sm text-violet-700">{e.quien||e.que}</p>)}
                 </div>
               )}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
+                <div className="px-4 pb-4">
+                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />
+                </div>
+              </div>
             </div>
           )}
           {menu==="servicios" && (
@@ -1282,7 +1287,6 @@ export default function App() {
                   {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
                   {label:"Conversaciones recientes",icon:"💬",m:"confirmados",t:"recientes"},
-                  {label:"Calendario de servicios",icon:"📅",m:"servicios"},
                 ].map((item,i)=>(
                   <button key={i} onClick={() => { setMenu(item.m); if(item.t) setTab(item.t); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
                     <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-300">›</span>
@@ -1294,6 +1298,12 @@ export default function App() {
                   <span className="text-xl">⚠️</span><div><p className="text-sm font-semibold text-amber-800">Faltan {16-talleres.length} talleres</p><p className="text-xs text-amber-600">Toca para ir a Servicios</p></div><span className="ml-auto text-amber-300">›</span>
                 </button>
               )}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
+                <div className="px-4 pb-4">
+                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />
+                </div>
+              </div>
             </div>
           )}
 
