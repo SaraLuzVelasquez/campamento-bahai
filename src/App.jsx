@@ -29,7 +29,7 @@ const UNIDADES = {
   3: { nombre: "La vida y la muerte", secciones: { 1:"El alma es inmortal", 2:"El alma comienza con el embrión", 3:"Alma y cuerpo", 4:"El alma progresa eternamente", 5:"El alma sin instrumentos", 6:"El alma e independiente", 7:"Progresa hacia Dios", 8:"La muerte como mensajera", 9:"Este mundo prepara al alma", 10:"Recibir la gracia", 11:"El alma es signo de Dios", 12:"El alma como pájaro", 13:"Refleja los atributos de Dios", 14:"Los poderes del alma", 15:"Las Manifestaciones", 16:"El ser humano como talismán", 17:"Estación gloriosa", 18:"El alma purificada", 19:"Orar por los difuntos", 20:"Caen los velos", 21:"Las almas se reconocen", 22:"No apenarse", 23:"Reflexión final" } },
 };
 
-// ── UTILS ─────────────────────────────────────────────────────────────────────
+// ── UTILS ─────────────────────────────────────────────────────────────────────----
 
 function Badge({ text }) {
   const cls = GRADO_COLOR[text?.split(" / ")[0]] || "bg-gray-100 text-gray-600";
