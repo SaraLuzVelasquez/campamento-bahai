@@ -1137,7 +1137,7 @@ function AdminView({ currentUserId }) {
 
 // ── PUBLIC APP ────────────────────────────────────────────────────────────────
 
-function PublicApp({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin }) {
+function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin }) {
   const [menu, setMenu] = useState("home");
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
@@ -1264,6 +1264,7 @@ export default function App() {
       setOfrecimientos(ofrecs || []);
       setFamilias(fams || []);
       setExcursiones(excurs || []);
+      setExcursiones(excurs || []);
     } catch(e) { console.error(e); }
     setLoading(false);
   };
@@ -1335,7 +1336,7 @@ export default function App() {
     );
     return (
       <PublicApp
-        talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+        talleres={talleres} ofrecimientos={ofrecimientos} familias={familias} excursiones={excursiones}
         onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
         onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento}
         offline={offline} onLogin={() => setShowLogin(true)}
