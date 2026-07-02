@@ -764,10 +764,14 @@ function TallerForm({ taller, onSave, onCancel, onDelete }) {
       <div><label className="text-xs text-gray-500 mb-1 block">¿De qué va? *</label>
         <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={3} placeholder="Describe el taller..."
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
-      <div><label className="text-xs text-gray-500 mb-2 block">Fecha</label>
-        <div className="flex gap-2 mb-2">
-          <button onClick={() => setPorConfirmar(false)} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${!porConfirmar?"bg-violet-600 text-white":"bg-gray-100 text-gray-500"}`}>Fecha concreta</button>
-          <button onClick={() => setPorConfirmar(true)} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${porConfirmar?"bg-violet-600 text-white":"bg-gray-100 text-gray-500"}`}>Por confirmar</button>
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-500">Fecha</label>
+          <button onClick={() => setPorConfirmar(!porConfirmar)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${porConfirmar ? "bg-gray-100 text-gray-500" : "bg-violet-100 text-violet-700"}`}>
+            <span className={`w-3 h-3 rounded-full transition-all ${porConfirmar ? "bg-gray-400" : "bg-violet-600"}`}></span>
+            {porConfirmar ? "Por confirmar" : "Fecha concreta"}
+          </button>
         </div>
         {!porConfirmar && <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />}
       </div>
@@ -830,7 +834,7 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   );
 }
 
-function CalendarioView({ ofrecimientos, talleres, familias }) {
+function CalendarioView({ ofrecimientos, talleres, familias, excursiones }) {
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth());
   const [anio, setAnio] = useState(hoy.getFullYear());
@@ -842,6 +846,7 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
   const eventos = [
     ...(ofrecimientos||[]).filter(o=>{const d=new Date(o.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(o=>({...o,tipo:"ofrecimiento",dia:new Date(o.fecha+"T12:00:00").getDate()})),
     ...(talleres||[]).filter(t=>t.fecha).filter(t=>{const d=new Date(t.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(t=>({...t,tipo:"taller",dia:new Date(t.fecha+"T12:00:00").getDate()})),
+    ...(excursiones||[]).filter(e=>{const d=new Date(e.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(e=>({...e,tipo:"excursion",dia:new Date(e.fecha+"T12:00:00").getDate()})),
   ];
   const porDia = {};
   eventos.forEach(e=>{ if(!porDia[e.dia]) porDia[e.dia]=[]; porDia[e.dia].push(e); });
@@ -862,29 +867,179 @@ function CalendarioView({ ofrecimientos, talleres, familias }) {
           const esHoy = dia&&dia===hoy.getDate()&&mes===hoy.getMonth()&&anio===hoy.getFullYear();
           return <div key={i} className={`min-h-12 p-1 border-b border-r border-gray-50 ${!dia?"bg-gray-50":""}`}>
             {dia&&<><p className={`text-xs font-medium text-center mb-0.5 w-6 h-6 flex items-center justify-center rounded-full mx-auto ${esHoy?"bg-violet-600 text-white":"text-gray-600"}`}>{dia}</p>
-            {evs.map((e,j)=><div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo==="taller"?"bg-amber-100 text-amber-700":"bg-violet-100 text-violet-700"}`}>{e.tipo==="taller"?e.quien:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</div>)}</>}
+            {evs.map((e,j)=><div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo==="taller"?"bg-amber-100 text-amber-700":e.tipo==="excursion"?"bg-emerald-100 text-emerald-700":"bg-violet-100 text-violet-700"}`}>{e.tipo==="taller"?e.quien:e.tipo==="excursion"?e.titulo:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</div>)}</>}
           </div>;
         })}</div>
       </div>
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
         <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-100"></div><span className="text-xs text-gray-500">Excursión</span></div>
       </div>
       {eventos.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
           {[...eventos].sort((a,b)=>a.dia-b.dia).map((e,i)=>(
             <div key={i} className="bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3">
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo==="taller"?"bg-amber-100 text-amber-700":"bg-violet-100 text-violet-700"}`}>{e.dia}</span>
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo==="taller"?"bg-amber-100 text-amber-700":e.tipo==="excursion"?"bg-emerald-100 text-emerald-700":"bg-violet-100 text-violet-700"}`}>{e.dia}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{e.tipo==="taller"?e.quien:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</p>
-                <p className="text-xs text-gray-500 truncate">{e.tipo==="taller"?e.descripcion:e.que}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{e.tipo==="taller"?e.quien:e.tipo==="excursion"?e.titulo:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</p>
+                <p className="text-xs text-gray-500 truncate">{e.tipo==="taller"?e.descripcion:e.tipo==="excursion"?e.descripcion:e.que}</p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo==="taller"?"bg-amber-50 text-amber-600":"bg-violet-50 text-violet-600"}`}>{e.tipo==="taller"?"Taller":"Ofrecimiento"}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo==="taller"?"bg-amber-50 text-amber-600":e.tipo==="excursion"?"bg-emerald-50 text-emerald-600":"bg-violet-50 text-violet-600"}`}>{e.tipo==="taller"?"Taller":e.tipo==="excursion"?"Excursión":"Ofrecimiento"}</span>
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ExcursionCard({ excursion }) {
+  const [expanded, setExpanded] = useState(false);
+  const [apuntados, setApuntados] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [tipo, setTipo] = useState("monitor");
+  const [detalle, setDetalle] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const cargar = async () => {
+    const { data } = await supabase.from("excursion_apuntados").select("*").eq("excursion_id", excursion.id).order("created_at");
+    setApuntados(data || []);
+    setLoaded(true);
+  };
+
+  const handleExpand = () => {
+    setExpanded(!expanded);
+    if (!loaded) cargar();
+  };
+
+  const handleApuntar = async () => {
+    if (!nombre.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from("excursion_apuntados").insert({
+      excursion_id: excursion.id, nombre: nombre.trim(), tipo, detalle: detalle.trim() || null,
+    }).select().single();
+    if (data) setApuntados(prev => [...prev, data]);
+    setNombre(""); setDetalle(""); setShowForm(false);
+    setSaving(false);
+  };
+
+  const handleEliminar = async (id) => {
+    await supabase.from("excursion_apuntados").delete().eq("id", id);
+    setApuntados(prev => prev.filter(a => a.id !== id));
+  };
+
+  const fecha = new Date(excursion.fecha + "T12:00:00");
+  const monitores = apuntados.filter(a => a.tipo === "monitor");
+  const actividades = apuntados.filter(a => a.tipo === "actividad");
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button onClick={handleExpand} className="w-full text-left px-4 py-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold flex-shrink-0 text-sm">
+          {fecha.getDate()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-900">{excursion.titulo}</p>
+          <p className="text-xs text-gray-500">
+            {fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+        </div>
+        {loaded && apuntados.length > 0 && (
+          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{apuntados.length}</span>
+        )}
+        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+          {excursion.descripcion && <p className="text-sm text-gray-500">{excursion.descripcion}</p>}
+
+          {monitores.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Monitores</p>
+              <div className="space-y-1.5">{monitores.map(a => (
+                <div key={a.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-3 py-2">
+                  <span className="text-sm font-medium text-gray-800">{a.nombre}</span>
+                  <button onClick={() => handleEliminar(a.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                </div>
+              ))}</div>
+            </div>
+          )}
+
+          {actividades.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Actividades</p>
+              <div className="space-y-1.5">{actividades.map(a => (
+                <div key={a.id} className="bg-amber-50 rounded-xl px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-800">{a.nombre}</span>
+                    <button onClick={() => handleEliminar(a.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                  </div>
+                  {a.detalle && <p className="text-xs text-gray-500 mt-0.5">{a.detalle}</p>}
+                </div>
+              ))}</div>
+            </div>
+          )}
+
+          {showForm ? (
+            <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+              <div className="flex gap-1 bg-white rounded-lg p-0.5 border border-gray-200">
+                <button onClick={() => setTipo("monitor")} className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${tipo==="monitor"?"bg-violet-600 text-white":"text-gray-500"}`}>Monitor</button>
+                <button onClick={() => setTipo("actividad")} className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${tipo==="actividad"?"bg-violet-600 text-white":"text-gray-500"}`}>Actividad</button>
+              </div>
+              <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Tu nombre"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              {tipo === "actividad" && (
+                <textarea value={detalle} onChange={e=>setDetalle(e.target.value)} rows={2} placeholder="Describe la actividad..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              )}
+              <div className="flex gap-2">
+                <button onClick={handleApuntar} disabled={saving || !nombre.trim()}
+                  className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
+                  {saving ? "..." : "Apuntarme"}
+                </button>
+                <button onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowForm(true)}
+              className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold transition-colors">
+              + Apuntarme
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExcursionesView() {
+  const [excursiones, setExcursiones] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("excursiones").select("*").order("fecha").then(({ data }) => {
+      setExcursiones(data || []);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <p className="text-center text-gray-400 py-8">Cargando...</p>;
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl">🚌</span>
+        <div>
+          <p className="text-sm font-semibold text-emerald-800">Excursiones de julio</p>
+          <p className="text-xs text-emerald-600">Todos los miércoles · Apúntate como monitor o propón una actividad</p>
+        </div>
+      </div>
+      {excursiones.map(e => <ExcursionCard key={e.id} excursion={e} />)}
     </div>
   );
 }
@@ -896,12 +1051,13 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"}].map(t=>(
+        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"},{id:"excursiones",label:"Excursiones"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
         ))}
       </div>
       {tab==="ofrecimientos" && <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
       {tab==="talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
+      {tab==="excursiones" && <ExcursionesView />}
     </div>
   );
 }
@@ -1035,7 +1191,7 @@ function PublicApp({ talleres, ofrecimientos, familias, onAddTaller, onEditTalle
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
                 <div className="px-4 pb-4">
-                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />
+                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} />
                 </div>
               </div>
             </div>
@@ -1072,6 +1228,7 @@ export default function App() {
   const [voluntarios, setVoluntarios] = useState([]);
   const [talleres, setTalleres] = useState([]);
   const [ofrecimientos, setOfrecimientos] = useState([]);
+  const [excursiones, setExcursiones] = useState([]);
   const [menu, setMenu] = useState("home");
   const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
@@ -1097,14 +1254,16 @@ export default function App() {
 
   const loadPublicData = async () => {
     try {
-      const [{ data: talls }, { data: ofrecs }, { data: fams }] = await Promise.all([
+      const [{ data: talls }, { data: ofrecs }, { data: fams }, { data: excurs }] = await Promise.all([
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
         supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
         supabase.from("familias").select("id, nombre, grado"),
+        supabase.from("excursiones").select("*").order("fecha"),
       ]);
       setTalleres(talls || []);
       setOfrecimientos(ofrecs || []);
       setFamilias(fams || []);
+      setExcursiones(excurs || []);
     } catch(e) { console.error(e); }
     setLoading(false);
   };
@@ -1301,7 +1460,7 @@ export default function App() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
                 <div className="px-4 pb-4">
-                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} />
+                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} />
                 </div>
               </div>
             </div>
