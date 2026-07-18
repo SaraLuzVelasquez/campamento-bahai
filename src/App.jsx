@@ -1858,6 +1858,12 @@ export default function App() {
           )}
 
           {/* FAMILIAS */}
+          {menu==="actividad" && (
+            <ActividadView familias={familias} allProfiles={allProfiles} currentUser={user}
+              visitas={visitas} onAddVisita={handleAddVisita}
+              onVerFamilia={(f) => setFamiliaPerfilTarget(f)} />
+          )}
+
           {menu==="confirmados" && tab==="participantes" && (
             <ParticipantesView familias={familias} onVerFamilia={(f) => setFamiliaPerfilTarget(f)} />
           )}
@@ -1888,7 +1894,7 @@ export default function App() {
                   <FamiliaCard key={f.id} familia={f} visitas={visitas.filter(v=>v.familia_id===f.id)}
                     currentUser={user} allProfiles={allProfiles} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
                     onEdit={handleEditFamilia} onDelete={handleDeleteFamilia} isAdmin={isAdmin}
-                    onAddOfrecimiento={handleAddOfrecimiento} onVerDetalle={setDetalleTarget} />
+                    onAddOfrecimiento={handleAddOfrecimiento} onVerDetalle={setFamiliaPerfilTarget} />
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
               </div>
