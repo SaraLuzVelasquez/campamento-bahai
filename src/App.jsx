@@ -1656,7 +1656,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
         <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
             {[{id:"home",label:"Inicio",icon:"🏠"},{id:"servicios",label:"Servicios",icon:"🎨"}].map(item=>(
-              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
+              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
@@ -1864,7 +1864,7 @@ export default function App() {
           {offline && <div className="mt-1 text-xs text-amber-600">📶 Sin conexión</div>}
           {menu==="confirmados" && (
             <div className="flex gap-1 mt-3 bg-gray-100 rounded-xl p-1">
-              {[{id:"familias",label:"Familias"},{id:"recientes",label:"Conversaciones"},{id:"participantes",label:"Participantes"}].map(t=>(
+              {[{id:"familias",label:"Familias"},{id:"participantes",label:"Participantes"}].map(t=>(
                 <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
               ))}
             </div>
@@ -1898,7 +1898,6 @@ export default function App() {
                 {[
                   {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
-                  {label:"Conversaciones recientes",icon:"💬",m:"confirmados",t:"recientes"},
                 ].map((item,i)=>(
                   <button key={i} onClick={() => { setMenu(item.m); if(item.t) setTab(item.t); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
                     <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-300">›</span>
@@ -1920,6 +1919,10 @@ export default function App() {
           )}
 
           {/* FAMILIAS */}
+          {menu==="confirmados" && tab==="participantes" && (
+            <ParticipantesView familias={familias} onVerFamilia={(f) => setFamiliaPerfilTarget(f)} />
+          )}
+
           {menu==="confirmados" && tab==="familias" && (
             <>
               <button onClick={() => setShowNuevaFamilia(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Nueva familia</button>
@@ -1954,10 +1957,6 @@ export default function App() {
           )}
 
           {/* CONVERSACIONES RECIENTES */}
-          {menu==="confirmados" && tab==="recientes" && (
-            <RecientesView visitas={visitas} familias={familias} onVerPerfil={(f) => setDetalleTarget(f)} />
-          )}
-
           {/* PARTICIPANTES */}
           {menu==="confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
 
@@ -1977,7 +1976,7 @@ export default function App() {
           <div className="flex max-w-lg mx-auto">
             {NAV_ITEMS.map(item=>(
               <button key={item.id} onClick={() => setMenu(item.id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
