@@ -541,19 +541,12 @@ function HijoCard({ hijo, onSave }) {
   );
 }
 
-function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
+function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
   const [familia, setFamilia] = useState(familiaInicial);
   const [showEdit, setShowEdit] = useState(false);
-  const [conversaciones, setConversaciones] = useState([]);
-  const [nuevaNota, setNuevaNota] = useState("");
-  const [showNuevaConv, setShowNuevaConv] = useState(false);
-  const [showNuevaVisita, setShowNuevaVisita] = useState(false);
-
-  useEffect(() => {
-    supabase.from("conversaciones").select("*, profiles(nombre)")
-      .eq("familia_id", familia.id).order("created_at", { ascending: false })
-      .then(({ data }) => setConversaciones(data || []));
-  }, [familia.id]);
+  const [nota, setNota] = useState("");
+  const [autorId, setAutorId] = useState(currentUser.id);
+  const [saving, setSaving] = useState(false);
 
   const handleSaveHijo = async (idx, hijoData) => {
     const nuevosHijos = (familia.hijos || []).map((h, i) => i === idx ? hijoData : h);
@@ -561,28 +554,17 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
     if (data) { setFamilia(data); onEdit(data); }
   };
 
-  const handleDeleteConv = async (id) => {
-    await supabase.from("conversaciones").delete().eq("id", id);
-    setConversaciones(prev => prev.filter(c => c.id !== id));
-  };
-
   const handleSaveConv = async () => {
-    if (!nuevaNota.trim()) return;
-    const { data } = await supabase.from("conversaciones").insert({
-      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
-    }).select("*, profiles(nombre)").single();
-    if (data) setConversaciones(prev => [data, ...prev]);
-    setNuevaNota(""); setShowNuevaConv(false);
+    if (!nota.trim()) return;
+    setSaving(true);
+    await supabase.from("conversaciones").insert({
+      familia_id: familia.id, nota: nota.trim(), autor_id: autorId,
+    });
+    setNota("");
+    setSaving(false);
   };
 
   const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h);
-
-  // Unified feed: conversaciones + visitas sorted by date
-  const sortedVisitas = [...visitas].sort((a,b) => (b.created_at||b.fecha||"").localeCompare(a.created_at||a.fecha||""));
-  const feedUnificado = [
-    ...conversaciones.map(c => ({ ...c, _tipo: "conv", _sort: c.created_at })),
-    ...visitas.map(v => ({ ...v, _tipo: "visita", _sort: v.created_at || v.fecha + "T12:00:00" })),
-  ].sort((a,b) => (b._sort||"").localeCompare(a._sort||""));
 
   if (showEdit) return (
     <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
@@ -593,7 +575,6 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
 
   return (
     <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <button onClick={onClose} className="text-sm text-violet-500 font-medium">← Volver</button>
@@ -608,7 +589,6 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
         {/* Contacto principal */}
@@ -621,8 +601,10 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
               <a href={`tel:${familia.telefono}`}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
             </div>
+          ) : familia.telefono ? (
+            <p className="text-sm text-gray-600">{familia.telefono}</p>
           ) : (
-            <p className="text-sm text-gray-500">{familia.telefono || "Sin teléfono"}</p>
+            <p className="text-sm text-gray-400">Sin teléfono</p>
           )}
         </div>
 
@@ -643,7 +625,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
           </div>
         )}
 
-        {/* Hijos - cada uno en su card */}
+        {/* Hijos */}
         {hijos.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
@@ -651,73 +633,24 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
           </div>
         )}
 
-        {/* Feed unificado: conversaciones + visitas */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Actividad</p>
-            <div className="flex gap-2">
-              <button onClick={() => setShowNuevaConv(true)}
-                className="text-xs bg-violet-100 text-violet-700 px-3 py-1.5 rounded-full font-medium">+ Conv.</button>
-              <button onClick={() => setShowNuevaVisita(true)}
-                className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">+ Visita</button>
-            </div>
-          </div>
-
-          {showNuevaConv && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-              <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-              <div className="flex gap-2">
-                <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
-                <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
-              </div>
-            </div>
-          )}
-
-          {showNuevaVisita && (
-            <VisitaFormInline familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-              onSave={() => setShowNuevaVisita(false)} onCancel={() => setShowNuevaVisita(false)} />
-          )}
-
-          {feedUnificado.length === 0 ? (
-            <p className="text-center text-gray-400 py-8">Sin actividad aún</p>
-          ) : feedUnificado.map((item, i) => {
-            const esConv = item._tipo === "conv";
-            const fecha = new Date(item._sort || "");
-            const esHoy = fecha.toDateString() === new Date().toDateString();
-            const hora = isNaN(fecha) ? "" : fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-            const fechaStr = isNaN(fecha) ? item.fecha || "" : esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
-            const autor = item.profiles?.nombre || "—";
-            return (
-              <div key={`${item._tipo}-${item.id}`} className="flex gap-3 group">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
-                  {esConv ? autor[0] : "📖"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
-                      {esConv?"💬 Conv.":"📖 Visita"}
-                    </span>
-                    <span className="text-xs text-gray-400">{fechaStr}</span>
-                    <span className="text-xs text-gray-400">· {autor}</span>
-                  </div>
-                  {esConv ? (
-                    <p className="text-sm text-gray-700 leading-relaxed">{item.nota}</p>
-                  ) : (
-                    <div>
-                      <p className="text-sm text-gray-700 font-medium">U{item.unidad} · S{item.seccion} <span className={`text-xs ml-1 font-medium ${item.completada?"text-emerald-600":"text-amber-600"}`}>{item.completada?"✓":"·"}</span></p>
-                      <p className="text-xs text-gray-500">{UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
-                      {item.comentario && <p className="text-xs text-gray-400 mt-0.5">{item.comentario}</p>}
-                    </div>
-                  )}
-                </div>
-                {esConv && (
-                  <button onClick={() => handleDeleteConv(item.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
-                )}
-              </div>
-            );
-          })}
+        {/* Nueva conversación */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Nueva conversación</p>
+          <select value={autorId} onChange={e => setAutorId(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
+            {allProfiles.filter(p => p.aprobado || p.is_admin).map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}{p.id === currentUser.id ? " (yo)" : ""}</option>
+            ))}
+          </select>
+          <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3}
+            placeholder="Escribe un comentario o nota sobre la conversación..."
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <button onClick={handleSaveConv} disabled={saving || !nota.trim()}
+            className="w-full bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
+            {saving ? "Guardando..." : "Guardar conversación"}
+          </button>
         </div>
+
       </div>
     </div>
   );
@@ -1477,36 +1410,38 @@ function NuevoRegistroScreen({ familias, allProfiles, currentUser, onSave, onCan
 }
 
 function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisita, onVerFamilia }) {
-  const [feed, setFeed] = useState([]);
+  const [convs, setConvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNuevo, setShowNuevo] = useState(false);
 
-  const cargar = async () => {
-    const { data: convs } = await supabase.from("conversaciones")
-      .select("*, profiles(nombre)").order("created_at", { ascending: false });
-    const items = [
-      ...(convs || []).map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
-      ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || (v.fecha ? v.fecha + "T12:00:00" : "") })),
-    ].sort((a, b) => (b._sort || "").localeCompare(a._sort || ""));
-    setFeed(items);
-    setLoading(false);
-  };
+  useEffect(() => {
+    supabase.from("conversaciones")
+      .select("*, profiles(nombre)")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (!error) setConvs(data || []);
+        setLoading(false);
+      });
+  }, []);
 
-  useEffect(() => { cargar(); }, [visitas.length]);
+  const feed = [
+    ...convs.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
+    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha + "T12:00:00" })),
+  ].sort((a, b) => (b._sort || "").localeCompare(a._sort || ""));
 
   const handleSave = (item) => {
     if (item.tipo === "visita") onAddVisita(item);
-    setFeed(prev => [item, ...prev].sort((a,b) => b._sort.localeCompare(a._sort)));
+    else setConvs(prev => [item, ...prev]);
     setShowNuevo(false);
   };
 
   const handleDelete = async (item) => {
     if (item.tipo === "conversacion") {
       await supabase.from("conversaciones").delete().eq("id", item.id);
+      setConvs(prev => prev.filter(x => x.id !== item.id));
     } else {
       await supabase.from("visitas").delete().eq("id", item.id);
     }
-    setFeed(prev => prev.filter(x => !(x.id === item.id && x.tipo === item.tipo)));
   };
 
   if (showNuevo) return (
@@ -1817,10 +1752,14 @@ export default function App() {
 
   return (
     <>
-      {detalleTarget && (
-        <DetalleScreen familia={detalleTarget} visitas={visitas.filter(v=>v.familia_id===detalleTarget.id)}
-          currentUser={user} allProfiles={allProfiles} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
-          onClose={() => setDetalleTarget(null)} isAdmin={isAdmin} />
+      {familiaPerfilTarget && (
+        <PerfilFamiliaScreen
+          familia={familiaPerfilTarget}
+          allProfiles={allProfiles} currentUser={user} isAdmin={isAdmin}
+          onClose={() => setFamiliaPerfilTarget(null)}
+          onEdit={(f) => { handleEditFamilia(f); setFamiliaPerfilTarget(f); }}
+          onDelete={(id) => { handleDeleteFamilia(id); setFamiliaPerfilTarget(null); }}
+        />
       )}
       {showNuevaFamilia && (
         <FullScreen title="Nueva familia" onBack={() => setShowNuevaFamilia(false)}>
