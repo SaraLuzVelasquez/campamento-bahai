@@ -504,6 +504,248 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
+function HijoCard({ hijo, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [nombre, setNombre] = useState(hijo.nombre || "");
+  const [edad, setEdad] = useState(hijo.edad || "");
+  const [curso, setCurso] = useState(hijo.curso || "Huevito");
+  if (editing) return (
+    <div className="bg-violet-50 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Editando</p>
+        <button onClick={() => setEditing(false)} className="text-xs text-gray-400">Cancelar</button>
+      </div>
+      <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre"
+        className="w-full border border-violet-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      <input value={edad} onChange={e=>setEdad(e.target.value)} placeholder="Edad"
+        className="w-full border border-violet-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      <div className="flex flex-wrap gap-1.5">
+        {CURSOS.map(c => (
+          <button key={c} onClick={() => setCurso(c)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${curso===c?"bg-violet-600 text-white":"bg-white text-gray-600 border border-violet-200"}`}>{c}</button>
+        ))}
+      </div>
+      <button onClick={() => { onSave({ nombre, edad, curso }); setEditing(false); }}
+        className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
+    </div>
+  );
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 text-sm">{(hijo.nombre || "?")[0]}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{hijo.nombre || "—"}</span><Badge text={hijo.curso} /></div>
+        {hijo.edad && <p className="text-xs text-gray-400 mt-0.5">{hijo.edad} años</p>}
+      </div>
+      <button onClick={() => setEditing(true)} className="text-xs text-violet-500 font-medium hover:text-violet-700 flex-shrink-0">Editar</button>
+    </div>
+  );
+}
+
+function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
+  const [familia, setFamilia] = useState(familiaInicial);
+  const [showEdit, setShowEdit] = useState(false);
+  const [conversaciones, setConversaciones] = useState([]);
+  const [tab, setTab] = useState("conversaciones");
+  const [nuevaNota, setNuevaNota] = useState("");
+  const [showNuevaConv, setShowNuevaConv] = useState(false);
+  const [showNuevaVisita, setShowNuevaVisita] = useState(false);
+
+  useEffect(() => {
+    supabase.from("conversaciones").select("*, profiles(nombre)")
+      .eq("familia_id", familia.id).order("created_at", { ascending: false })
+      .then(({ data }) => setConversaciones(data || []));
+  }, [familia.id]);
+
+  const handleSaveHijo = async (idx, hijoData) => {
+    const nuevosHijos = (familia.hijos || []).map((h, i) => i === idx ? hijoData : h);
+    const { data } = await supabase.from("familias").update({ hijos: nuevosHijos }).eq("id", familia.id).select().single();
+    if (data) { setFamilia(data); onEdit(data); }
+  };
+
+  const handleDeleteConv = async (id) => {
+    await supabase.from("conversaciones").delete().eq("id", id);
+    setConversaciones(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleSaveConv = async () => {
+    if (!nuevaNota.trim()) return;
+    const { data } = await supabase.from("conversaciones").insert({
+      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
+    }).select("*, profiles(nombre)").single();
+    if (data) setConversaciones(prev => [data, ...prev]);
+    setNuevaNota(""); setShowNuevaConv(false);
+  };
+
+  const sortedVisitas = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h);
+
+  if (showEdit) return (
+    <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
+      <FamiliaForm familia={familia} onSave={(f) => { setFamilia(f); onEdit(f); setShowEdit(false); }}
+        onCancel={() => setShowEdit(false)} onDelete={(id) => { onDelete(id); onClose(); }} />
+    </FullScreen>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={onClose} className="text-sm text-violet-500 font-medium">← Volver</button>
+          <button onClick={() => setShowEdit(true)} className="text-sm text-violet-500 font-medium">Editar</button>
+        </div>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">{familia.nombre[0]}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900 text-lg">{familia.nombre}</span><Badge text={familia.grado} /></div>
+            {familia.servicio && <p className="text-xs text-gray-500 mt-0.5">{familia.servicio}</p>}
+          </div>
+        </div>
+        {familia.telefono && (
+          <div className="mb-3">
+            {isAdmin ? (
+              <div className="flex gap-2">
+                <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
+                <a href={`tel:${familia.telefono}`} className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
+              </div>
+            ) : null}
+          </div>
+        )}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          {[
+            { id:"conversaciones", label:`💬${conversaciones.length>0?` (${conversaciones.length})`:""}`},
+            { id:"visitas", label:`📖${visitas.length>0?` (${visitas.length})`:""}`},
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {familia.contacto2_nombre && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0">{familia.contacto2_nombre[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
+              {familia.contacto2_telefono && isAdmin && (
+                <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-emerald-600 font-medium mt-0.5 block">💬 {familia.contacto2_telefono}</a>
+              )}
+            </div>
+          </div>
+        )}
+        {hijos.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
+            {hijos.map((h, i) => <HijoCard key={i} hijo={h} onSave={(data) => handleSaveHijo(i, data)} />)}
+          </div>
+        )}
+        {tab === "conversaciones" && (
+          <div className="space-y-3">
+            {showNuevaConv ? (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+                <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+                <div className="flex gap-2">
+                  <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
+                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowNuevaConv(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nuevo mensaje</button>
+            )}
+            {conversaciones.length === 0 ? <p className="text-center text-gray-400 py-8">Sin mensajes aún</p> :
+              conversaciones.map(c => {
+                const nombre = c.profiles?.nombre || "—";
+                const fecha = new Date(c.created_at);
+                const esHoy = fecha.toDateString() === new Date().toDateString();
+                const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+                const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
+                return (
+                  <div key={c.id} className="flex gap-3 group">
+                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <span className="text-sm font-semibold text-gray-800">{nombre}</span>
+                        <span className="text-xs text-gray-400">{fechaStr}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
+                    </div>
+                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+        {tab === "visitas" && (
+          <div className="space-y-3">
+            {showNuevaVisita ? (
+              <VisitaFormInline familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
+                onSave={() => setShowNuevaVisita(false)} onCancel={() => setShowNuevaVisita(false)} />
+            ) : (
+              <button onClick={() => setShowNuevaVisita(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nueva visita</button>
+            )}
+            {sortedVisitas.length === 0 ? <p className="text-center text-gray-400 py-8">Sin visitas aún</p> :
+              sortedVisitas.map(v => (
+                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{v.completada?"Completada":"En progreso"}</span>
+                  </div>
+                  <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
+                  <p className="text-sm text-gray-700">S{v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
+                  <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
+                  {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VisitaFormInline({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
+  const [unidad, setUnidad] = useState(1);
+  const [seccion, setSeccion] = useState(1);
+  const [visitadorId, setVisitadorId] = useState(currentUser.id);
+  const [completada, setCompletada] = useState(false);
+  const [comentario, setComentario] = useState("");
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    setSaving(true);
+    const { data } = await supabase.from("visitas").insert({
+      familia_id: familiaId, fecha: new Date().toISOString().slice(0,10),
+      unidad, seccion, visitador_id: visitadorId, completada, comentario: comentario || null,
+    }).select("*, profiles(nombre)").single();
+    if (data) onSave(data);
+    setSaving(false);
+  };
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
+      <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
+        {allProfiles.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>)}
+      </select>
+      <div className="flex gap-2">{[1,2,3].map(u => (
+        <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${unidad===u?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{u}</button>
+      ))}</div>
+      <p className="text-xs text-violet-600 font-medium">{UNIDADES[unidad].nombre}</p>
+      <div className="flex flex-wrap gap-1.5">{Object.keys(UNIDADES[unidad].secciones).map(s => (
+        <button key={s} onClick={()=>setSeccion(Number(s))} className={`w-10 h-10 rounded-xl text-sm font-medium ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
+      ))}</div>
+      <p className="text-xs text-gray-500 italic">{UNIDADES[unidad].secciones[seccion]}</p>
+      <button onClick={()=>setCompletada(!completada)} className={`px-4 py-2 rounded-full text-sm font-medium ${completada?"bg-emerald-500 text-white":"bg-gray-100 text-gray-500"}`}>{completada?"✓ Completada":"En progreso"}</button>
+      <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} placeholder="Comentario..."
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
+        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+
 function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, onDelete, isAdmin, onAddOfrecimiento, onVerDetalle }) {
   const [expanded, setExpanded] = useState(false);
   const [accion, setAccion] = useState(null);
@@ -530,44 +772,19 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-        <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{familia.nombre[0]}</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.nombre}</span><Badge text={familia.grado} /></div>
-          {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre||"—"}${h.edad?`, ${h.edad}a`:""} · ${h.curso||""}`).join(" | ")}</p>}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {visitas.length > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length} visita{visitas.length!==1?"s":""}</span>}
-          <span className="text-gray-400 text-xs">{expanded?"▲":"▼"}</span>
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-50">
-          <div className="px-4 pt-3 pb-2"><p className="text-xs text-gray-400 mb-0.5">Colaboración</p><p className="text-sm text-gray-700">{familia.servicio || "—"}</p></div>
-          <div className="px-4 pb-3">
-            <ContactoButtons telefono={familia.telefono} isAdmin={isAdmin} onEdit={() => setShowEdit(true)} />
-          </div>
-          {familia.contacto2_nombre && (
-            <div className="px-4 pb-3">
-              <div className="bg-gray-50 rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-2"><span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
-                {familia.contacto2_telefono && isAdmin && (
-                  <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg inline-block">💬 WhatsApp</a>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="px-4 pb-4 space-y-2">
-            <button onClick={() => setAccion("ofrecimiento")} className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 text-left px-4">🎁 Ofrecimiento</button>
-            <button onClick={() => onVerDetalle(familia)} className="w-full py-3 rounded-xl text-sm font-medium transition-all text-left px-4 flex items-center justify-between bg-violet-50 hover:bg-violet-100 text-violet-700">
-              <span>📋 Ver conversaciones y visitas</span>
-              {(visitas.length + (totalConv || 0)) > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length + (totalConv || 0)}</span>}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <button onClick={() => onVerDetalle(familia)}
+      className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center gap-3 hover:border-violet-200 transition-all active:bg-gray-50 text-left">
+      <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{familia.nombre[0]}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5"><span className="font-semibold text-gray-800">{familia.nombre}</span><Badge text={familia.grado} /></div>
+        {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre||"—"}${h.edad?`, ${h.edad}a`:""}`).join(" · ")}</p>}
+        {familia.servicio && <p className="text-xs text-gray-400 truncate mt-0.5">{familia.servicio}</p>}
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {visitas.length > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length}v</span>}
+        <span className="text-gray-300 text-sm">›</span>
+      </div>
+    </button>
   );
 }
 
@@ -1135,6 +1352,220 @@ function AdminView({ currentUserId }) {
   );
 }
 
+function NuevoRegistroScreen({ familias, allProfiles, currentUser, onSave, onCancel }) {
+  const [tipo, setTipo] = useState("conversacion");
+  const [familiaId, setFamiliaId] = useState("");
+  const [nota, setNota] = useState("");
+  const [unidad, setUnidad] = useState(1);
+  const [seccion, setSeccion] = useState(1);
+  const [visitadorId, setVisitadorId] = useState(currentUser.id);
+  const [completada, setCompletada] = useState(false);
+  const [comentario, setComentario] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const handleSave = async () => {
+    if (!familiaId) { setError("Selecciona una familia"); return; }
+    setSaving(true);
+    if (tipo === "conversacion") {
+      if (!nota.trim()) { setError("Escribe algo"); setSaving(false); return; }
+      const { data } = await supabase.from("conversaciones").insert({
+        familia_id: familiaId, nota: nota.trim(), autor_id: currentUser.id,
+      }).select("*, profiles(nombre)").single();
+      if (data) onSave({ ...data, tipo: "conversacion", _sort: data.created_at });
+    } else {
+      const { data } = await supabase.from("visitas").insert({
+        familia_id: familiaId, fecha: new Date().toISOString().slice(0,10),
+        unidad, seccion, visitador_id: visitadorId, completada, comentario: comentario || null,
+      }).select("*, profiles(nombre)").single();
+      if (data) onSave({ ...data, tipo: "visita", _sort: data.created_at || data.fecha });
+    }
+    setSaving(false);
+  };
+  return (
+    <FullScreen title="Nuevo registro" onBack={onCancel}>
+      <div className="space-y-5">
+        <div className="flex gap-2">
+          <button onClick={() => setTipo("conversacion")}
+            className={`flex-1 py-3 rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${tipo==="conversacion"?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>
+            💬 Conversación
+          </button>
+          <button onClick={() => setTipo("visita")}
+            className={`flex-1 py-3 rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${tipo==="visita"?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>
+            📖 Visita
+          </button>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 mb-1.5 block font-medium">Familia</label>
+          <select value={familiaId} onChange={e=>setFamiliaId(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
+            <option value="">Selecciona una familia</option>
+            {[...familias].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).map(f =>
+              <option key={f.id} value={f.id}>{f.nombre}</option>
+            )}
+          </select>
+        </div>
+        {tipo === "conversacion" ? (
+          <div>
+            <label className="text-xs text-gray-500 mb-1.5 block font-medium">¿De qué se habló?</label>
+            <textarea value={nota} onChange={e=>setNota(e.target.value)} rows={4} autoFocus
+              placeholder="Describe la conversación..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">¿Quién fue?</label>
+              <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
+                {allProfiles.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">Unidad</label>
+              <div className="flex gap-2">{[1,2,3].map(u => (
+                <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}}
+                  className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${unidad===u?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>{u}</button>
+              ))}</div>
+              <p className="text-xs text-violet-600 mt-1.5 font-medium">{UNIDADES[unidad].nombre}</p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">Sección</label>
+              <div className="flex flex-wrap gap-1.5">{Object.keys(UNIDADES[unidad].secciones).map(s => (
+                <button key={s} onClick={()=>setSeccion(Number(s))}
+                  className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-white text-gray-600 border border-gray-200"}`}>{s}</button>
+              ))}</div>
+              <p className="text-xs text-gray-500 mt-1.5 italic">{UNIDADES[unidad].secciones[seccion]}</p>
+            </div>
+            <button onClick={()=>setCompletada(!completada)}
+              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${completada?"bg-emerald-500 text-white":"bg-white border border-gray-200 text-gray-500"}`}>
+              {completada?"✓ Completada":"En progreso"}
+            </button>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">Comentario (opcional)</label>
+              <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2}
+                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            </div>
+          </>
+        )}
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+        <button onClick={handleSave} disabled={saving}
+          className="w-full bg-violet-600 text-white py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+      </div>
+    </FullScreen>
+  );
+}
+
+function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisita, onVerFamilia }) {
+  const [feed, setFeed] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showNuevo, setShowNuevo] = useState(false);
+
+  const cargar = async () => {
+    const { data: convs } = await supabase.from("conversaciones")
+      .select("*, profiles(nombre)").order("created_at", { ascending: false });
+    const items = [
+      ...(convs || []).map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
+      ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha + "T00:00:00" })),
+    ].sort((a, b) => b._sort.localeCompare(a._sort));
+    setFeed(items);
+    setLoading(false);
+  };
+
+  useEffect(() => { cargar(); }, [visitas.length]);
+
+  const handleSave = (item) => {
+    if (item.tipo === "visita") onAddVisita(item);
+    setFeed(prev => [item, ...prev].sort((a,b) => b._sort.localeCompare(a._sort)));
+    setShowNuevo(false);
+  };
+
+  const handleDelete = async (item) => {
+    if (item.tipo === "conversacion") {
+      await supabase.from("conversaciones").delete().eq("id", item.id);
+    } else {
+      await supabase.from("visitas").delete().eq("id", item.id);
+    }
+    setFeed(prev => prev.filter(x => !(x.id === item.id && x.tipo === item.tipo)));
+  };
+
+  if (showNuevo) return (
+    <NuevoRegistroScreen familias={familias} allProfiles={allProfiles} currentUser={currentUser}
+      onSave={handleSave} onCancel={() => setShowNuevo(false)} />
+  );
+
+  return (
+    <div className="space-y-3">
+      <button onClick={() => setShowNuevo(true)}
+        className="w-full py-3.5 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all">
+        + Nuevo registro
+      </button>
+      {loading ? (
+        <div className="space-y-2.5">{[1,2,3].map(i => <div key={i} className="h-24 bg-white rounded-2xl animate-pulse border border-gray-100"></div>)}</div>
+      ) : feed.length === 0 ? (
+        <div className="text-center py-16"><p className="text-4xl mb-3">💬</p><p className="text-gray-400 text-sm">Sin registros aún</p></div>
+      ) : (
+        <div className="space-y-2.5">
+          {feed.map((item) => {
+            const familia = familias.find(f => f.id === item.familia_id);
+            const esConv = item.tipo === "conversacion";
+            const _s = item._sort || (esConv ? item.created_at : item.fecha);
+            const fecha = new Date(_s);
+            const esHoy = fecha.toDateString() === new Date().toDateString();
+            const fechaStr = esHoy
+              ? fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+              : fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+            return (
+              <div key={`${item.tipo}-${item.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-start gap-3">
+                  <button onClick={() => familia && onVerFamilia(familia)}
+                    className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 mt-0.5">
+                    {(familia?.nombre || "?")[0]}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <button onClick={() => familia && onVerFamilia(familia)}
+                        className="text-sm font-semibold text-gray-800 hover:text-violet-600 transition-colors">
+                        {familia?.nombre || "—"}
+                      </button>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
+                        {esConv?"💬 Conv.":"📖 Visita"}
+                      </span>
+                    </div>
+                    {esConv ? (
+                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{item.nota}</p>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-gray-700 font-medium">U{item.unidad} · S{item.seccion}</p>
+                        <p className="text-xs text-gray-500 truncate">{UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
+                        {item.comentario && <p className="text-xs text-gray-400 mt-0.5 truncate">{item.comentario}</p>}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-xs text-gray-400">{fechaStr}</span>
+                      <span className="text-gray-200">·</span>
+                      <span className="text-xs text-gray-400">{item.profiles?.nombre || "—"}</span>
+                      {!esConv && (
+                        <><span className="text-gray-200">·</span>
+                        <span className={`text-xs font-medium ${item.completada?"text-emerald-600":"text-amber-600"}`}>
+                          {item.completada?"✓ Completada":"En progreso"}
+                        </span></>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => handleDelete(item)} className="text-gray-200 hover:text-red-400 transition-colors flex-shrink-0 mt-1 text-xs">✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── PUBLIC APP ────────────────────────────────────────────────────────────────
 
 function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin }) {
@@ -1206,7 +1637,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
         <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
           <div className="flex max-w-lg mx-auto">
             {[{id:"home",label:"Inicio",icon:"🏠"},{id:"servicios",label:"Servicios",icon:"🎨"}].map(item=>(
-              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
+              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
@@ -1239,6 +1670,7 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
+  const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(!navigator.onLine);
@@ -1275,7 +1707,7 @@ export default function App() {
       const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", u.id).single(),
         supabase.from("profiles").select("*"),
-        supabase.from("familias").select("*").order("created_at", { ascending: true }),
+        supabase.from("familias").select("*").order("nombre", { ascending: true }),
         supabase.from("visitas").select("*, profiles(nombre)"),
         supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
@@ -1350,6 +1782,7 @@ export default function App() {
   // LOGGED IN APP
   const NAV_ITEMS = [
     { id: "home", label: "Inicio", icon: "🏠" },
+    { id: "actividad", label: "Actividad", icon: "💬" },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "servicios", label: "Servicios", icon: "🎨" },
@@ -1361,7 +1794,7 @@ export default function App() {
     const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
     const matchR = filtroRol==="Todos" || f.grado===filtroRol;
     return matchQ && matchR;
-  });
+  }).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
 
   return (
     <>
@@ -1407,7 +1840,7 @@ export default function App() {
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu==="home"?"Inicio":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
+            {menu==="home"?"Inicio":menu==="actividad"?"Actividad":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
           </h1>
           {offline && <div className="mt-1 text-xs text-amber-600">📶 Sin conexión</div>}
           {menu==="confirmados" && (
@@ -1525,7 +1958,7 @@ export default function App() {
           <div className="flex max-w-lg mx-auto">
             {NAV_ITEMS.map(item=>(
               <button key={item.id} onClick={() => setMenu(item.id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
               </button>
             ))}
