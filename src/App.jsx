@@ -599,8 +599,12 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
                 {familia.contacto2_telefono && isAdmin && (
-                  <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-emerald-600 font-medium mt-0.5 block">💬 {familia.contacto2_telefono}</a>
+                  <div className="flex gap-2 mt-3">
+                    <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
+                    <a href={`tel:${familia.contacto2_telefono}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
+                  </div>
                 )}
               </div>
             </div>
@@ -1890,10 +1894,6 @@ export default function App() {
               </div>
             </>
           )}
-
-          {/* CONVERSACIONES RECIENTES */}
-          {/* PARTICIPANTES */}
-          {menu==="confirmados" && tab==="participantes" && <ParticipantesView familias={familias} />}
 
           {/* VOLUNTARIOS */}
           {menu==="voluntarios" && <VoluntariosView voluntarios={voluntarios} isAdmin={isAdmin} onAdd={handleAddVoluntario} onEdit={handleEditVoluntario} />}
