@@ -545,7 +545,6 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
   const [familia, setFamilia] = useState(familiaInicial);
   const [showEdit, setShowEdit] = useState(false);
   const [conversaciones, setConversaciones] = useState([]);
-  const [tab, setTab] = useState("conversaciones");
   const [nuevaNota, setNuevaNota] = useState("");
   const [showNuevaConv, setShowNuevaConv] = useState(false);
   const [showNuevaVisita, setShowNuevaVisita] = useState(false);
@@ -576,8 +575,14 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
     setNuevaNota(""); setShowNuevaConv(false);
   };
 
-  const sortedVisitas = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
   const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h);
+
+  // Unified feed: conversaciones + visitas sorted by date
+  const sortedVisitas = [...visitas].sort((a,b) => (b.created_at||b.fecha||"").localeCompare(a.created_at||a.fecha||""));
+  const feedUnificado = [
+    ...conversaciones.map(c => ({ ...c, _tipo: "conv", _sort: c.created_at })),
+    ...visitas.map(v => ({ ...v, _tipo: "visita", _sort: v.created_at || v.fecha + "T12:00:00" })),
+  ].sort((a,b) => (b._sort||"").localeCompare(a._sort||""));
 
   if (showEdit) return (
     <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
@@ -588,122 +593,136 @@ function PerfilFamiliaScreen({ familia: familiaInicial, visitas, allProfiles, cu
 
   return (
     <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
+      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <button onClick={onClose} className="text-sm text-violet-500 font-medium">← Volver</button>
           <button onClick={() => setShowEdit(true)} className="text-sm text-violet-500 font-medium">Editar</button>
         </div>
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">{familia.nombre[0]}</div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900 text-lg">{familia.nombre}</span><Badge text={familia.grado} /></div>
             {familia.servicio && <p className="text-xs text-gray-500 mt-0.5">{familia.servicio}</p>}
           </div>
         </div>
-        {familia.telefono && (
-          <div className="mb-3">
-            {isAdmin ? (
-              <div className="flex gap-2">
-                <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
-                <a href={`tel:${familia.telefono}`} className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
-              </div>
-            ) : null}
-          </div>
-        )}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-          {[
-            { id:"conversaciones", label:`💬${conversaciones.length>0?` (${conversaciones.length})`:""}`},
-            { id:"visitas", label:`📖${visitas.length>0?` (${visitas.length})`:""}`},
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
-          ))}
-        </div>
       </div>
+
+      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+
+        {/* Contacto principal */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
+          {familia.telefono && isAdmin ? (
+            <div className="flex gap-2">
+              <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
+              <a href={`tel:${familia.telefono}`}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">{familia.telefono || "Sin teléfono"}</p>
+          )}
+        </div>
+
+        {/* Segundo contacto */}
         {familia.contacto2_nombre && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0">{familia.contacto2_nombre[0]}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
-              {familia.contacto2_telefono && isAdmin && (
-                <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-emerald-600 font-medium mt-0.5 block">💬 {familia.contacto2_telefono}</a>
-              )}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Segundo contacto</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0">{familia.contacto2_nombre[0]}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
+                {familia.contacto2_telefono && isAdmin && (
+                  <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-emerald-600 font-medium mt-0.5 block">💬 {familia.contacto2_telefono}</a>
+                )}
+              </div>
             </div>
           </div>
         )}
+
+        {/* Hijos - cada uno en su card */}
         {hijos.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
             {hijos.map((h, i) => <HijoCard key={i} hijo={h} onSave={(data) => handleSaveHijo(i, data)} />)}
           </div>
         )}
-        {tab === "conversaciones" && (
-          <div className="space-y-3">
-            {showNuevaConv ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
-                <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                <div className="flex gap-2">
-                  <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
-                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
-                </div>
+
+        {/* Feed unificado: conversaciones + visitas */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Actividad</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowNuevaConv(true)}
+                className="text-xs bg-violet-100 text-violet-700 px-3 py-1.5 rounded-full font-medium">+ Conv.</button>
+              <button onClick={() => setShowNuevaVisita(true)}
+                className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-medium">+ Visita</button>
+            </div>
+          </div>
+
+          {showNuevaConv && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-2">
+              <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <div className="flex gap-2">
+                <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
+                <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
               </div>
-            ) : (
-              <button onClick={() => setShowNuevaConv(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nuevo mensaje</button>
-            )}
-            {conversaciones.length === 0 ? <p className="text-center text-gray-400 py-8">Sin mensajes aún</p> :
-              conversaciones.map(c => {
-                const nombre = c.profiles?.nombre || "—";
-                const fecha = new Date(c.created_at);
-                const esHoy = fecha.toDateString() === new Date().toDateString();
-                const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-                const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
-                return (
-                  <div key={c.id} className="flex gap-3 group">
-                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-gray-800">{nombre}</span>
-                        <span className="text-xs text-gray-400">{fechaStr}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
-                    </div>
-                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
-                  </div>
-                );
-              })}
-          </div>
-        )}
-        {tab === "visitas" && (
-          <div className="space-y-3">
-            {showNuevaVisita ? (
-              <VisitaFormInline familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-                onSave={() => setShowNuevaVisita(false)} onCancel={() => setShowNuevaVisita(false)} />
-            ) : (
-              <button onClick={() => setShowNuevaVisita(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nueva visita</button>
-            )}
-            {sortedVisitas.length === 0 ? <p className="text-center text-gray-400 py-8">Sin visitas aún</p> :
-              sortedVisitas.map(v => (
-                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{v.completada?"Completada":"En progreso"}</span>
-                  </div>
-                  <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
-                  <p className="text-sm text-gray-700">S{v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
-                  <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
-                  {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
+            </div>
+          )}
+
+          {showNuevaVisita && (
+            <VisitaFormInline familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
+              onSave={() => setShowNuevaVisita(false)} onCancel={() => setShowNuevaVisita(false)} />
+          )}
+
+          {feedUnificado.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">Sin actividad aún</p>
+          ) : feedUnificado.map((item, i) => {
+            const esConv = item._tipo === "conv";
+            const fecha = new Date(item._sort || "");
+            const esHoy = fecha.toDateString() === new Date().toDateString();
+            const hora = isNaN(fecha) ? "" : fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+            const fechaStr = isNaN(fecha) ? item.fecha || "" : esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
+            const autor = item.profiles?.nombre || "—";
+            return (
+              <div key={`${item._tipo}-${item.id}`} className="flex gap-3 group">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
+                  {esConv ? autor[0] : "📖"}
                 </div>
-              ))}
-          </div>
-        )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
+                      {esConv?"💬 Conv.":"📖 Visita"}
+                    </span>
+                    <span className="text-xs text-gray-400">{fechaStr}</span>
+                    <span className="text-xs text-gray-400">· {autor}</span>
+                  </div>
+                  {esConv ? (
+                    <p className="text-sm text-gray-700 leading-relaxed">{item.nota}</p>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">U{item.unidad} · S{item.seccion} <span className={`text-xs ml-1 font-medium ${item.completada?"text-emerald-600":"text-amber-600"}`}>{item.completada?"✓":"·"}</span></p>
+                      <p className="text-xs text-gray-500">{UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
+                      {item.comentario && <p className="text-xs text-gray-400 mt-0.5">{item.comentario}</p>}
+                    </div>
+                  )}
+                </div>
+                {esConv && (
+                  <button onClick={() => handleDeleteConv(item.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
+
 
 function VisitaFormInline({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
   const [unidad, setUnidad] = useState(1);
@@ -1467,8 +1486,8 @@ function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisit
       .select("*, profiles(nombre)").order("created_at", { ascending: false });
     const items = [
       ...(convs || []).map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
-      ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha + "T00:00:00" })),
-    ].sort((a, b) => b._sort.localeCompare(a._sort));
+      ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || (v.fecha ? v.fecha + "T12:00:00" : "") })),
+    ].sort((a, b) => (b._sort || "").localeCompare(a._sort || ""));
     setFeed(items);
     setLoading(false);
   };
