@@ -968,127 +968,221 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   );
 }
 
-function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddOfrecimiento }) {
+// ── SEMANAS DEL CAMPAMENTO ────────────────────────────────────────────────────
+const SEMANAS = [
+  { label: "Semana 1", inicio: new Date("2026-07-06"), dias: ["2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10"] },
+  { label: "Semana 2", inicio: new Date("2026-07-13"), dias: ["2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17"] },
+  { label: "Semana 3", inicio: new Date("2026-07-20"), dias: ["2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24"] },
+  { label: "Semana 4", inicio: new Date("2026-07-27"), dias: ["2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31"] },
+];
+const DIAS_LABELS = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
+
+const HORARIO_FIJO = [
+  { hora: "8:30", fin: "9:00", titulo: "Llegada de los niños", color: "bg-gray-100 text-gray-600", dot: "bg-gray-400" },
+  { hora: "9:00", fin: "9:30", titulo: "Oraciones", color: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
+  { hora: "9:30", fin: "10:30", titulo: "Sesión parte 1", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500", duracion: "1h" },
+  { hora: "10:30", fin: "10:45", titulo: "Merienda", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+  { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500", duracion: "45min" },
+  { hora: "11:30", fin: "12:00", titulo: "Parque / Juegos / Dramatización", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  { hora: "12:00", fin: "13:30", titulo: "TALLER", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500", esTaller: true },
+  { hora: "13:30", fin: "14:15", titulo: "Reflexión conjunta", color: "bg-pink-100 text-pink-700", dot: "bg-pink-500" },
+  { hora: "14:15", fin: "14:30", titulo: "Reflexión de maestros", color: "bg-rose-100 text-rose-700", dot: "bg-rose-500" },
+];
+
+const HORARIO_EXCURSION = [
+  { hora: "8:30", fin: "9:00", titulo: "Llegada de los niños", color: "bg-gray-100 text-gray-600", dot: "bg-gray-400" },
+  { hora: "9:00", fin: "9:30", titulo: "Oraciones", color: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
+  { hora: "9:30", fin: "14:00", titulo: "EXCURSIÓN", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500", esExcursion: true },
+  { hora: "14:00", fin: "14:15", titulo: "Reflexión conjunta", color: "bg-pink-100 text-pink-700", dot: "bg-pink-500" },
+];
+
+function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddOfrecimiento, onAddTaller, onAddExcursion }) {
   const hoy = new Date();
-  const [mes, setMes] = useState(hoy.getMonth());
-  const [anio, setAnio] = useState(hoy.getFullYear());
-  const [diaSeleccionado, setDiaSeleccionado] = useState(hoy.getDate());
-  const [showAddForm, setShowAddForm] = useState(false);
-  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const DIAS = ["Lu","Ma","Mi","Ju","Vi","Sá","Do"];
+  // Find current week index
+  const semanaInicial = SEMANAS.findIndex(s => {
+    const fin = new Date(s.dias[4]); fin.setHours(23,59,59);
+    return hoy >= s.inicio && hoy <= fin;
+  });
+  const [semanaIdx, setSemanaIdx] = useState(semanaInicial >= 0 ? semanaInicial : 0);
+  const [diaIdx, setDiaIdx] = useState(() => {
+    const d = hoy.getDay(); // 0=sun,1=mon...
+    if (d >= 1 && d <= 5) return d - 1;
+    return 0;
+  });
+  const [showAdd, setShowAdd] = useState(false);
+  const [addTipo, setAddTipo] = useState(null); // "ofrecimiento"|"taller"|"excursion"
 
-  const diasEnMes = new Date(anio, mes+1, 0).getDate();
-  const primerDia = new Date(anio, mes, 1).getDay();
-  const offset = primerDia === 0 ? 6 : primerDia - 1;
+  const semana = SEMANAS[semanaIdx];
+  const fechaDia = semana.dias[diaIdx];
+  const esMiercoles = diaIdx === 2;
 
-  const eventos = [
-    ...(ofrecimientos||[]).filter(o=>{const d=new Date(o.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(o=>({...o,tipo:"ofrecimiento",dia:new Date(o.fecha+"T12:00:00").getDate()})),
-    ...(talleres||[]).filter(t=>t.fecha).filter(t=>{const d=new Date(t.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(t=>({...t,tipo:"taller",dia:new Date(t.fecha+"T12:00:00").getDate()})),
-    ...(excursiones||[]).filter(e=>{const d=new Date(e.fecha+"T12:00:00");return d.getMonth()===mes&&d.getFullYear()===anio;}).map(e=>({...e,tipo:"excursion",dia:new Date(e.fecha+"T12:00:00").getDate()})),
-  ];
-  const porDia = {};
-  eventos.forEach(e=>{ if(!porDia[e.dia]) porDia[e.dia]=[]; porDia[e.dia].push(e); });
-  const celdas = [...Array(offset).fill(null), ...Array.from({length:diasEnMes},(_,i)=>i+1)];
-  const eventosDia = (porDia[diaSeleccionado] || []).sort((a,b) => a.tipo.localeCompare(b.tipo));
+  const tallerDia = talleres?.find(t => t.fecha === fechaDia);
+  const excursionDia = excursiones?.find(e => e.fecha === fechaDia);
+  const horario = esMiercoles && excursionDia ? HORARIO_EXCURSION : HORARIO_FIJO;
 
-  const prevMes = () => { if(mes===0){setMes(11);setAnio(a=>a-1);}else setMes(m=>m-1); setDiaSeleccionado(1); };
-  const nextMes = () => { if(mes===11){setMes(0);setAnio(a=>a+1);}else setMes(m=>m+1); setDiaSeleccionado(1); };
-
-  const tipoLabel = { ofrecimiento: "Ofrecimiento", taller: "Taller", excursion: "Excursión" };
-  const tipoColor = { ofrecimiento: "bg-violet-100 text-violet-700", taller: "bg-amber-100 text-amber-700", excursion: "bg-emerald-100 text-emerald-700" };
-  const tipoDot = { ofrecimiento: "bg-violet-500", taller: "bg-amber-500", excursion: "bg-emerald-500" };
-
-  const getNombreEvento = (e) => {
-    if (e.tipo === "taller") return e.quien;
-    if (e.tipo === "excursion") return e.titulo;
-    return familias?.find(f=>f.id===e.familia_id)?.nombre || "—";
+  const getTituloSlot = (slot) => {
+    if (slot.esTaller) return tallerDia ? tallerDia.descripcion : "Taller (por confirmar)";
+    if (slot.esExcursion) return excursionDia ? excursionDia.titulo : "Excursión";
+    return slot.titulo;
   };
 
+  const getSubtituloSlot = (slot) => {
+    if (slot.esTaller && tallerDia) return `con ${tallerDia.quien}`;
+    if (slot.esExcursion && excursionDia) return excursionDia.descripcion || "";
+    return slot.duracion || "";
+  };
+
+  const fechaFormateada = new Date(fechaDia + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Header mes */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-        <button onClick={prevMes} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">‹</button>
-        <p className="font-bold text-gray-900 text-base">{MESES[mes]} {anio}</p>
-        <div className="flex items-center gap-1">
-          {onAddOfrecimiento && (
-            <button onClick={() => setShowAddForm(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-600 text-white text-lg font-bold hover:bg-violet-700">+</button>
-          )}
-          <button onClick={nextMes} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">›</button>
-        </div>
-      </div>
-
-      {/* Días semana */}
-      <div className="grid grid-cols-7 px-1 pb-1">
-        {DIAS.map(d => <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>)}
-      </div>
-
-      {/* Grid días */}
-      <div className="grid grid-cols-7 px-1 pb-2">
-        {celdas.map((dia, i) => {
-          const evs = dia ? (porDia[dia]||[]) : [];
-          const esHoy = dia && dia===hoy.getDate() && mes===hoy.getMonth() && anio===hoy.getFullYear();
-          const esSel = dia && dia === diaSeleccionado;
+    <div className="space-y-4">
+      {/* Semanas — cards horizontales */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {SEMANAS.map((s, i) => {
+          const pasada = new Date(s.dias[4]) < hoy;
+          const activa = i === semanaIdx;
           return (
-            <div key={i} onClick={() => dia && setDiaSeleccionado(dia)}
-              className={`flex flex-col items-center py-1 cursor-pointer rounded-xl mx-0.5 transition-colors ${dia?"hover:bg-gray-50":""}`}>
-              {dia && (
-                <>
-                  <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-0.5 transition-all
-                    ${esHoy ? "bg-violet-600 text-white font-bold" : esSel ? "bg-gray-900 text-white" : "text-gray-700"}`}>
-                    {dia}
-                  </span>
-                  <div className="flex gap-0.5 h-1.5">
-                    {evs.slice(0,3).map((e,j) => (
-                      <div key={j} className={`w-1.5 h-1.5 rounded-full ${tipoDot[e.tipo]}`}></div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <button key={i} onClick={() => { setSemanaIdx(i); setDiaIdx(0); }}
+              className={`flex-shrink-0 rounded-2xl px-4 py-3 text-left transition-all border ${activa ? "bg-violet-600 text-white border-violet-600 shadow-md" : pasada ? "bg-gray-50 text-gray-400 border-gray-100" : "bg-white text-gray-700 border-gray-100 shadow-sm"}`}>
+              <p className={`text-xs font-semibold ${activa ? "text-violet-200" : "text-gray-400"}`}>{s.label}</p>
+              <p className={`text-sm font-bold mt-0.5 ${activa ? "text-white" : "text-gray-800"}`}>
+                {new Date(s.dias[0]+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})} — {new Date(s.dias[4]+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}
+              </p>
+            </button>
           );
         })}
       </div>
 
-      {/* Eventos del día seleccionado */}
-      <div className="border-t border-gray-100">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700">
-            {diaSeleccionado} de {MESES[mes]}
-          </p>
-          {eventosDia.length > 0 && <span className="text-xs text-gray-400">{eventosDia.length} evento{eventosDia.length!==1?"s":""}</span>}
+      {/* Días tabs */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="flex border-b border-gray-100">
+          {DIAS_LABELS.map((d, i) => {
+            const fecha = semana.dias[i];
+            const esHoy = fecha === hoy.toISOString().slice(0,10);
+            const tieneTaller = talleres?.some(t => t.fecha === fecha);
+            const tieneExc = excursiones?.some(e => e.fecha === fecha);
+            return (
+              <button key={i} onClick={() => setDiaIdx(i)}
+                className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 transition-all ${diaIdx===i ? "border-b-2 border-violet-600" : ""}`}>
+                <span className={`text-[10px] font-semibold ${diaIdx===i?"text-violet-600":"text-gray-400"}`}>{d.slice(0,3)}</span>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${esHoy?"bg-violet-600 text-white":diaIdx===i?"text-violet-600":"text-gray-600"}`}>
+                  {new Date(fecha+"T12:00:00").getDate()}
+                </span>
+                {(tieneTaller || tieneExc) && <div className={`w-1.5 h-1.5 rounded-full ${tieneExc?"bg-emerald-500":"bg-orange-500"}`}></div>}
+              </button>
+            );
+          })}
         </div>
-        {eventosDia.length === 0 ? (
-          <p className="text-xs text-gray-400 px-4 pb-4">Sin eventos este día</p>
-        ) : (
-          <div className="px-4 pb-4 space-y-2">
-            {eventosDia.map((e, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 border-t border-gray-50">
-                <div className={`w-1 h-10 rounded-full flex-shrink-0 ${tipoDot[e.tipo]}`}></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{getNombreEvento(e)}</p>
-                  <p className="text-xs text-gray-500">{e.tipo==="ofrecimiento"?e.que:e.tipo==="taller"?e.descripcion:e.descripcion}</p>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${tipoColor[e.tipo]}`}>{tipoLabel[e.tipo]}</span>
-              </div>
-            ))}
+
+        {/* Header del día */}
+        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
+          <div>
+            <p className="text-xs text-gray-400">{fechaFormateada}</p>
+            <p className="text-sm font-bold text-gray-800">{DIAS_LABELS[diaIdx]}</p>
           </div>
-        )}
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center text-lg font-bold hover:bg-violet-700 transition-colors">+</button>
+        </div>
+
+        {/* Timeline */}
+        <div className="px-4 py-3 space-y-0">
+          {horario.map((slot, i) => (
+            <div key={i} className="flex gap-3 relative">
+              {/* Línea vertical */}
+              {i < horario.length - 1 && <div className="absolute left-[27px] top-6 bottom-0 w-px bg-gray-100 z-0"></div>}
+              {/* Hora */}
+              <div className="w-12 flex-shrink-0 text-right pt-1 z-10">
+                <span className="text-[11px] font-semibold text-gray-500">{slot.hora}</span>
+              </div>
+              {/* Dot */}
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1.5 z-10 ${slot.dot}`}></div>
+              {/* Contenido */}
+              <div className={`flex-1 mb-4 rounded-2xl px-3 py-2.5 ${slot.color}`}>
+                <p className="text-sm font-semibold leading-tight">{getTituloSlot(slot)}</p>
+                {getSubtituloSlot(slot) && <p className="text-xs opacity-70 mt-0.5">{getSubtituloSlot(slot)}</p>}
+                {slot.fin && <p className="text-[10px] opacity-50 mt-0.5">hasta las {slot.fin}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Form añadir ofrecimiento */}
-      {showAddForm && (
-        <div className="border-t border-gray-100 px-4 py-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-700">Nuevo ofrecimiento</p>
-          <OfrecimientoForm
-            familias={familias}
-            ofrecimiento={{ fecha: `${anio}-${String(mes+1).padStart(2,"0")}-${String(diaSeleccionado).padStart(2,"0")}` }}
-            onSave={(o) => { if(onAddOfrecimiento) onAddOfrecimiento(o); setShowAddForm(false); }}
-            onCancel={() => setShowAddForm(false)}
-          />
+      {/* Pop-up añadir */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-end justify-center" onClick={() => { setShowAdd(false); setAddTipo(null); }}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">{addTipo ? (addTipo==="ofrecimiento"?"Nuevo ofrecimiento":addTipo==="taller"?"Nuevo taller":"Nueva excursión") : "¿Qué quieres añadir?"}</h3>
+              <button onClick={() => { setShowAdd(false); setAddTipo(null); }} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">✕</button>
+            </div>
+            <div className="px-4 py-4">
+              {!addTipo ? (
+                <div className="space-y-3">
+                  {[
+                    { id:"ofrecimiento", icon:"🎁", label:"Ofrecimiento", desc:"Una familia ofrece algo al campamento", color:"bg-violet-50 border-violet-200" },
+                    { id:"taller", icon:"🎨", label:"Taller", desc:"Actividad especial para los niños", color:"bg-amber-50 border-amber-200" },
+                    { id:"excursion", icon:"🚌", label:"Excursión", desc:"Salida fuera del centro", color:"bg-emerald-50 border-emerald-200" },
+                  ].map(op => (
+                    <button key={op.id} onClick={() => setAddTipo(op.id)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:shadow-sm ${op.color}`}>
+                      <span className="text-3xl">{op.icon}</span>
+                      <div>
+                        <p className="font-bold text-gray-800">{op.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{op.desc}</p>
+                      </div>
+                      <span className="ml-auto text-gray-400">›</span>
+                    </button>
+                  ))}
+                </div>
+              ) : addTipo === "ofrecimiento" ? (
+                <OfrecimientoForm familias={familias}
+                  ofrecimiento={{ fecha: fechaDia }}
+                  onSave={(o) => { if(onAddOfrecimiento) onAddOfrecimiento(o); setShowAdd(false); setAddTipo(null); }}
+                  onCancel={() => setAddTipo(null)} />
+              ) : addTipo === "taller" ? (
+                <TallerForm
+                  taller={{ fecha: fechaDia }}
+                  onSave={(t) => { if(onAddTaller) onAddTaller(t); setShowAdd(false); setAddTipo(null); }}
+                  onCancel={() => setAddTipo(null)} />
+              ) : (
+                <ExcursionForm
+                  fecha={fechaDia}
+                  onSave={(e) => { if(onAddExcursion) onAddExcursion(e); setShowAdd(false); setAddTipo(null); }}
+                  onCancel={() => setAddTipo(null)} />
+              )}
+            </div>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ExcursionForm({ fecha, onSave, onCancel }) {
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    if (!titulo.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from("excursiones").insert({
+      fecha, titulo: titulo.trim(), descripcion: descripcion.trim() || null,
+    }).select().single();
+    if (data) onSave(data);
+    setSaving(false);
+  };
+  return (
+    <div className="space-y-4">
+      <div><label className="text-xs text-gray-500 mb-1 block">Título *</label>
+        <input value={titulo} onChange={e=>setTitulo(e.target.value)} placeholder="Ej: Parque del Retiro"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div><label className="text-xs text-gray-500 mb-1 block">Descripción</label>
+        <textarea value={descripcion} onChange={e=>setDescripcion(e.target.value)} rows={2}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving||!titulo.trim()} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
     </div>
   );
 }
@@ -1881,7 +1975,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} />
+              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} onAddTaller={handleAddTaller} onAddExcursion={(e) => setExcursiones(prev => [...prev, e])} />
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
                 {[
