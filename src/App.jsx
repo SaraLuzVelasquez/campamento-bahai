@@ -871,11 +871,18 @@ function VoluntariosView({ voluntarios, isAdmin, onAdd, onEdit }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  if (showForm) return <FullScreen title="Nuevo voluntario" onBack={() => setShowForm(false)}><VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
-  if (editTarget) return <FullScreen title="Editar voluntario" onBack={() => setEditTarget(null)}><VoluntarioForm voluntario={editTarget} onSave={(v) => { onEdit(v); setEditTarget(null); }} onCancel={() => setEditTarget(null)} /></FullScreen>;
-
   return (
     <div className="space-y-4">
+      {showForm && (
+        <Popup title="Nuevo voluntario" onClose={() => setShowForm(false)}>
+          <VoluntarioForm onSave={(v) => { onAdd(v); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+        </Popup>
+      )}
+      {editTarget && (
+        <Popup title="Editar voluntario" onClose={() => setEditTarget(null)}>
+          <VoluntarioForm voluntario={editTarget} onSave={(v) => { onEdit(v); setEditTarget(null); }} onCancel={() => setEditTarget(null)} />
+        </Popup>
+      )}
       <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir voluntario</button>
       {voluntarios.length === 0 ? <p className="text-center text-gray-400 py-12">Sin voluntarios</p> : (
         <div className="space-y-2.5">{voluntarios.map(v => (
@@ -933,9 +940,13 @@ function OfrecimientoForm({ familiaId, familias, ofrecimiento, onSave, onCancel 
 
 function OfrecimientosView({ ofrecimientos, familias, onAdd, onDelete }) {
   const [showForm, setShowForm] = useState(false);
-  if (showForm) return <FullScreen title="Nuevo ofrecimiento" onBack={() => setShowForm(false)}><OfrecimientoForm familias={familias} onSave={(o) => { onAdd(o); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
   return (
     <div className="space-y-4">
+      {showForm && (
+        <Popup title="Nuevo ofrecimiento" onClose={() => setShowForm(false)}>
+          <OfrecimientoForm familias={familias} onSave={(o) => { onAdd(o); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+        </Popup>
+      )}
       <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir ofrecimiento</button>
       {ofrecimientos.length === 0 ? <p className="text-center text-gray-400 py-12">Sin ofrecimientos</p> : (
         <div className="space-y-2.5">{[...ofrecimientos].sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(o => {
@@ -1040,18 +1051,39 @@ function TallerCard({ taller: t, onEdit }) {
   );
 }
 
+function Popup({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white rounded-t-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm">✕</button>
+        </div>
+        <div className="px-4 py-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
 
-  if (showForm) return <FullScreen title="Nuevo taller" onBack={() => setShowForm(false)}><TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} /></FullScreen>;
-  if (editTarget) return <FullScreen title="Editar taller" onBack={() => setEditTarget(null)}><TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} onDelete={(id) => { onDelete(id); setEditTarget(null); }} /></FullScreen>;
-
   return (
     <div className="space-y-4">
+      {showForm && (
+        <Popup title="Nuevo taller" onClose={() => setShowForm(false)}>
+          <TallerForm onSave={(t) => { onAdd(t); setShowForm(false); }} onCancel={() => setShowForm(false)} />
+        </Popup>
+      )}
+      {editTarget && (
+        <Popup title="Editar taller" onClose={() => setEditTarget(null)}>
+          <TallerForm taller={editTarget} onSave={(t) => { onEdit(t); setEditTarget(null); }} onCancel={() => setEditTarget(null)} onDelete={(id) => { onDelete(id); setEditTarget(null); }} />
+        </Popup>
+      )}
       <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3">
         <span className="text-2xl">🎨</span>
-        <div><p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p><p className="text-xs text-amber-600">{talleres.length} de 16 registrados</p></div>
+        <div><p className="text-sm font-semibold text-amber-800">Hacen falta {Math.max(0, 16 - talleres.length)} talleres</p><p className="text-[13px] text-amber-600">{talleres.length} de 16 registrados</p></div>
       </div>
       <button onClick={() => setShowForm(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Añadir taller</button>
       {talleres.length === 0 ? <p className="text-center text-gray-400 py-12">Sin talleres</p> : (
@@ -1126,9 +1158,10 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   const tallerDia = talleres?.find(t => t.fecha === fechaDia);
   const excursionDia = excursiones?.find(e => e.fecha === fechaDia);
   const horario = esMiercoles && excursionDia ? HORARIO_EXCURSION : HORARIO_FIJO;
+  const [editSlot, setEditSlot] = useState(null); // "taller" | "excursion"
 
   const alergias = familias?.flatMap(f =>
-    (f.hijos||[]).map(h => typeof h==="string" ? null : h)
+    (f.hijos||[]).map(h => typeof h===="string" ? null : h)
       .filter(h => h && h.alergias && h.alergias.trim())
       .map(h => `${h.nombre}: ${h.alergias}`)
   ).filter(Boolean) || [];
@@ -1223,10 +1256,38 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               )}
                 {slot.fin && <p className="text-[13px] text-gray-500 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
+              {(slot.esTaller || slot.esExcursion) && (
+                <button onClick={() => setEditSlot(slot.esTaller ? "taller" : "excursion")}
+                  className="px-3 text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0">✏️</button>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Popup editar taller del día */}
+      {editSlot === "taller" && (
+        <Popup title={tallerDia ? "Editar taller" : "Nuevo taller"} onClose={() => setEditSlot(null)}>
+          <TallerForm
+            taller={tallerDia ? { ...tallerDia } : { fecha: fechaDia }}
+            onSave={(t) => { if(onAddTaller) onAddTaller(t); setEditSlot(null); }}
+            onCancel={() => setEditSlot(null)}
+            onDelete={tallerDia ? (id) => { setEditSlot(null); } : null}
+          />
+        </Popup>
+      )}
+
+      {/* Popup editar excursión del día */}
+      {editSlot === "excursion" && excursionDia && (
+        <Popup title="Editar excursión" onClose={() => setEditSlot(null)}>
+          <ExcursionForm
+            fecha={fechaDia}
+            excursion={excursionDia}
+            onSave={(e) => { if(onAddExcursion) onAddExcursion(e); setEditSlot(null); }}
+            onCancel={() => setEditSlot(null)}
+          />
+        </Popup>
+      )}
 
       {/* Pop-up añadir */}
       {showAdd && (
@@ -1284,17 +1345,24 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   );
 }
 
-function ExcursionForm({ fecha, onSave, onCancel }) {
-  const [titulo, setTitulo] = useState("");
-  const [descripcion, setDescripcion] = useState("");
+function ExcursionForm({ fecha, excursion, onSave, onCancel }) {
+  const [titulo, setTitulo] = useState(excursion?.titulo || "");
+  const [descripcion, setDescripcion] = useState(excursion?.descripcion || "");
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
     if (!titulo.trim()) return;
     setSaving(true);
-    const { data } = await supabase.from("excursiones").insert({
-      fecha, titulo: titulo.trim(), descripcion: descripcion.trim() || null,
-    }).select().single();
-    if (data) onSave(data);
+    if (excursion?.id) {
+      const { data } = await supabase.from("excursiones")
+        .update({ titulo: titulo.trim(), descripcion: descripcion.trim() || null })
+        .eq("id", excursion.id).select().single();
+      if (data) onSave(data);
+    } else {
+      const { data } = await supabase.from("excursiones").insert({
+        fecha, titulo: titulo.trim(), descripcion: descripcion.trim() || null,
+      }).select().single();
+      if (data) onSave(data);
+    }
     setSaving(false);
   };
   return (
