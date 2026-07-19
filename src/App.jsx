@@ -1096,15 +1096,23 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   const hoy = new Date();
   const todayStr = hoy.toISOString().slice(0,10);
 
-  const semanaInicial = Math.max(0, SEMANAS.findIndex(s => {
-    const fin = new Date(s.dias[4]); fin.setHours(23,59,59);
-    return hoy >= new Date(s.dias[0]) && hoy <= fin;
-  }));
-  const [semanaIdx, setSemanaIdx] = useState(semanaInicial >= 0 ? semanaInicial : 0);
-  const [diaIdx, setDiaIdx] = useState(() => {
-    const d = hoy.getDay();
-    return (d >= 1 && d <= 5) ? d - 1 : 0;
-  });
+  const semanaInicial = (() => {
+    const idx = SEMANAS.findIndex(s => {
+      const fin = new Date(s.dias[4]); fin.setHours(23,59,59);
+      return hoy >= new Date(s.dias[0]) && hoy <= fin;
+    });
+    if (idx >= 0) return idx;
+    // If before camp, show week 1; if after, show last week
+    if (hoy < new Date(SEMANAS[0].dias[0])) return 0;
+    return SEMANAS.length - 1;
+  })();
+  const diaInicial = (() => {
+    const d = hoy.getDay(); // 0=dom, 1=lun... 5=vie, 6=sab
+    if (d >= 1 && d <= 5) return d - 1;
+    return 0; // weekend → Monday
+  })();
+  const [semanaIdx, setSemanaIdx] = useState(semanaInicial);
+  const [diaIdx, setDiaIdx] = useState(diaInicial);
   const [showAdd, setShowAdd] = useState(false);
   const [addTipo, setAddTipo] = useState(null);
 
