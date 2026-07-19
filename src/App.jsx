@@ -1991,7 +1991,7 @@ export default function App() {
       const [{ data: talls }, { data: ofrecs }, { data: fams }, { data: excurs }] = await Promise.all([
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
         supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
-        supabase.from("familias").select("id, nombre, grado"),
+        supabase.from("familias").select("*").order("nombre", { ascending: true }),
         supabase.from("excursiones").select("*").order("fecha"),
       ]);
       setTalleres(talls || []);
