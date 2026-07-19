@@ -50,20 +50,6 @@ function FullScreen({ title, onBack, children }) {
   );
 }
 
-function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4">
-        <p className="font-semibold text-gray-800">{title}</p>
-        {message && <p className="text-sm text-gray-500">{message}</p>}
-        <div className="flex gap-2">
-          <button onClick={onConfirm} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold">{confirmLabel}</button>
-          <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ContactoButtons({ telefono, isAdmin, onEdit }) {
   const limpio = telefono?.replace(/\D/g, "") || "";
@@ -326,185 +312,6 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   );
 }
 
-function VisitaForm({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
-  const [unidad, setUnidad] = useState(1);
-  const [seccion, setSeccion] = useState(1);
-  const [visitadorId, setVisitadorId] = useState(currentUser.id);
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0,10));
-  const [completada, setCompletada] = useState(false);
-  const [comentario, setComentario] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true);
-    const { data } = await supabase.from("visitas").insert({
-      familia_id: familiaId, fecha, unidad, seccion, visitador_id: visitadorId, completada, comentario: comentario || null,
-    }).select("*, profiles(nombre)").single();
-    if (data) onSave(data);
-    setSaving(false);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div><label className="text-xs text-gray-500 mb-1 block">Fecha</label>
-        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
-      <div><label className="text-xs text-gray-500 mb-2 block">¿Quién fue?</label>
-        <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300">
-          {allProfiles.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>)}</select></div>
-      <div><label className="text-xs text-gray-500 mb-2 block">Unidad</label>
-        <div className="flex gap-2">{[1,2,3].map(u => (
-          <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${unidad===u?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{u}</button>
-        ))}</div>
-        <p className="text-xs text-violet-600 mt-1.5 font-medium">{UNIDADES[unidad].nombre}</p></div>
-      <div><label className="text-xs text-gray-500 mb-2 block">Sección</label>
-        <div className="flex flex-wrap gap-1.5">{Object.keys(UNIDADES[unidad].secciones).map(s => (
-          <button key={s} onClick={()=>setSeccion(Number(s))}
-            className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
-        ))}</div>
-        <p className="text-xs text-gray-500 mt-1.5 italic">{UNIDADES[unidad].secciones[seccion]}</p></div>
-      <button onClick={()=>setCompletada(!completada)}
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${completada?"bg-emerald-500 text-white":"bg-gray-100 text-gray-500"}`}>
-        {completada?"✓ Completada":"En progreso"}</button>
-      <div><label className="text-xs text-gray-500 mb-1 block">Comentario (opcional)</label>
-        <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" /></div>
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar visita"}</button>
-        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onClose, isAdmin }) {
-  const [tab, setTab] = useState("conversaciones");
-  const [conversaciones, setConversaciones] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [showNuevaConv, setShowNuevaConv] = useState(false);
-  const [showNuevaVisita, setShowNuevaVisita] = useState(false);
-  const [nuevaNota, setNuevaNota] = useState("");
-
-  useEffect(() => {
-    if (!loaded) {
-      supabase.from("conversaciones").select("*, profiles(nombre)").eq("familia_id", familia.id)
-        .order("created_at", { ascending: false })
-        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
-    }
-  }, [familia.id, loaded]);
-
-  const handleDeleteConv = async (id) => {
-    await supabase.from("conversaciones").delete().eq("id", id);
-    setConversaciones(prev => prev.filter(c => c.id !== id));
-  };
-
-  const handleSaveConv = async () => {
-    if (!nuevaNota.trim()) return;
-    const { data } = await supabase.from("conversaciones").insert({
-      familia_id: familia.id, nota: nuevaNota.trim(), autor_id: currentUser.id,
-    }).select("*, profiles(nombre)").single();
-    if (data) setConversaciones(prev => [data, ...prev]);
-    setNuevaNota(""); setShowNuevaConv(false);
-  };
-
-  const sorted = [...visitas].sort((a,b) => b.fecha.localeCompare(a.fecha));
-
-  return (
-    <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-100 px-4 pt-4 pb-3 flex-shrink-0">
-        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-3">← Volver</button>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{familia.nombre[0]}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900">{familia.nombre}</span><Badge text={familia.grado} /></div>
-            {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre}${h.edad?`, ${h.edad}a`:""}`).join(" · ")}</p>}
-            {familia.servicio && <p className="text-[13px] text-gray-500 truncate">{familia.servicio}</p>}
-          </div>
-        </div>
-        {familia.telefono && <div className="mb-2"><ContactoButtons telefono={familia.telefono} isAdmin={isAdmin} /></div>}
-        {familia.contacto2_nombre && (
-          <div className="mb-2 bg-gray-50 rounded-xl p-2.5 flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">{familia.contacto2_nombre}</span>
-            <Badge text={familia.contacto2_parentesco} />
-          </div>
-        )}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-          {[
-            { id: "conversaciones", label: `💬 Conv.${conversaciones.length > 0 ? ` (${conversaciones.length})` : ""}` },
-            { id: "visitas", label: `📖 Visitas${visitas.length > 0 ? ` (${visitas.length})` : ""}` },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
-          ))}
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {tab === "conversaciones" && (
-          <>
-            {showNuevaConv ? (
-              <div className="space-y-2">
-                <textarea value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)} rows={3} autoFocus placeholder="Escribe un mensaje..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-                <div className="flex gap-2">
-                  <button onClick={handleSaveConv} disabled={!nuevaNota.trim()} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">Enviar</button>
-                  <button onClick={() => { setShowNuevaConv(false); setNuevaNota(""); }} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowNuevaConv(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nuevo mensaje</button>
-            )}
-            {conversaciones.length === 0 ? <p className="text-center text-gray-400 py-8">Sin mensajes aún</p> :
-              conversaciones.map(c => {
-                const nombre = c.profiles?.nombre || "—";
-                const fecha = new Date(c.created_at);
-                const esHoy = fecha.toDateString() === new Date().toDateString();
-                const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-                const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
-                return (
-                  <div key={c.id} className="flex gap-3 group">
-                    <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-gray-800">{nombre}</span>
-                        <span className="text-[13px] text-gray-500">{fechaStr}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
-                    </div>
-                    <button onClick={() => handleDeleteConv(c.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1">✕</button>
-                  </div>
-                );
-              })}
-          </>
-        )}
-        {tab === "visitas" && (
-          <>
-            {showNuevaVisita ? (
-              <VisitaForm familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles}
-                onSave={(v) => { onAddVisita(v); setShowNuevaVisita(false); }} onCancel={() => setShowNuevaVisita(false)} />
-            ) : (
-              <button onClick={() => setShowNuevaVisita(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold">+ Nueva visita</button>
-            )}
-            {sorted.length === 0 ? <p className="text-center text-gray-400 py-8">Sin visitas aún</p> :
-              sorted.map(v => (
-                <div key={v.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{v.completada?"Completada":"En progreso"}</span>
-                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-500 hover:text-red-400">✕</button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
-                  <p className="text-sm text-gray-700">S{v.seccion}: {UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
-                  <p className="text-xs text-gray-500">Fue: {v.profiles?.nombre}</p>
-                  {v.comentario && <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-3 py-2">💬 {v.comentario}</p>}
-                </div>
-              ))}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function HijoCard({ hijo, onSave }) {
   const [editing, setEditing] = useState(false);
@@ -710,46 +517,6 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
             <span className="text-sm">➤</span>
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function VisitaFormInline({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
-  const [unidad, setUnidad] = useState(1);
-  const [seccion, setSeccion] = useState(1);
-  const [visitadorId, setVisitadorId] = useState(currentUser.id);
-  const [completada, setCompletada] = useState(false);
-  const [comentario, setComentario] = useState("");
-  const [saving, setSaving] = useState(false);
-  const handleSave = async () => {
-    setSaving(true);
-    const { data } = await supabase.from("visitas").insert({
-      familia_id: familiaId, fecha: new Date().toISOString().slice(0,10),
-      unidad, seccion, visitador_id: visitadorId, completada, comentario: comentario || null,
-    }).select("*, profiles(nombre)").single();
-    if (data) onSave(data);
-    setSaving(false);
-  };
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-      <select value={visitadorId} onChange={e=>setVisitadorId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
-        {allProfiles.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.id===currentUser.id?" (yo)":""}</option>)}
-      </select>
-      <div className="flex gap-2">{[1,2,3].map(u => (
-        <button key={u} onClick={()=>{setUnidad(u);setSeccion(1);}} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${unidad===u?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{u}</button>
-      ))}</div>
-      <p className="text-xs text-violet-600 font-medium">{UNIDADES[unidad].nombre}</p>
-      <div className="flex flex-wrap gap-1.5">{Object.keys(UNIDADES[unidad].secciones).map(s => (
-        <button key={s} onClick={()=>setSeccion(Number(s))} className={`w-10 h-10 rounded-xl text-sm font-medium ${seccion===Number(s)?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
-      ))}</div>
-      <p className="text-xs text-gray-500 italic">{UNIDADES[unidad].secciones[seccion]}</p>
-      <button onClick={()=>setCompletada(!completada)} className={`px-4 py-2 rounded-full text-sm font-medium ${completada?"bg-emerald-500 text-white":"bg-gray-100 text-gray-500"}`}>{completada?"✓ Completada":"En progreso"}</button>
-      <textarea value={comentario} onChange={e=>setComentario(e.target.value)} rows={2} placeholder="Comentario..."
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving} className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">{saving?"Guardando...":"Guardar"}</button>
-        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
       </div>
     </div>
   );
@@ -1104,6 +871,20 @@ const SEMANAS = [
 ];
 const DIAS_LABELS = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
 
+// Color system for slots
+const SLOT_COLOR = (titulo) => {
+  const t = (titulo||"").toLowerCase();
+  if (t.includes("oración") || t.includes("oracion")) return "bg-violet-400";
+  if (t.includes("sesión") || t.includes("sesion")) return "bg-blue-400";
+  if (t.includes("merienda") || t.includes("refrigerio") || t.includes("descanso")) return "bg-amber-400";
+  if (t.includes("taller")) return "bg-orange-400";
+  if (t.includes("reflexión") || t.includes("reflexion")) return "bg-pink-400";
+  if (t.includes("llegada")) return "bg-gray-300";
+  if (t.includes("vuelta") || t.includes("ida")) return "bg-gray-400";
+  if (t.includes("parque") || t.includes("juego") || t.includes("drama")) return "bg-emerald-400";
+  return "bg-violet-300";
+};
+
 const HORARIO_FIJO_DEFAULT = [
   { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños" },
   { hora: "9:00",  fin: "9:30",  titulo: "Oraciones" },
@@ -1115,7 +896,6 @@ const HORARIO_FIJO_DEFAULT = [
   { hora: "13:30", fin: "14:00", titulo: "Reflexión conjunta" },
   { hora: "14:15", fin: "15:00", titulo: "Reflexión de maestros" },
 ];
-const HORARIO_FIJO = HORARIO_FIJO_DEFAULT;
 
 const HORARIO_EXCURSION_DEFAULT = [
   { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                   tag: "Oración",    line: "bg-violet-400" },
@@ -1127,7 +907,6 @@ const HORARIO_EXCURSION_DEFAULT = [
   { hora: "13:00", fin: "13:30", titulo: "Reflexión · Cambio de ropa",  tag: "Reflexión",  line: "bg-pink-400" },
   { hora: "13:30", fin: "14:00", titulo: "Vuelta al local",             tag: "Vuelta",     line: "bg-gray-400" },
 ];
-const HORARIO_EXCURSION = HORARIO_EXCURSION_DEFAULT;
 
 const GRADO_TAGS = ["Huevito","G1","G2","G3","Prej."];
 const GRADO_COLORS = ["bg-yellow-100 text-yellow-700","bg-green-100 text-green-700","bg-orange-100 text-orange-700","bg-red-100 text-red-700","bg-purple-100 text-purple-700"];
@@ -1228,8 +1007,8 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
       {/* Timeline */}
       <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm px-4 pb-4 pt-2">
         {horario.map((slot, i) => {
-          const lineColor = slot.line || "bg-emerald-400";
-          const tagLabel = slot.tag || "Actividad";
+          const lineColor = slot.line || SLOT_COLOR(slot.titulo);
+          const tagLabel = slot.tag || slot.titulo?.split("·")[0]?.trim()?.split(" ")[0] || "Slot";
           return (
           <div key={i} className="flex gap-3 relative">
             {i < horario.length - 1 && (
@@ -1268,25 +1047,14 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
         })}
       </div>
 
-      {/* Popup editar taller del día */}
-      {editSlot === "taller" && (
-        <Popup title={tallerDia ? "Editar taller" : "Nuevo taller"} onClose={() => setEditSlot(null)}>
-          <TallerForm
-            taller={tallerDia ? { ...tallerDia } : { fecha: fechaDia }}
-            onSave={(t) => { if(onAddTaller) onAddTaller(t); setEditSlot(null); }}
-            onCancel={() => setEditSlot(null)}
-            onDelete={tallerDia ? (id) => { setEditSlot(null); } : null}
-          />
-        </Popup>
-      )}
-
-      {/* Popup editar excursión del día */}
-      {editSlot === "excursion" && (
-        <Popup title={excursionDia ? "Editar excursión" : "Nueva excursión"} onClose={() => setEditSlot(null)}>
-          <ExcursionForm
+      {/* Popup editar horario del día */}
+      {editSlot === "dia" && (
+        <Popup title="Editar horario del día" onClose={() => setEditSlot(null)}>
+          <HorarioDiaForm
             fecha={fechaDia}
             excursion={excursionDia}
-            onSave={(e) => { if(onAddExcursion) onAddExcursion(e); else if(onAddTaller) {}; setEditSlot(null); }}
+            defaultHorario={esMiercoles ? HORARIO_EXCURSION_DEFAULT : HORARIO_FIJO_DEFAULT}
+            onSave={(e) => { if(onAddExcursion) onAddExcursion(e); setEditSlot(null); }}
             onCancel={() => setEditSlot(null)}
           />
         </Popup>
@@ -1654,32 +1422,6 @@ function ExcursionCard({ excursion: excursionInicial }) {
   );
 }
 
-function ExcursionesView() {
-  const [excursiones, setExcursiones] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.from("excursiones").select("*").order("fecha").then(({ data }) => {
-      setExcursiones(data || []);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) return <p className="text-center text-gray-400 py-8">Cargando...</p>;
-
-  return (
-    <div className="space-y-3">
-      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-        <span className="text-2xl">🚌</span>
-        <div>
-          <p className="text-sm font-semibold text-emerald-800">Excursiones de julio</p>
-          <p className="text-xs text-emerald-600">Todos los miércoles · Apúntate como monitor o propón una actividad</p>
-        </div>
-      </div>
-      {excursiones.map(e => <ExcursionCard key={e.id} excursion={e} />)}
-    </div>
-  );
-}
 
 function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento }) {
   const [tab, setTab] = useState("ofrecimientos");
@@ -2195,11 +1937,9 @@ export default function App() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroRol, setFiltroRol] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
-  const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [detalleTarget, setDetalleTarget] = useState(null);
   const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [loading, setLoading] = useState(true);
@@ -2499,50 +2239,6 @@ export default function App() {
 
 // ── RECIENTES Y PARTICIPANTES ─────────────────────────────────────────────────
 
-function RecientesView({ visitas, familias, onVerPerfil }) {
-  const [conversaciones, setConversaciones] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!loaded) {
-      supabase.from("conversaciones").select("*, profiles(nombre)").order("created_at", { ascending: false })
-        .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
-    }
-  }, [loaded]);
-
-  const feed = [
-    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha })),
-    ...conversaciones.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
-  ].sort((a,b) => b._sort.localeCompare(a._sort));
-
-  return (
-    <div className="space-y-3">
-      {feed.length === 0 ? <p className="text-center text-gray-400 py-12">Sin actividad</p> :
-        feed.map(item => {
-          const familia = familias.find(f => f.id === item.familia_id);
-          const esVisita = item.tipo === "visita";
-          const preview = esVisita ? `U${item.unidad} · S${item.seccion} · ${UNIDADES[item.unidad]?.secciones[item.seccion]}` : item.nota;
-          const fecha = esVisita ? item.fecha : new Date(item.created_at).toLocaleDateString("es-ES");
-          return (
-            <button key={item.id} onClick={() => familia && onVerPerfil(familia)} className="w-full text-left bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 active:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${esVisita?"bg-violet-100 text-violet-700":"bg-amber-100 text-amber-700"}`}>{esVisita?"📖 Visita":"💬 Conversación"}</span>
-                {familia && <Badge text={familia.grado} />}
-              </div>
-              <p className="text-sm text-gray-700 line-clamp-2 mb-1.5">{preview}</p>
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-gray-500">{fecha}</span>
-                <span className="text-gray-200">·</span>
-                <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
-                <span className="text-gray-200">·</span>
-                <span className="text-[13px] text-gray-500">{item.profiles?.nombre}</span>
-              </div>
-            </button>
-          );
-        })}
-    </div>
-  );
-}
 
 function ParticipantesView({ familias, onVerFamilia }) {
   const [gradoSeleccionado, setGradoSeleccionado] = useState(null);
