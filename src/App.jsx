@@ -417,7 +417,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900">{familia.nombre}</span><Badge text={familia.grado} /></div>
             {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate mt-0.5">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre}${h.edad?`, ${h.edad}a`:""}`).join(" · ")}</p>}
-            {familia.servicio && <p className="text-xs text-gray-400 truncate">{familia.servicio}</p>}
+            {familia.servicio && <p className="text-[13px] text-gray-500 truncate">{familia.servicio}</p>}
           </div>
         </div>
         {familia.telefono && <div className="mb-2"><ContactoButtons telefono={familia.telefono} isAdmin={isAdmin} /></div>}
@@ -465,7 +465,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 mb-0.5">
                         <span className="text-sm font-semibold text-gray-800">{nombre}</span>
-                        <span className="text-xs text-gray-400">{fechaStr}</span>
+                        <span className="text-[13px] text-gray-500">{fechaStr}</span>
                       </div>
                       <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
                     </div>
@@ -490,7 +490,7 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
                     <span className="text-sm font-semibold text-gray-700">{v.fecha}</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.completada?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{v.completada?"Completada":"En progreso"}</span>
-                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-300 hover:text-red-400">✕</button>
+                      <button onClick={() => onDeleteVisita(v.id)} className="text-gray-500 hover:text-red-400">✕</button>
                     </div>
                   </div>
                   <p className="text-xs text-violet-600 font-medium">{UNIDADES[v.unidad]?.nombre}</p>
@@ -515,7 +515,7 @@ function HijoCard({ hijo, onSave }) {
     <div className="bg-violet-50 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Editando</p>
-        <button onClick={() => setEditing(false)} className="text-xs text-gray-400">Cancelar</button>
+        <button onClick={() => setEditing(false)} className="text-[13px] text-gray-500">Cancelar</button>
       </div>
       <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre"
         className="w-full border border-violet-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
@@ -536,7 +536,7 @@ function HijoCard({ hijo, onSave }) {
       <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 text-sm">{(hijo.nombre || "?")[0]}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{hijo.nombre || "—"}</span><Badge text={hijo.curso} /></div>
-        {hijo.edad && <p className="text-xs text-gray-400 mt-0.5">{hijo.edad} años</p>}
+        {hijo.edad && <p className="text-[13px] text-gray-500 mt-0.5">{hijo.edad} años</p>}
       </div>
       <button onClick={() => setEditing(true)} className="text-xs text-violet-500 font-medium hover:text-violet-700 flex-shrink-0">Editar</button>
     </div>
@@ -561,12 +561,12 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setN
     setConversaciones(prev => prev.filter(c => c.id !== id));
   };
 
-  if (!loaded) return <p className="text-xs text-gray-400 text-center py-8">Cargando...</p>;
+  if (!loaded) return <p className="text-[13px] text-gray-500 text-center py-8">Cargando...</p>;
 
   return (
     <div className="space-y-1 pb-2">
       {conversaciones.length === 0 && (
-        <p className="text-xs text-gray-400 text-center py-8">Sin conversaciones aún 💬</p>
+        <p className="text-[13px] text-gray-500 text-center py-8">Sin conversaciones aún 💬</p>
       )}
       {conversaciones.map(c => {
         const esMio = c.autor_id === currentUser.id;
@@ -581,12 +581,12 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setN
               <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0 mr-1.5 mt-0.5 self-end">{nombre[0]}</div>
             )}
             <div className={`max-w-[78%] ${esMio ? "items-end" : "items-start"} flex flex-col`}>
-              {!esMio && <p className="text-[10px] text-gray-400 font-medium mb-0.5 ml-1">{nombre}</p>}
+              {!esMio && <p className="text-[13px] text-gray-400 font-medium mb-0.5 ml-1">{nombre}</p>}
               <div className={`relative px-3 py-2 rounded-2xl ${esMio
                 ? "bg-violet-600 text-white rounded-br-sm"
                 : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
                 <p className="text-sm leading-relaxed">{c.nota}</p>
-                <p className={`text-[10px] mt-0.5 text-right ${esMio ? "text-violet-300" : "text-gray-400"}`}>{fechaStr}</p>
+                <p className={`text-[13px] mt-0.5 text-right ${esMio ? "text-violet-300" : "text-gray-400"}`}>{fechaStr}</p>
                 <button onClick={() => handleDelete(c.id)}
                   className="absolute -top-1 -right-1 w-4 h-4 bg-red-100 text-red-400 rounded-full text-[9px] opacity-0 group-hover:opacity-100 flex items-center justify-center">✕</button>
               </div>
@@ -648,7 +648,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
+          <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
           {familia.telefono && isAdmin ? (
             <div className="flex gap-2">
               <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
@@ -665,7 +665,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
 
         {familia.contacto2_nombre && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Segundo contacto</p>
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Segundo contacto</p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0">{familia.contacto2_nombre[0]}</div>
               <div className="flex-1 min-w-0">
@@ -685,13 +685,13 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
 
         {hijos.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
             {hijos.map((h, i) => <HijoCard key={i} hijo={h} onSave={(data) => handleSaveHijo(i, data)} />)}
           </div>
         )}
 
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Conversaciones</p>
+          <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Conversaciones</p>
           <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} />
         </div>
       </div>
@@ -788,11 +788,11 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-0.5"><span className="font-semibold text-gray-800">{familia.nombre}</span><Badge text={familia.grado} /></div>
         {familia.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate">{familia.hijos.map(h=>typeof h==="string"?h:`${h.nombre||"—"}${h.edad?`, ${h.edad}a`:""}`).join(" · ")}</p>}
-        {familia.servicio && <p className="text-xs text-gray-400 truncate mt-0.5">{familia.servicio}</p>}
+        {familia.servicio && <p className="text-[13px] text-gray-500 truncate mt-0.5">{familia.servicio}</p>}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {visitas.length > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length}v</span>}
-        <span className="text-gray-300 text-sm">›</span>
+        <span className="text-gray-500 text-sm">›</span>
       </div>
     </button>
   );
@@ -951,7 +951,7 @@ function OfrecimientosView({ ofrecimientos, familias, onAdd, onDelete }) {
                   {familia && <p className="font-semibold text-gray-800">{familia.nombre}</p>}
                   <p className="text-sm text-gray-600 mt-0.5">{o.que}</p>
                 </div>
-                {onDelete && <button onClick={() => onDelete(o.id)} className="text-gray-300 hover:text-red-400">✕</button>}
+                {onDelete && <button onClick={() => onDelete(o.id)} className="text-gray-500 hover:text-red-400">✕</button>}
               </div>
             </div>
           );
@@ -1170,7 +1170,7 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               <button key={i} onClick={() => setDiaIdx(i)}
                 className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-all text-center
                   ${sel ? "bg-violet-600 shadow-sm" : "bg-gray-50 hover:bg-gray-100"}`}>
-                <span className={`text-[10px] font-semibold ${sel?"text-violet-200":"text-gray-400"}`}>{d.slice(0,3)}</span>
+                <span className={`text-[13px] font-semibold ${sel?"text-violet-200":"text-gray-400"}`}>{d.slice(0,3)}</span>
                 <span className={`text-sm font-bold ${sel?"text-white":esHoy?"text-violet-600":"text-gray-700"}`}>
                   {new Date(fecha+"T12:00:00").getDate()}
                 </span>
@@ -1208,20 +1208,20 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               <div className={`w-1 flex-shrink-0 ${slot.line}`}></div>
               <div className="flex-1 px-3 py-2.5">
                 <div className="flex items-center gap-1 flex-wrap mb-1">
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
+                  <span className="text-[13px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
                   {slot.grado && GRADO_TAGS.map((g,j) => (
-                    <span key={j} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
+                    <span key={j} className={`text-[13px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
                   ))}
                 </div>
                 <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
-                {getSubtitulo(slot) && <p className="text-xs text-gray-400 mt-0.5">{getSubtitulo(slot)}</p>}
+                {getSubtitulo(slot) && <p className="text-[13px] text-gray-500 mt-0.5">{getSubtitulo(slot)}</p>}
               {slot.tag === "Merienda" && alergias.length > 0 && (
                 <div className="mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">
-                  <p className="text-[10px] font-semibold text-red-600 mb-0.5">⚠️ Alergias</p>
-                  {alergias.map((a,i) => <p key={i} className="text-[10px] text-red-500">{a}</p>)}
+                  <p className="text-[13px] font-semibold text-red-600 mb-0.5">⚠️ Alergias</p>
+                  {alergias.map((a,i) => <p key={i} className="text-[13px] text-red-500">{a}</p>)}
                 </div>
               )}
-                {slot.fin && <p className="text-[10px] text-gray-300 mt-0.5">{slot.hora} – {slot.fin}</p>}
+                {slot.fin && <p className="text-[13px] text-gray-500 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
             </div>
           </div>
@@ -1254,9 +1254,9 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
                       <span className="text-3xl">{op.icon}</span>
                       <div className="flex-1">
                         <p className="font-bold text-gray-800">{op.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{op.desc}</p>
+                        <p className="text-[13px] text-gray-500 mt-0.5">{op.desc}</p>
                       </div>
-                      <span className="text-gray-300">›</span>
+                      <span className="text-gray-500">›</span>
                     </button>
                   ))}
                 </div>
@@ -1409,11 +1409,11 @@ function ExcursionCard({ excursion: excursionInicial }) {
 
           {monitores.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Monitores</p>
+              <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Monitores</p>
               <div className="space-y-1.5">{monitores.map(a => (
                 <div key={a.id} className="flex items-center justify-between bg-blue-50 rounded-xl px-3 py-2">
                   <span className="text-sm font-medium text-gray-800">{a.nombre}</span>
-                  <button onClick={() => handleEliminar(a.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                  <button onClick={() => handleEliminar(a.id)} className="text-gray-500 hover:text-red-400 text-xs">✕</button>
                 </div>
               ))}</div>
             </div>
@@ -1421,12 +1421,12 @@ function ExcursionCard({ excursion: excursionInicial }) {
 
           {actividades.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Actividades</p>
+              <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Actividades</p>
               <div className="space-y-1.5">{actividades.map(a => (
                 <div key={a.id} className="bg-amber-50 rounded-xl px-3 py-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-800">{a.nombre}</span>
-                    <button onClick={() => handleEliminar(a.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                    <button onClick={() => handleEliminar(a.id)} className="text-gray-500 hover:text-red-400 text-xs">✕</button>
                   </div>
                   {a.detalle && <p className="text-xs text-gray-500 mt-0.5">{a.detalle}</p>}
                 </div>
@@ -1557,7 +1557,7 @@ function AdminView({ currentUserId }) {
         {activos.map(u => (
           <div key={u.id} className="bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{(u.nombre||"?")[0].toUpperCase()}</div>
-            <div className="flex-1 min-w-0"><p className="font-semibold text-gray-800">{u.nombre}</p><p className="text-xs text-gray-400 truncate">{u.email}</p></div>
+            <div className="flex-1 min-w-0"><p className="font-semibold text-gray-800">{u.nombre}</p><p className="text-[13px] text-gray-500 truncate">{u.email}</p></div>
             <div className="flex items-center gap-1 flex-shrink-0">
               {u.is_admin && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">Admin</span>}
               {u.id !== currentUserId && (
@@ -1734,10 +1734,10 @@ function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisit
                     </div>
                     <p className="text-sm text-gray-700 font-medium">U{v.unidad} · S{v.seccion}</p>
                     <p className="text-xs text-gray-500 truncate">{UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
-                    {v.comentario && <p className="text-xs text-gray-400 mt-0.5 truncate">{v.comentario}</p>}
+                    {v.comentario && <p className="text-[13px] text-gray-500 mt-0.5 truncate">{v.comentario}</p>}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="text-xs text-gray-400">{fechaStr}</span>
-                      {v.profiles?.nombre && <><span className="text-gray-200">·</span><span className="text-xs text-gray-400">{v.profiles.nombre}</span></>}
+                      <span className="text-[13px] text-gray-500">{fechaStr}</span>
+                      {v.profiles?.nombre && <><span className="text-gray-200">·</span><span className="text-[13px] text-gray-500">{v.profiles.nombre}</span></>}
                       <span className="text-gray-200">·</span>
                       <span className={`text-xs font-medium ${v.completada?"text-emerald-600":"text-amber-600"}`}>
                         {v.completada?"✓ Completada":"En progreso"}
@@ -1799,7 +1799,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {(familia.hijos||[]).length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
             {(familia.hijos||[]).map((h,i) => {
               const hijo = typeof h==="string" ? {nombre:h,edad:"",curso:"Huevito"} : h;
               return (
@@ -1807,7 +1807,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
                   <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 text-sm">{(hijo.nombre||"?")[0]}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{hijo.nombre||"—"}</span><Badge text={hijo.curso} /></div>
-                    {hijo.edad && <p className="text-xs text-gray-400 mt-0.5">{hijo.edad} años</p>}
+                    {hijo.edad && <p className="text-[13px] text-gray-500 mt-0.5">{hijo.edad} años</p>}
                   </div>
                 </div>
               );
@@ -1817,7 +1817,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
         {/* Visitas: solo resumen, sin desglose */}
         {visitas.filter(v=>v.familia_id===familia.id).length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Visitas Ruhi</p>
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Visitas Ruhi</p>
             <p className="text-sm text-gray-700 font-medium">{visitas.filter(v=>v.familia_id===familia.id).length} visita{visitas.filter(v=>v.familia_id===familia.id).length!==1?"s":""} registradas</p>
           </div>
         )}
@@ -1833,10 +1833,10 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e=>e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-50"><p className="text-xs text-gray-400">Campamento Bahá'í Madrid</p></div>
+            <div className="px-4 py-3 border-b border-gray-50"><p className="text-[13px] text-gray-500">Campamento Bahá'í Madrid</p></div>
             <button onClick={() => { setShowAvatarMenu(false); onLogin(); }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 text-left">
               <span className="text-lg">🔑</span>
-              <div><p className="text-sm font-semibold text-gray-800">Iniciar sesión</p><p className="text-xs text-gray-400">Acceso para organizadores</p></div>
+              <div><p className="text-sm font-semibold text-gray-800">Iniciar sesión</p><p className="text-[13px] text-gray-500">Acceso para organizadores</p></div>
             </button>
           </div>
         </div>
@@ -1925,7 +1925,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
                       <div className="flex items-center gap-2 flex-wrap mb-0.5"><span className="font-semibold text-gray-800">{f.nombre}</span><Badge text={f.grado} /></div>
                       {f.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate">{f.hijos.map(h=>typeof h==="string"?h:h.nombre).join(" · ")}</p>}
                     </div>
-                    <span className="text-gray-300">›</span>
+                    <span className="text-gray-500">›</span>
                   </button>
                 ))}
                 {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
@@ -1971,7 +1971,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
               <button key={item.id} onClick={() => setMenu(item.id)}
                 className={`flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
                 <span className="text-xl">{item.icon}</span>
-                <span className="text-[10px] font-semibold">{item.label}</span>
+                <span className="text-[13px] font-semibold">{item.label}</span>
               </button>
             ))}
           </div>
@@ -2160,7 +2160,7 @@ export default function App() {
             <div className="px-5 pt-5 pb-4 border-b border-gray-100">
               <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold mb-2">{profile?.nombre?.[0]||"?"}</div>
               <p className="font-bold text-gray-900">{profile?.nombre} 👋</p>
-              <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
+              <p className="text-[13px] text-gray-500 mt-0.5">{user.email}</p>
             </div>
             <div className="px-2 py-2">
               {isAdmin && <button onClick={() => { setShowAvatarMenu(false); setShowAdmin(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>⚙️</span><p className="text-sm font-semibold text-gray-800">Administración</p></button>}
@@ -2217,13 +2217,13 @@ export default function App() {
               </div>
               <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} onAddTaller={handleAddTaller} onAddExcursion={(e) => setExcursiones(prev => [...prev, e])} />
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
+                <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
                 {[
                   {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
                 ].map((item,i)=>(
                   <button key={i} onClick={() => { setMenu(item.m); if(item.t) setTab(item.t); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
-                    <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-300">›</span>
+                    <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-500">›</span>
                   </button>
                 ))}
               </div>
@@ -2334,11 +2334,11 @@ function RecientesView({ visitas, familias, onVerPerfil }) {
               </div>
               <p className="text-sm text-gray-700 line-clamp-2 mb-1.5">{preview}</p>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">{fecha}</span>
+                <span className="text-[13px] text-gray-500">{fecha}</span>
                 <span className="text-gray-200">·</span>
                 <span className="text-xs font-medium text-gray-600">{familia?.nombre}</span>
                 <span className="text-gray-200">·</span>
-                <span className="text-xs text-gray-400">{item.profiles?.nombre}</span>
+                <span className="text-[13px] text-gray-500">{item.profiles?.nombre}</span>
               </div>
             </button>
           );
@@ -2379,11 +2379,11 @@ function ParticipantesView({ familias, onVerFamilia }) {
             <div className="flex-1 min-w-0">
               <span className="font-semibold text-gray-800">{p.nombre || "—"}</span>
               <div className="flex items-center gap-2 mt-0.5">
-                {p.edad && <span className="text-xs text-gray-400">{p.edad} años</span>}
-                <span className="text-xs text-gray-400">· {p.familia?.nombre}</span>
+                {p.edad && <span className="text-[13px] text-gray-500">{p.edad} años</span>}
+                <span className="text-[13px] text-gray-500">· {p.familia?.nombre}</span>
               </div>
             </div>
-            <span className="text-gray-300 text-sm flex-shrink-0">›</span>
+            <span className="text-gray-500 text-sm flex-shrink-0">›</span>
           </button>
         ))}
       </div>
@@ -2400,11 +2400,11 @@ function ParticipantesView({ familias, onVerFamilia }) {
             <span className="text-3xl flex-shrink-0">{GRADO_ICONS[curso]}</span>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-800">{curso}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{count} participante{count !== 1 ? "s" : ""}</p>
+              <p className="text-[13px] text-gray-500 mt-0.5">{count} participante{count !== 1 ? "s" : ""}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {count > 0 && <span className="text-sm font-bold text-violet-600">{count}</span>}
-              <span className="text-gray-300">›</span>
+              <span className="text-gray-500">›</span>
             </div>
           </button>
         );
