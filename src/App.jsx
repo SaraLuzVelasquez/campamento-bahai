@@ -1104,17 +1104,18 @@ const SEMANAS = [
 ];
 const DIAS_LABELS = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
 
-const HORARIO_FIJO = [
-  { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños",       tag: "Llegada",    line: "bg-gray-300",   grado: null },
-  { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                  tag: "Oración",    line: "bg-violet-400", grado: null },
-  { hora: "9:30",  fin: "10:30", titulo: "Sesión parte 1",             tag: "Sesión",     line: "bg-blue-400",   grado: true, duracion: "1h" },
-  { hora: "10:30", fin: "10:45", titulo: "Merienda",                   tag: "Merienda",   line: "bg-amber-400",  grado: null },
-  { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2",             tag: "Sesión",     line: "bg-blue-400",   grado: true, duracion: "45min" },
-  { hora: "11:30", fin: "12:00", titulo: "Parque · Juegos · Drama",    tag: "Actividad",  line: "bg-emerald-400",grado: null },
-  { hora: "12:00", fin: "13:30", titulo: "Taller",                     tag: "Taller",     line: "bg-orange-400", grado: null, esTaller: true },
-  { hora: "13:30", fin: "14:00", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
-  { hora: "14:15", fin: "15:00", titulo: "Reflexión de maestros",      tag: "Reflexión",  line: "bg-rose-400",   grado: null },
+const HORARIO_FIJO_DEFAULT = [
+  { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños" },
+  { hora: "9:00",  fin: "9:30",  titulo: "Oraciones" },
+  { hora: "9:30",  fin: "10:30", titulo: "Sesión parte 1" },
+  { hora: "10:30", fin: "10:45", titulo: "Merienda" },
+  { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2" },
+  { hora: "11:30", fin: "12:00", titulo: "Parque · Juegos · Drama" },
+  { hora: "12:00", fin: "13:30", titulo: "Taller" },
+  { hora: "13:30", fin: "14:00", titulo: "Reflexión conjunta" },
+  { hora: "14:15", fin: "15:00", titulo: "Reflexión de maestros" },
 ];
+const HORARIO_FIJO = HORARIO_FIJO_DEFAULT;
 
 const HORARIO_EXCURSION_DEFAULT = [
   { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                   tag: "Oración",    line: "bg-violet-400" },
@@ -1160,11 +1161,10 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   const semana = SEMANAS[semanaIdx];
   const fechaDia = semana.dias[diaIdx];
   const esMiercoles = diaIdx === 2;
-  const tallerDia = talleres?.find(t => t.fecha === fechaDia);
   const excursionDia = excursiones?.find(e => e.fecha === fechaDia);
-  const horarioExcursion = excursionDia?.horario || HORARIO_EXCURSION_DEFAULT;
-  const horario = esMiercoles && excursionDia ? horarioExcursion : HORARIO_FIJO;
-  const [editSlot, setEditSlot] = useState(null); // "taller" | "excursion"
+  const horarioDia = excursionDia?.horario || (esMiercoles ? HORARIO_EXCURSION_DEFAULT : HORARIO_FIJO_DEFAULT);
+  const horario = horarioDia;
+  const [editSlot, setEditSlot] = useState(null);
 
   const alergias = familias?.flatMap(f =>
     (f.hijos||[]).map(h => typeof h==="string" ? null : h)
@@ -1172,14 +1172,8 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
       .map(h => `${h.nombre}: ${h.alergias}`)
   ).filter(Boolean) || [];
 
-  const getTitulo = (slot) => {
-    if (slot.esTaller && tallerDia) return tallerDia.descripcion;
-    return slot.titulo;
-  };
-  const getSubtitulo = (slot) => {
-    if (slot.esTaller && tallerDia) return `con ${tallerDia.quien}`;
-    return slot.duracion || "";
-  };
+  const getTitulo = (slot) => slot.titulo || "";
+  const getSubtitulo = (slot) => slot.duracion || "";
 
   return (
     <div className="space-y-0">
@@ -1223,10 +1217,8 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
             {new Date(fechaDia+"T12:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}
           </p>
           <div className="flex items-center gap-2">
-            {esMiercoles && (
-              <button onClick={() => setEditSlot("excursion")}
-                className="w-8 h-8 bg-white border border-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:border-violet-400 hover:text-violet-600 transition-colors text-sm">✏️</button>
-            )}
+            <button onClick={() => setEditSlot("dia")}
+              className="w-8 h-8 bg-white border border-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:border-violet-400 hover:text-violet-600 transition-colors text-sm">✏️</button>
             <button onClick={() => { setShowAdd(true); setAddTipo(null); }}
               className="w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center text-xl font-bold hover:bg-violet-700 transition-colors">+</button>
           </div>
@@ -1235,7 +1227,10 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
 
       {/* Timeline */}
       <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm px-4 pb-4 pt-2">
-        {horario.map((slot, i) => (
+        {horario.map((slot, i) => {
+          const lineColor = slot.line || "bg-emerald-400";
+          const tagLabel = slot.tag || "Actividad";
+          return (
           <div key={i} className="flex gap-3 relative">
             {i < horario.length - 1 && (
               <div className="absolute left-[43px] top-8 bottom-0 w-px bg-gray-100 z-0"></div>
@@ -1245,20 +1240,20 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               <span className="text-[11px] font-medium text-gray-400">{slot.hora}</span>
             </div>
             {/* Dot */}
-            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-3.5 z-10 border-2 border-white shadow-sm ${slot.line}`}></div>
+            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-3.5 z-10 border-2 border-white shadow-sm ${lineColor}`}></div>
             {/* Card */}
             <div className="flex-1 mb-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex">
-              <div className={`w-1 flex-shrink-0 ${slot.line}`}></div>
+              <div className={`w-1 flex-shrink-0 ${lineColor}`}></div>
               <div className="flex-1 px-3 py-2.5">
                 <div className="flex items-center gap-1 flex-wrap mb-1">
-                  <span className="text-[13px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
+                  <span className="text-[13px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{tagLabel}</span>
                   {slot.grado && GRADO_TAGS.map((g,j) => (
                     <span key={j} className={`text-[13px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
                   ))}
                 </div>
                 <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
                 {getSubtitulo(slot) && <p className="text-[13px] text-gray-500 mt-0.5">{getSubtitulo(slot)}</p>}
-              {slot.tag === "Merienda" && alergias.length > 0 && (
+              {tagLabel === "Merienda" && alergias.length > 0 && (
                 <div className="mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">
                   <p className="text-[13px] font-semibold text-red-600 mb-0.5">⚠️ Alergias</p>
                   {alergias.map((a,i) => <p key={i} className="text-[13px] text-red-500">{a}</p>)}
@@ -1266,13 +1261,11 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               )}
                 {slot.fin && <p className="text-[13px] text-gray-500 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
-              {(slot.esTaller || (esMiercoles && excursionDia && i === 0)) && (
-                <button onClick={() => setEditSlot(slot.esTaller ? "taller" : "excursion")}
-                  className="px-3 text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0">✏️</button>
-              )}
+
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {/* Popup editar taller del día */}
@@ -1354,6 +1347,71 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
     </div>
   );
 }
+
+function HorarioDiaForm({ fecha, excursion, defaultHorario, onSave, onCancel }) {
+  const [horario, setHorario] = useState(excursion?.horario || defaultHorario);
+  const [saving, setSaving] = useState(false);
+
+  const updateSlot = (idx, field, val) =>
+    setHorario(prev => prev.map((s, i) => i === idx ? { ...s, [field]: val } : s));
+  const addSlot = () => setHorario(prev => [...prev, { hora: "", fin: "", titulo: "" }]);
+  const removeSlot = (idx) => setHorario(prev => prev.filter((_, i) => i !== idx));
+
+  const handleSave = async () => {
+    setSaving(true);
+    const payload = { horario };
+    if (excursion?.id) {
+      const { data } = await supabase.from("excursiones").update(payload).eq("id", excursion.id).select().single();
+      if (data) onSave(data);
+    } else {
+      // Find or create excursion for this date
+      const { data: existing } = await supabase.from("excursiones").select("id").eq("fecha", fecha).maybeSingle();
+      if (existing?.id) {
+        const { data } = await supabase.from("excursiones").update(payload).eq("id", existing.id).select().single();
+        if (data) onSave(data);
+      } else {
+        const { data } = await supabase.from("excursiones").insert({ fecha, titulo: "Día", ...payload }).select().single();
+        if (data) onSave(data);
+      }
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[13px] text-gray-500 font-semibold uppercase tracking-wide">Horario</label>
+          <button onClick={addSlot} className="text-[13px] text-violet-600 font-medium">+ Añadir</button>
+        </div>
+        <div className="space-y-2">
+          {horario.map((slot, i) => (
+            <div key={i} className="bg-gray-50 rounded-xl p-3">
+              <div className="flex gap-2 items-center">
+                <input value={slot.hora} onChange={e=>updateSlot(i,"hora",e.target.value)} placeholder="9:00"
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white text-center" />
+                <span className="text-gray-400 text-sm">–</span>
+                <input value={slot.fin} onChange={e=>updateSlot(i,"fin",e.target.value)} placeholder="9:30"
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white text-center" />
+                <input value={slot.titulo} onChange={e=>updateSlot(i,"titulo",e.target.value)} placeholder="Actividad"
+                  className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+                <button onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-400 text-sm flex-shrink-0">✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-3 rounded-xl text-sm text-gray-500">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 
 function ExcursionForm({ fecha, excursion, onSave, onCancel }) {
   const DEFAULT_HORARIO = [
