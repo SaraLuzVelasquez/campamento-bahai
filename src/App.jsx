@@ -1726,77 +1726,233 @@ function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisit
 }
 
 
-function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin }) {
+function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller, onAddOfrecimiento, onDeleteOfrecimiento, offline, onLogin, voluntarios, visitas, allProfiles }) {
   const [menu, setMenu] = useState("home");
-  const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
+  const [tab, setTab] = useState("familias");
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroRol, setFiltroRol] = useState("Todos");
+  const [showFiltro, setShowFiltro] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
 
-  const hoy = new Date().toISOString().slice(0,10);
-  const eventosHoy = [...(ofrecimientos||[]).filter(o=>o.fecha===hoy), ...(talleres||[]).filter(t=>t.fecha===hoy)];
+  const roles = ["Todos", "Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
+  const familiasFiltradas = familias.filter(f => {
+    const q = busqueda.toLowerCase();
+    const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
+    const matchR = filtroRol==="Todos" || f.grado===filtroRol;
+    return matchQ && matchR;
+  }).sort((a,b) => a.nombre.localeCompare(b.nombre,"es"));
+
+  const NAV_ITEMS = [
+    { id: "home", label: "Inicio", icon: "🏠" },
+    { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
+    { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
+    { id: "servicios", label: "Servicios", icon: "🎨" },
+    { id: "actividad", label: "Visitas", icon: "📖" },
+  ];
+
+  const headerTitle = menu==="home"?"Inicio":menu==="actividad"?"Visitas":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias";
+
+  // Public PerfilFamilia — no conversations
+  const PerfilPublico = ({ familia, onClose }) => (
+    <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-12 pb-4 flex-shrink-0">
+        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-3 block">← Volver</button>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">{familia.nombre[0]}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900 text-lg">{familia.nombre}</span><Badge text={familia.grado} /></div>
+            {familia.servicio && <p className="text-xs text-gray-500 mt-0.5">{familia.servicio}</p>}
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {(familia.hijos||[]).length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
+            {(familia.hijos||[]).map((h,i) => {
+              const hijo = typeof h==="string" ? {nombre:h,edad:"",curso:"Huevito"} : h;
+              return (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 text-sm">{(hijo.nombre||"?")[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{hijo.nombre||"—"}</span><Badge text={hijo.curso} /></div>
+                    {hijo.edad && <p className="text-xs text-gray-400 mt-0.5">{hijo.edad} años</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {/* Visitas: solo resumen, sin desglose */}
+        {visitas.filter(v=>v.familia_id===familia.id).length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Visitas Ruhi</p>
+            <p className="text-sm text-gray-700 font-medium">{visitas.filter(v=>v.familia_id===familia.id).length} visita{visitas.filter(v=>v.familia_id===familia.id).length!==1?"s":""} registradas</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
+      {familiaPerfilTarget && (
+        <PerfilPublico familia={familiaPerfilTarget} onClose={() => setFamiliaPerfilTarget(null)} />
+      )}
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-56 overflow-hidden" onClick={e=>e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-50"><p className="text-xs text-gray-400">Campamento Bahá'í Madrid</p></div>
             <button onClick={() => { setShowAvatarMenu(false); onLogin(); }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 text-left">
-              <span className="text-lg">🔑</span><div><p className="text-sm font-semibold text-gray-800">Iniciar sesión</p><p className="text-xs text-gray-400">Acceso para organizadores</p></div>
+              <span className="text-lg">🔑</span>
+              <div><p className="text-sm font-semibold text-gray-800">Iniciar sesión</p><p className="text-xs text-gray-400">Acceso para organizadores</p></div>
             </button>
           </div>
         </div>
       )}
+
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-100 px-4 pt-12 pb-3 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Bahá'í</p>
-            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)} className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors"><span className="text-lg">👤</span></button>
+            <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-violet-100 hover:text-violet-700 transition-colors">
+              <span className="text-lg">👤</span>
+            </button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">{menu==="home"?"Inicio":"Servicios"}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{headerTitle}</h1>
+          {menu==="confirmados" && (
+            <div className="flex gap-1 mt-3 bg-gray-100 rounded-xl p-1">
+              {[{id:"familias",label:"Familias"},{id:"participantes",label:"Participantes"}].map(t=>(
+                <button key={t.id} onClick={()=>setTab(t.id)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
+              ))}
+            </div>
+          )}
           {offline && <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2"><span className="text-sm">📶</span><p className="text-xs text-amber-700 font-medium">Sin conexión</p></div>}
         </div>
+
+        {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+
           {menu==="home" && (
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-violet-600 to-violet-800 rounded-2xl p-5 text-white">
                 <p className="text-sm opacity-80 mb-1">Campamento Urbano Comunitario</p>
-                <h2 className="text-xl font-bold mb-0.5">¡Bienvenido! 👋</h2>
+                <h2 className="text-xl font-bold mb-0.5">¡Bienvenidos! 👋</h2>
                 <p className="text-sm opacity-70">6 – 31 julio · Centro Bahá'í de Estudios · Madrid</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { setServiciosTab("ofrecimientos"); setMenu("servicios"); }} className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">🎁</p><p className="text-sm font-semibold text-gray-800">Ofrecimientos</p><p className="text-xs text-gray-400 mt-0.5">{ofrecimientos.length} registrados</p>
-                </button>
-                <button onClick={() => { setServiciosTab("talleres"); setMenu("servicios"); }} className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
-                  <p className="text-2xl mb-2">🎨</p><p className="text-sm font-semibold text-gray-800">Talleres</p><p className="text-xs text-gray-400 mt-0.5">{talleres.length} registrados</p>
-                </button>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
+                  {label:"Voluntarios",value:voluntarios?.length||0,icon:"🙌",m:"voluntarios"},
+                  {label:"Ofrecimientos",value:ofrecimientos.length,icon:"🎁",m:"servicios"},
+                ].map(s=>(
+                  <button key={s.label} onClick={() => setMenu(s.m)}
+                    className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                    <p className="text-xl mb-1">{s.icon}</p>
+                    <p className="text-lg font-bold text-violet-600">{s.value}</p>
+                    <p className="text-xs text-gray-500">{s.label}</p>
+                  </button>
+                ))}
               </div>
-              {eventosHoy.length > 0 && (
-                <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3">
-                  <p className="text-sm font-semibold text-violet-800 mb-2">📅 Hoy</p>
-                  {eventosHoy.map((e,i) => <p key={i} className="text-sm text-violet-700">{e.quien||e.que}</p>)}
-                </div>
-              )}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
-                <div className="px-4 pb-4">
-                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} />
-                </div>
-              </div>
+              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={onAddOfrecimiento} onAddTaller={onAddTaller} />
             </div>
           )}
+
+          {menu==="confirmados" && tab==="participantes" && (
+            <ParticipantesView familias={familias} onVerFamilia={(f) => setFamiliaPerfilTarget(f)} />
+          )}
+
+          {menu==="confirmados" && tab==="familias" && (
+            <>
+              <div className="flex gap-2">
+                <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
+                <div className="relative">
+                  <button onClick={() => setShowFiltro(!showFiltro)}
+                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroRol!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                    🔽 {filtroRol==="Todos"?"Filtrar":filtroRol}
+                  </button>
+                  {showFiltro && (
+                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-40 overflow-hidden">
+                      {roles.map(r=>(
+                        <button key={r} onClick={() => { setFiltroRol(r); setShowFiltro(false); }}
+                          className={`w-full text-left px-4 py-3 text-sm ${filtroRol===r?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{r}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {familiasFiltradas.map(f => (
+                  <button key={f.id} onClick={() => setFamiliaPerfilTarget(f)}
+                    className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center gap-3 hover:border-violet-200 transition-all active:bg-gray-50 text-left">
+                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{f.nombre[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5"><span className="font-semibold text-gray-800">{f.nombre}</span><Badge text={f.grado} /></div>
+                      {f.hijos?.length > 0 && <p className="text-xs text-gray-500 truncate">{f.hijos.map(h=>typeof h==="string"?h:h.nombre).join(" · ")}</p>}
+                    </div>
+                    <span className="text-gray-300">›</span>
+                  </button>
+                ))}
+                {familiasFiltradas.length===0 && <p className="text-center text-gray-400 py-8">Sin resultados</p>}
+              </div>
+            </>
+          )}
+
+          {menu==="voluntarios" && (
+            <div className="space-y-2.5">
+              {(voluntarios||[]).length === 0 ? <p className="text-center text-gray-400 py-12">Sin voluntarios</p> :
+                (voluntarios||[]).map(v => (
+                  <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{v.nombre[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-gray-800">{v.nombre}</span>
+                      {v.roles?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{v.roles.map(r=><span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>)}</div>}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
           {menu==="servicios" && (
-            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
-              onAddTaller={onAddTaller} onEditTaller={onEditTaller} onDeleteTaller={onDeleteTaller}
-              onAddOfrecimiento={onAddOfrecimiento} onDeleteOfrecimiento={onDeleteOfrecimiento}
-              initialTab={serviciosTab} />
+            <ServiciosView ofrecimientos={ofrecimientos} familias={familias}
+              onAddOfrecimiento={onAddOfrecimiento} onDeleteOfrecimiento={onDeleteOfrecimiento} />
+          )}
+
+          {menu==="actividad" && (
+            <div className="space-y-2.5">
+              {[...visitas].sort((a,b)=>(b.created_at||b.fecha||"").localeCompare(a.created_at||a.fecha||"")).map(v => {
+                const familia = familias.find(f=>f.id===v.familia_id);
+                return (
+                  <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0">{(familia?.nombre||"?")[0]}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{familia?.nombre||"—"}</p>
+                        <p className="text-xs text-gray-500">U{v.unidad} · {v.completada?"✓ Completada":"En progreso"}</p>
+                      </div>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">📖</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {visitas.length===0 && <div className="text-center py-16"><p className="text-4xl mb-3">📖</p><p className="text-gray-400 text-sm">Sin visitas aún</p></div>}
+            </div>
           )}
         </div>
-        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
+
+        {/* Bottom Nav */}
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 pb-safe z-10">
           <div className="flex max-w-lg mx-auto">
-            {[{id:"home",label:"Inicio",icon:"🏠"},{id:"servicios",label:"Servicios",icon:"🎨"}].map(item=>(
-              <button key={item.id} onClick={() => setMenu(item.id)} className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${menu===item.id?"text-violet-600":"text-gray-400"}`}>
-                <span className="text-xl">{item.icon}</span><span className="text-xs font-medium">{item.label}</span>
+            {NAV_ITEMS.map(item=>(
+              <button key={item.id} onClick={() => setMenu(item.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors ${(menu===item.id||(item.id==="confirmados"&&menu==="participantes"))?"text-violet-600":"text-gray-400"}`}>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-[10px] font-semibold">{item.label}</span>
               </button>
             ))}
           </div>
@@ -1805,6 +1961,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
     </>
   );
 }
+
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
@@ -1927,8 +2084,8 @@ export default function App() {
     return (
       <PublicApp
         talleres={talleres} ofrecimientos={ofrecimientos} familias={familias} excursiones={excursiones}
-        onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
-        onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento}
+        voluntarios={voluntarios} visitas={visitas} allProfiles={allProfiles}
+        onAddTaller={handleAddTaller} onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento}
         offline={offline} onLogin={() => setShowLogin(true)}
       />
     );
@@ -1993,7 +2150,7 @@ export default function App() {
 
       <div className="fixed inset-0 bg-gray-50 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 flex-shrink-0">
+        <div className="bg-white border-b border-gray-100 px-4 pt-12 pb-3 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-violet-500 font-semibold uppercase tracking-widest">Campamento Urbano Comunitario</p>
             <button onClick={() => setShowAvatarMenu(!showAvatarMenu)}
@@ -2001,7 +2158,7 @@ export default function App() {
               {profile?.nombre?.[0]?.toUpperCase()||"?"}
             </button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900">
             {menu==="home"?"Inicio":menu==="actividad"?"Visitas":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
           </h1>
           {offline && <div className="mt-1 text-xs text-amber-600">📶 Sin conexión</div>}
