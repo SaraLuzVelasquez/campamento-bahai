@@ -2345,7 +2345,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} onAddTaller={handleAddTaller} onAddExcursion={(e) => setExcursiones(prev => [...prev, e])} />
+              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller} onAddExcursion={(e) => setExcursiones(prev => prev.some(x=>x.id===e.id) ? prev.map(x=>x.id===e.id?e:x) : [...prev, e])} />
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
                 {[
