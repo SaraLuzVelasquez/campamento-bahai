@@ -1941,6 +1941,7 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
+  const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(!navigator.onLine);
