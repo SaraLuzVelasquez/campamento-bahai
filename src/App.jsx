@@ -968,11 +968,15 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
   );
 }
 
-function CalendarioView({ ofrecimientos, talleres, familias, excursiones }) {
+function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddOfrecimiento }) {
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth());
   const [anio, setAnio] = useState(hoy.getFullYear());
+  const [diaSeleccionado, setDiaSeleccionado] = useState(hoy.getDate());
+  const [showAddForm, setShowAddForm] = useState(false);
   const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const DIAS = ["Lu","Ma","Mi","Ju","Vi","Sá","Do"];
+
   const diasEnMes = new Date(anio, mes+1, 0).getDate();
   const primerDia = new Date(anio, mes, 1).getDay();
   const offset = primerDia === 0 ? 6 : primerDia - 1;
@@ -984,50 +988,111 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones }) {
   ];
   const porDia = {};
   eventos.forEach(e=>{ if(!porDia[e.dia]) porDia[e.dia]=[]; porDia[e.dia].push(e); });
-
   const celdas = [...Array(offset).fill(null), ...Array.from({length:diasEnMes},(_,i)=>i+1)];
+  const eventosDia = (porDia[diaSeleccionado] || []).sort((a,b) => a.tipo.localeCompare(b.tipo));
+
+  const prevMes = () => { if(mes===0){setMes(11);setAnio(a=>a-1);}else setMes(m=>m-1); setDiaSeleccionado(1); };
+  const nextMes = () => { if(mes===11){setMes(0);setAnio(a=>a+1);}else setMes(m=>m+1); setDiaSeleccionado(1); };
+
+  const tipoLabel = { ofrecimiento: "Ofrecimiento", taller: "Taller", excursion: "Excursión" };
+  const tipoColor = { ofrecimiento: "bg-violet-100 text-violet-700", taller: "bg-amber-100 text-amber-700", excursion: "bg-emerald-100 text-emerald-700" };
+  const tipoDot = { ofrecimiento: "bg-violet-500", taller: "bg-amber-500", excursion: "bg-emerald-500" };
+
+  const getNombreEvento = (e) => {
+    if (e.tipo === "taller") return e.quien;
+    if (e.tipo === "excursion") return e.titulo;
+    return familias?.find(f=>f.id===e.familia_id)?.nombre || "—";
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
-        <button onClick={()=>mes===0?[setMes(11),setAnio(a=>a-1)]:setMes(m=>m-1)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 font-bold text-gray-600">‹</button>
-        <p className="font-semibold text-gray-800">{MESES[mes]} {anio}</p>
-        <button onClick={()=>mes===11?[setMes(0),setAnio(a=>a+1)]:setMes(m=>m+1)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 font-bold text-gray-600">›</button>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header mes */}
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <button onClick={prevMes} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">‹</button>
+        <p className="font-bold text-gray-900 text-base">{MESES[mes]} {anio}</p>
+        <div className="flex items-center gap-1">
+          {onAddOfrecimiento && (
+            <button onClick={() => setShowAddForm(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-600 text-white text-lg font-bold hover:bg-violet-700">+</button>
+          )}
+          <button onClick={nextMes} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">›</button>
+        </div>
       </div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-100">{["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map(d=><div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">{d}</div>)}</div>
-        <div className="grid grid-cols-7">{celdas.map((dia,i)=>{
-          const evs = dia?(porDia[dia]||[]):[];
-          const esHoy = dia&&dia===hoy.getDate()&&mes===hoy.getMonth()&&anio===hoy.getFullYear();
-          return <div key={i} className={`min-h-12 p-1 border-b border-r border-gray-50 ${!dia?"bg-gray-50":""}`}>
-            {dia&&<><p className={`text-xs font-medium text-center mb-0.5 w-6 h-6 flex items-center justify-center rounded-full mx-auto ${esHoy?"bg-violet-600 text-white":"text-gray-600"}`}>{dia}</p>
-            {evs.map((e,j)=><div key={j} className={`text-[10px] rounded px-1 py-0.5 mb-0.5 truncate ${e.tipo==="taller"?"bg-amber-100 text-amber-700":e.tipo==="excursion"?"bg-emerald-100 text-emerald-700":"bg-violet-100 text-violet-700"}`}>{e.tipo==="taller"?e.quien:e.tipo==="excursion"?e.titulo:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</div>)}</>}
-          </div>;
-        })}</div>
+
+      {/* Días semana */}
+      <div className="grid grid-cols-7 px-1 pb-1">
+        {DIAS.map(d => <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>)}
       </div>
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-violet-100"></div><span className="text-xs text-gray-500">Ofrecimiento</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-100"></div><span className="text-xs text-gray-500">Taller</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-100"></div><span className="text-xs text-gray-500">Excursión</span></div>
-      </div>
-      {eventos.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Este mes</p>
-          {[...eventos].sort((a,b)=>a.dia-b.dia).map((e,i)=>(
-            <div key={i} className="bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3">
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg ${e.tipo==="taller"?"bg-amber-100 text-amber-700":e.tipo==="excursion"?"bg-emerald-100 text-emerald-700":"bg-violet-100 text-violet-700"}`}>{e.dia}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{e.tipo==="taller"?e.quien:e.tipo==="excursion"?e.titulo:(familias?.find(f=>f.id===e.familia_id)?.nombre||"—")}</p>
-                <p className="text-xs text-gray-500 truncate">{e.tipo==="taller"?e.descripcion:e.tipo==="excursion"?e.descripcion:e.que}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${e.tipo==="taller"?"bg-amber-50 text-amber-600":e.tipo==="excursion"?"bg-emerald-50 text-emerald-600":"bg-violet-50 text-violet-600"}`}>{e.tipo==="taller"?"Taller":e.tipo==="excursion"?"Excursión":"Ofrecimiento"}</span>
+
+      {/* Grid días */}
+      <div className="grid grid-cols-7 px-1 pb-2">
+        {celdas.map((dia, i) => {
+          const evs = dia ? (porDia[dia]||[]) : [];
+          const esHoy = dia && dia===hoy.getDate() && mes===hoy.getMonth() && anio===hoy.getFullYear();
+          const esSel = dia && dia === diaSeleccionado;
+          return (
+            <div key={i} onClick={() => dia && setDiaSeleccionado(dia)}
+              className={`flex flex-col items-center py-1 cursor-pointer rounded-xl mx-0.5 transition-colors ${dia?"hover:bg-gray-50":""}`}>
+              {dia && (
+                <>
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-0.5 transition-all
+                    ${esHoy ? "bg-violet-600 text-white font-bold" : esSel ? "bg-gray-900 text-white" : "text-gray-700"}`}>
+                    {dia}
+                  </span>
+                  <div className="flex gap-0.5 h-1.5">
+                    {evs.slice(0,3).map((e,j) => (
+                      <div key={j} className={`w-1.5 h-1.5 rounded-full ${tipoDot[e.tipo]}`}></div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Eventos del día seleccionado */}
+      <div className="border-t border-gray-100">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-700">
+            {diaSeleccionado} de {MESES[mes]}
+          </p>
+          {eventosDia.length > 0 && <span className="text-xs text-gray-400">{eventosDia.length} evento{eventosDia.length!==1?"s":""}</span>}
+        </div>
+        {eventosDia.length === 0 ? (
+          <p className="text-xs text-gray-400 px-4 pb-4">Sin eventos este día</p>
+        ) : (
+          <div className="px-4 pb-4 space-y-2">
+            {eventosDia.map((e, i) => (
+              <div key={i} className="flex items-center gap-3 py-2 border-t border-gray-50">
+                <div className={`w-1 h-10 rounded-full flex-shrink-0 ${tipoDot[e.tipo]}`}></div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{getNombreEvento(e)}</p>
+                  <p className="text-xs text-gray-500">{e.tipo==="ofrecimiento"?e.que:e.tipo==="taller"?e.descripcion:e.descripcion}</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${tipoColor[e.tipo]}`}>{tipoLabel[e.tipo]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Form añadir ofrecimiento */}
+      {showAddForm && (
+        <div className="border-t border-gray-100 px-4 py-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-700">Nuevo ofrecimiento</p>
+          <OfrecimientoForm
+            familias={familias}
+            ofrecimiento={{ fecha: `${anio}-${String(mes+1).padStart(2,"0")}-${String(diaSeleccionado).padStart(2,"0")}` }}
+            onSave={(o) => { if(onAddOfrecimiento) onAddOfrecimiento(o); setShowAddForm(false); }}
+            onCancel={() => setShowAddForm(false)}
+          />
         </div>
       )}
     </div>
   );
 }
+
 
 function ExcursionCard({ excursion }) {
   const [expanded, setExpanded] = useState(false);
@@ -1178,20 +1243,10 @@ function ExcursionesView() {
   );
 }
 
-function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento, initialTab }) {
-  const [tab, setTab] = useState(initialTab || "ofrecimientos");
-  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
-
+function ServiciosView({ ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento }) {
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"},{id:"excursiones",label:"Excursiones"}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
-        ))}
-      </div>
-      {tab==="ofrecimientos" && <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
-      {tab==="talleres" && <TalleresView talleres={talleres} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
-      {tab==="excursiones" && <ExcursionesView />}
+      <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />
     </div>
   );
 }
@@ -1819,13 +1874,14 @@ export default function App() {
                 {[
                   {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
                   {label:"Voluntarios",value:voluntarios.length,icon:"🙌",m:"voluntarios"},
-                  {label:"Talleres",value:`${talleres.length}/16`,icon:"🎨",m:"servicios"},
+                  {label:"Ofrecimientos",value:ofrecimientos.length,icon:"🎁",m:"servicios"},
                 ].map(s=>(
                   <button key={s.label} onClick={() => setMenu(s.m)} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
                     <p className="text-xl mb-1">{s.icon}</p><p className="text-lg font-bold text-violet-600">{s.value}</p><p className="text-xs text-gray-500">{s.label}</p>
                   </button>
                 ))}
               </div>
+              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} />
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
                 {[
@@ -1836,17 +1892,6 @@ export default function App() {
                     <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-300">›</span>
                   </button>
                 ))}
-              </div>
-              {talleres.length < 16 && (
-                <button onClick={() => setMenu("servicios")} className="w-full bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-center gap-3 text-left">
-                  <span className="text-xl">⚠️</span><div><p className="text-sm font-semibold text-amber-800">Faltan {16-talleres.length} talleres</p><p className="text-xs text-amber-600">Toca para ir a Servicios</p></div><span className="ml-auto text-amber-300">›</span>
-                </button>
-              )}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Calendario</p>
-                <div className="px-4 pb-4">
-                  <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} />
-                </div>
               </div>
             </div>
           )}
@@ -1900,8 +1945,7 @@ export default function App() {
 
           {/* SERVICIOS */}
           {menu==="servicios" && (
-            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
-              onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
+            <ServiciosView ofrecimientos={ofrecimientos} familias={familias}
               onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento} />
           )}
         </div>
