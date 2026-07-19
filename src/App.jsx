@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -234,7 +234,7 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Madre");
   const [servicio, setServicio] = useState(familia?.servicio || "");
-  const [hijos, setHijos] = useState((familia?.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h));
+  const [hijos, setHijos] = useState((familia?.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito", alergias: "" } : { alergias: "", ...h }));
   const [c2nombre, setC2nombre] = useState(familia?.contacto2_nombre || "");
   const [c2parentesco, setC2parentesco] = useState(familia?.contacto2_parentesco || "Madre");
   const [c2telefono, setC2telefono] = useState(familia?.contacto2_telefono || "");
@@ -299,6 +299,8 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
             <input value={h.nombre} onChange={e => setHijos(prev => prev.map((x,idx) => idx===i?{...x,nombre:e.target.value}:x))} placeholder="Nombre"
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
             <input value={h.edad} onChange={e => setHijos(prev => prev.map((x,idx) => idx===i?{...x,edad:e.target.value}:x))} placeholder="Edad"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
+            <input value={h.alergias||""} onChange={e => setHijos(prev => prev.map((x,idx) => idx===i?{...x,alergias:e.target.value}:x))} placeholder="Alergias (opcional)"
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
             <div className="flex flex-wrap gap-1.5">{CURSOS.map(c => (
               <button key={c} onClick={() => setHijos(prev => prev.map((x,idx) => idx===i?{...x,curso:c}:x))}
@@ -541,87 +543,54 @@ function HijoCard({ hijo, onSave }) {
   );
 }
 
-function ConversacionesFamilia({ familiaId, currentUser, allProfiles }) {
+function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setNota, onSend, saving }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
-  const [nota, setNota] = useState("");
-  const [autorId, setAutorId] = useState(currentUser.id);
-  const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     supabase.from("conversaciones").select("*, profiles(nombre)")
-      .eq("familia_id", familiaId).order("created_at", { ascending: false })
+      .eq("familia_id", familiaId).order("created_at", { ascending: true })
       .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
   }, [familiaId]);
 
-  const handleSave = async () => {
-    if (!nota.trim()) return;
-    setSaving(true);
-    const { data } = await supabase.from("conversaciones").insert({
-      familia_id: familiaId, nota: nota.trim(), autor_id: autorId,
-    }).select("*, profiles(nombre)").single();
-    if (data) setConversaciones(prev => [data, ...prev]);
-    setNota(""); setShowForm(false); setSaving(false);
-  };
+  // Expose addConversacion method via ref pattern
+  ConversacionesFamilia._addConv = (c) => setConversaciones(prev => [...prev, c]);
 
   const handleDelete = async (id) => {
     await supabase.from("conversaciones").delete().eq("id", id);
     setConversaciones(prev => prev.filter(c => c.id !== id));
   };
 
+  if (!loaded) return <p className="text-xs text-gray-400 text-center py-8">Cargando...</p>;
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-          Conversaciones {conversaciones.length > 0 && `(${conversaciones.length})`}
-        </p>
-        <button onClick={() => setShowForm(!showForm)}
-          className="text-xs bg-violet-100 text-violet-700 px-3 py-1.5 rounded-full font-medium">
-          {showForm ? "Cancelar" : "+ Nueva"}
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <select value={autorId} onChange={e => setAutorId(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
-            {allProfiles.filter(p => p.aprobado || p.is_admin).map(p => (
-              <option key={p.id} value={p.id}>{p.nombre}{p.id === currentUser.id ? " (yo)" : ""}</option>
-            ))}
-          </select>
-          <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3} autoFocus
-            placeholder="Escribe una nota sobre la conversación..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          <button onClick={handleSave} disabled={saving || !nota.trim()}
-            className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
+    <div className="space-y-1 pb-2">
+      {conversaciones.length === 0 && (
+        <p className="text-xs text-gray-400 text-center py-8">Sin conversaciones aún 💬</p>
       )}
-
-      {!loaded ? (
-        <p className="text-xs text-gray-400 text-center py-4">Cargando...</p>
-      ) : conversaciones.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-4">Sin conversaciones aún</p>
-      ) : conversaciones.map(c => {
+      {conversaciones.map(c => {
+        const esMio = c.autor_id === currentUser.id;
         const nombre = c.profiles?.nombre || "—";
         const fecha = new Date(c.created_at);
         const esHoy = fecha.toDateString() === new Date().toDateString();
         const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
         const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
         return (
-          <div key={c.id} className="flex gap-3 group">
-            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-gray-800">{nombre}</span>
-                <span className="text-xs text-gray-400">{fechaStr}</span>
+          <div key={c.id} className={`flex ${esMio ? "justify-end" : "justify-start"} group mb-1`}>
+            {!esMio && (
+              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0 mr-1.5 mt-0.5 self-end">{nombre[0]}</div>
+            )}
+            <div className={`max-w-[78%] ${esMio ? "items-end" : "items-start"} flex flex-col`}>
+              {!esMio && <p className="text-[10px] text-gray-400 font-medium mb-0.5 ml-1">{nombre}</p>}
+              <div className={`relative px-3 py-2 rounded-2xl ${esMio
+                ? "bg-violet-600 text-white rounded-br-sm"
+                : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
+                <p className="text-sm leading-relaxed">{c.nota}</p>
+                <p className={`text-[10px] mt-0.5 text-right ${esMio ? "text-violet-300" : "text-gray-400"}`}>{fechaStr}</p>
+                <button onClick={() => handleDelete(c.id)}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-100 text-red-400 rounded-full text-[9px] opacity-0 group-hover:opacity-100 flex items-center justify-center">✕</button>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
             </div>
-            <button onClick={() => handleDelete(c.id)}
-              className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
           </div>
         );
       })}
@@ -633,6 +602,8 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles }) {
 function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
   const [familia, setFamilia] = useState(familiaInicial);
   const [showEdit, setShowEdit] = useState(false);
+  const [nota, setNota] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleSaveHijo = async (idx, hijoData) => {
     const nuevosHijos = (familia.hijos || []).map((h, i) => i === idx ? hijoData : h);
@@ -640,7 +611,17 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
     if (data) { setFamilia(data); onEdit(data); }
   };
 
-  const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito" } : h);
+  const handleSend = async () => {
+    if (!nota.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from("conversaciones").insert({
+      familia_id: familia.id, nota: nota.trim(), autor_id: currentUser.id,
+    }).select("*, profiles(nombre)").single();
+    if (data && ConversacionesFamilia._addConv) ConversacionesFamilia._addConv(data);
+    setNota(""); setSaving(false);
+  };
+
+  const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito", alergias: "" } : { alergias: "", ...h });
 
   if (showEdit) return (
     <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
@@ -664,6 +645,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
           </div>
         </div>
       </div>
+
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
@@ -680,6 +662,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
             <p className="text-sm text-gray-400">Sin teléfono</p>
           )}
         </div>
+
         {familia.contacto2_nombre && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Segundo contacto</p>
@@ -699,6 +682,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
             </div>
           </div>
         )}
+
         {hijos.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
@@ -706,14 +690,30 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
           </div>
         )}
 
-        {/* Conversaciones */}
-        <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} />
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Conversaciones</p>
+          <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} />
+        </div>
+      </div>
 
+      <div className="bg-white border-t border-gray-100 px-3 py-3 flex-shrink-0">
+        <div className="flex items-end gap-2">
+          <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mb-0.5">
+            {(currentUser?.email?.[0] || "?").toUpperCase()}
+          </div>
+          <textarea value={nota} onChange={e => setNota(e.target.value)}
+            onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); handleSend(); }}}
+            rows={1} placeholder="Escribe un mensaje..."
+            className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <button onClick={handleSend} disabled={saving || !nota.trim()}
+            className="w-9 h-9 bg-violet-600 text-white rounded-full flex items-center justify-center disabled:opacity-40 flex-shrink-0 mb-0.5">
+            <span className="text-sm">➤</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-
 
 function VisitaFormInline({ familiaId, currentUser, allProfiles, onSave, onCancel }) {
   const [unidad, setUnidad] = useState(1);
@@ -1078,15 +1078,15 @@ const HORARIO_FIJO = [
   { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2",             tag: "Sesión",     line: "bg-blue-400",   grado: true, duracion: "45min" },
   { hora: "11:30", fin: "12:00", titulo: "Parque · Juegos · Drama",    tag: "Actividad",  line: "bg-emerald-400",grado: null },
   { hora: "12:00", fin: "13:30", titulo: "Taller",                     tag: "Taller",     line: "bg-orange-400", grado: null, esTaller: true },
-  { hora: "13:30", fin: "14:15", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
-  { hora: "14:15", fin: "14:30", titulo: "Reflexión de maestros",      tag: "Reflexión",  line: "bg-rose-400",   grado: null },
+  { hora: "13:30", fin: "14:00", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
+  { hora: "14:15", fin: "15:00", titulo: "Reflexión de maestros",      tag: "Reflexión",  line: "bg-rose-400",   grado: null },
 ];
 
 const HORARIO_EXCURSION = [
   { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños",       tag: "Llegada",    line: "bg-gray-300",   grado: null },
   { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                  tag: "Oración",    line: "bg-violet-400", grado: null },
   { hora: "9:30",  fin: "14:00", titulo: "Excursión",                  tag: "Excursión",  line: "bg-emerald-400",grado: null, esExcursion: true },
-  { hora: "14:00", fin: "14:15", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
+  { hora: "14:00", fin: "14:30", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
 ];
 
 const GRADO_TAGS = ["Huevito","G1","G2","G3","Prej."];
@@ -1114,6 +1114,12 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   const tallerDia = talleres?.find(t => t.fecha === fechaDia);
   const excursionDia = excursiones?.find(e => e.fecha === fechaDia);
   const horario = esMiercoles && excursionDia ? HORARIO_EXCURSION : HORARIO_FIJO;
+
+  const alergias = familias?.flatMap(f =>
+    (f.hijos||[]).map(h => typeof h==="string" ? null : h)
+      .filter(h => h && h.alergias && h.alergias.trim())
+      .map(h => `${h.nombre}: ${h.alergias}`)
+  ).filter(Boolean) || [];
 
   const getTitulo = (slot) => {
     if (slot.esTaller && tallerDia) return tallerDia.descripcion;
@@ -1199,6 +1205,12 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
                   </div>
                 </div>
                 {getSubtitulo(slot) && <p className="text-xs text-gray-400 mt-0.5">{getSubtitulo(slot)}</p>}
+              {slot.tag === "Merienda" && alergias.length > 0 && (
+                <div className="mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">
+                  <p className="text-[10px] font-semibold text-red-600 mb-0.5">⚠️ Alergias</p>
+                  {alergias.map((a,i) => <p key={i} className="text-[10px] text-red-500">{a}</p>)}
+                </div>
+              )}
                 {slot.fin && <p className="text-[10px] text-gray-300 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
             </div>
@@ -1918,10 +1930,10 @@ export default function App() {
   // LOGGED IN APP
   const NAV_ITEMS = [
     { id: "home", label: "Inicio", icon: "🏠" },
-    { id: "actividad", label: "Visitas", icon: "📖" },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "servicios", label: "Servicios", icon: "🎨" },
+    { id: "actividad", label: "Visitas", icon: "📖" },
   ];
 
   const roles = ["Todos", "Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
