@@ -1205,15 +1205,13 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
             <div className="flex-1 mb-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex">
               <div className={`w-1 flex-shrink-0 ${slot.line}`}></div>
               <div className="flex-1 px-3 py-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
-                  <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
-                    {slot.grado && GRADO_TAGS.map((g,j) => (
-                      <span key={j} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-1 flex-wrap mb-1">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
+                  {slot.grado && GRADO_TAGS.map((g,j) => (
+                    <span key={j} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
+                  ))}
                 </div>
+                <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
                 {getSubtitulo(slot) && <p className="text-xs text-gray-400 mt-0.5">{getSubtitulo(slot)}</p>}
               {slot.tag === "Merienda" && alergias.length > 0 && (
                 <div className="mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">
@@ -1904,18 +1902,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
           )}
 
           {menu==="voluntarios" && (
-            <div className="space-y-2.5">
-              {(voluntarios||[]).length === 0 ? <p className="text-center text-gray-400 py-12">Sin voluntarios</p> :
-                (voluntarios||[]).map(v => (
-                  <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0">{v.nombre[0]}</div>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-semibold text-gray-800">{v.nombre}</span>
-                      {v.roles?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{v.roles.map(r=><span key={r} className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{r}</span>)}</div>}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            <VoluntariosView voluntarios={voluntarios||[]} isAdmin={false} onAdd={()=>{}} onEdit={()=>{}} />
           )}
 
           {menu==="servicios" && (
