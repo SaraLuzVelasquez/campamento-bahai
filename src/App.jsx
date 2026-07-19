@@ -2482,3 +2482,12 @@ function ParticipantesView({ familias, onVerFamilia }) {
             <div className="flex items-center gap-2 flex-shrink-0">
               {count > 0 && <span className="text-sm font-bold text-violet-600">{count}</span>}
               <span className="text-gray-500">›</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
