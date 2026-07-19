@@ -1102,8 +1102,10 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
       return hoy >= new Date(s.dias[0]) && hoy <= fin;
     });
     if (idx >= 0) return idx;
-    // If before camp, show week 1; if after, show last week
-    if (hoy < new Date(SEMANAS[0].dias[0])) return 0;
+    // Weekend between weeks: show the upcoming week
+    for (let i = 0; i < SEMANAS.length; i++) {
+      if (hoy < new Date(SEMANAS[i].dias[0])) return i;
+    }
     return SEMANAS.length - 1;
   })();
   const diaInicial = (() => {
