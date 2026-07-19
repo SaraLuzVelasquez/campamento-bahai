@@ -2238,7 +2238,7 @@ export default function App() {
   );
 }
 
-// ── RECIENTES Y PARTICIPANTES ─────────────────────────────────────────────────
+// ── RECIENTES Y PARTICIPANTES lala ─────────────────────────────────────────────────
 
 
 function ParticipantesView({ familias, onVerFamilia }) {
