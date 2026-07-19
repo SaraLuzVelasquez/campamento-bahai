@@ -1161,7 +1161,7 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
   const [editSlot, setEditSlot] = useState(null); // "taller" | "excursion"
 
   const alergias = familias?.flatMap(f =>
-    (f.hijos||[]).map(h => typeof h===="string" ? null : h)
+    (f.hijos||[]).map(h => typeof h==="string" ? null : h)
       .filter(h => h && h.alergias && h.alergias.trim())
       .map(h => `${h.nombre}: ${h.alergias}`)
   ).filter(Boolean) || [];
