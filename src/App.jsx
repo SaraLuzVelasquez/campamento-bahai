@@ -541,6 +541,95 @@ function HijoCard({ hijo, onSave }) {
   );
 }
 
+function ConversacionesFamilia({ familiaId, currentUser, allProfiles }) {
+  const [conversaciones, setConversaciones] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [nota, setNota] = useState("");
+  const [autorId, setAutorId] = useState(currentUser.id);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    supabase.from("conversaciones").select("*, profiles(nombre)")
+      .eq("familia_id", familiaId).order("created_at", { ascending: false })
+      .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
+  }, [familiaId]);
+
+  const handleSave = async () => {
+    if (!nota.trim()) return;
+    setSaving(true);
+    const { data } = await supabase.from("conversaciones").insert({
+      familia_id: familiaId, nota: nota.trim(), autor_id: autorId,
+    }).select("*, profiles(nombre)").single();
+    if (data) setConversaciones(prev => [data, ...prev]);
+    setNota(""); setShowForm(false); setSaving(false);
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("conversaciones").delete().eq("id", id);
+    setConversaciones(prev => prev.filter(c => c.id !== id));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          Conversaciones {conversaciones.length > 0 && `(${conversaciones.length})`}
+        </p>
+        <button onClick={() => setShowForm(!showForm)}
+          className="text-xs bg-violet-100 text-violet-700 px-3 py-1.5 rounded-full font-medium">
+          {showForm ? "Cancelar" : "+ Nueva"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <select value={autorId} onChange={e => setAutorId(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
+            {allProfiles.filter(p => p.aprobado || p.is_admin).map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}{p.id === currentUser.id ? " (yo)" : ""}</option>
+            ))}
+          </select>
+          <textarea value={nota} onChange={e => setNota(e.target.value)} rows={3} autoFocus
+            placeholder="Escribe una nota sobre la conversación..."
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <button onClick={handleSave} disabled={saving || !nota.trim()}
+            className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      )}
+
+      {!loaded ? (
+        <p className="text-xs text-gray-400 text-center py-4">Cargando...</p>
+      ) : conversaciones.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-4">Sin conversaciones aún</p>
+      ) : conversaciones.map(c => {
+        const nombre = c.profiles?.nombre || "—";
+        const fecha = new Date(c.created_at);
+        const esHoy = fecha.toDateString() === new Date().toDateString();
+        const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+        const fechaStr = esHoy ? hora : `${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} ${hora}`;
+        return (
+          <div key={c.id} className="flex gap-3 group">
+            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mt-0.5">{nombre[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-gray-800">{nombre}</span>
+                <span className="text-xs text-gray-400">{fechaStr}</span>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed">{c.nota}</p>
+            </div>
+            <button onClick={() => handleDelete(c.id)}
+              className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1 text-xs">✕</button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
   const [familia, setFamilia] = useState(familiaInicial);
   const [showEdit, setShowEdit] = useState(false);
@@ -616,6 +705,10 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
             {hijos.map((h, i) => <HijoCard key={i} hijo={h} onSave={(data) => handleSaveHijo(i, data)} />)}
           </div>
         )}
+
+        {/* Conversaciones */}
+        <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} />
+
       </div>
     </div>
   );
@@ -970,141 +1063,147 @@ function TalleresView({ talleres, onAdd, onEdit, onDelete }) {
 
 // ── SEMANAS DEL CAMPAMENTO ────────────────────────────────────────────────────
 const SEMANAS = [
-  { label: "Semana 1", inicio: new Date("2026-07-06"), dias: ["2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10"] },
-  { label: "Semana 2", inicio: new Date("2026-07-13"), dias: ["2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17"] },
-  { label: "Semana 3", inicio: new Date("2026-07-20"), dias: ["2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24"] },
-  { label: "Semana 4", inicio: new Date("2026-07-27"), dias: ["2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31"] },
+  { label: "Semana 1", dias: ["2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10"] },
+  { label: "Semana 2", dias: ["2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17"] },
+  { label: "Semana 3", dias: ["2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24"] },
+  { label: "Semana 4", dias: ["2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31"] },
 ];
 const DIAS_LABELS = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
 
 const HORARIO_FIJO = [
-  { hora: "8:30", fin: "9:00", titulo: "Llegada de los niños", color: "bg-gray-100 text-gray-600", dot: "bg-gray-400" },
-  { hora: "9:00", fin: "9:30", titulo: "Oraciones", color: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
-  { hora: "9:30", fin: "10:30", titulo: "Sesión parte 1", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500", duracion: "1h" },
-  { hora: "10:30", fin: "10:45", titulo: "Merienda", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500", duracion: "45min" },
-  { hora: "11:30", fin: "12:00", titulo: "Parque / Juegos / Dramatización", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  { hora: "12:00", fin: "13:30", titulo: "TALLER", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500", esTaller: true },
-  { hora: "13:30", fin: "14:15", titulo: "Reflexión conjunta", color: "bg-pink-100 text-pink-700", dot: "bg-pink-500" },
-  { hora: "14:15", fin: "14:30", titulo: "Reflexión de maestros", color: "bg-rose-100 text-rose-700", dot: "bg-rose-500" },
+  { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños",       tag: "Llegada",    line: "bg-gray-300",   grado: null },
+  { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                  tag: "Oración",    line: "bg-violet-400", grado: null },
+  { hora: "9:30",  fin: "10:30", titulo: "Sesión parte 1",             tag: "Sesión",     line: "bg-blue-400",   grado: true, duracion: "1h" },
+  { hora: "10:30", fin: "10:45", titulo: "Merienda",                   tag: "Merienda",   line: "bg-amber-400",  grado: null },
+  { hora: "10:45", fin: "11:30", titulo: "Sesión parte 2",             tag: "Sesión",     line: "bg-blue-400",   grado: true, duracion: "45min" },
+  { hora: "11:30", fin: "12:00", titulo: "Parque · Juegos · Drama",    tag: "Actividad",  line: "bg-emerald-400",grado: null },
+  { hora: "12:00", fin: "13:30", titulo: "Taller",                     tag: "Taller",     line: "bg-orange-400", grado: null, esTaller: true },
+  { hora: "13:30", fin: "14:15", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
+  { hora: "14:15", fin: "14:30", titulo: "Reflexión de maestros",      tag: "Reflexión",  line: "bg-rose-400",   grado: null },
 ];
 
 const HORARIO_EXCURSION = [
-  { hora: "8:30", fin: "9:00", titulo: "Llegada de los niños", color: "bg-gray-100 text-gray-600", dot: "bg-gray-400" },
-  { hora: "9:00", fin: "9:30", titulo: "Oraciones", color: "bg-violet-100 text-violet-700", dot: "bg-violet-500" },
-  { hora: "9:30", fin: "14:00", titulo: "EXCURSIÓN", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500", esExcursion: true },
-  { hora: "14:00", fin: "14:15", titulo: "Reflexión conjunta", color: "bg-pink-100 text-pink-700", dot: "bg-pink-500" },
+  { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños",       tag: "Llegada",    line: "bg-gray-300",   grado: null },
+  { hora: "9:00",  fin: "9:30",  titulo: "Oraciones",                  tag: "Oración",    line: "bg-violet-400", grado: null },
+  { hora: "9:30",  fin: "14:00", titulo: "Excursión",                  tag: "Excursión",  line: "bg-emerald-400",grado: null, esExcursion: true },
+  { hora: "14:00", fin: "14:15", titulo: "Reflexión conjunta",         tag: "Reflexión",  line: "bg-pink-400",   grado: null },
 ];
+
+const GRADO_TAGS = ["Huevito","G1","G2","G3","Prej."];
+const GRADO_COLORS = ["bg-yellow-100 text-yellow-700","bg-green-100 text-green-700","bg-orange-100 text-orange-700","bg-red-100 text-red-700","bg-purple-100 text-purple-700"];
 
 function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddOfrecimiento, onAddTaller, onAddExcursion }) {
   const hoy = new Date();
-  // Find current week index
-  const semanaInicial = SEMANAS.findIndex(s => {
+  const todayStr = hoy.toISOString().slice(0,10);
+
+  const semanaInicial = Math.max(0, SEMANAS.findIndex(s => {
     const fin = new Date(s.dias[4]); fin.setHours(23,59,59);
-    return hoy >= s.inicio && hoy <= fin;
-  });
+    return hoy >= new Date(s.dias[0]) && hoy <= fin;
+  }));
   const [semanaIdx, setSemanaIdx] = useState(semanaInicial >= 0 ? semanaInicial : 0);
   const [diaIdx, setDiaIdx] = useState(() => {
-    const d = hoy.getDay(); // 0=sun,1=mon...
-    if (d >= 1 && d <= 5) return d - 1;
-    return 0;
+    const d = hoy.getDay();
+    return (d >= 1 && d <= 5) ? d - 1 : 0;
   });
   const [showAdd, setShowAdd] = useState(false);
-  const [addTipo, setAddTipo] = useState(null); // "ofrecimiento"|"taller"|"excursion"
+  const [addTipo, setAddTipo] = useState(null);
 
   const semana = SEMANAS[semanaIdx];
   const fechaDia = semana.dias[diaIdx];
   const esMiercoles = diaIdx === 2;
-
   const tallerDia = talleres?.find(t => t.fecha === fechaDia);
   const excursionDia = excursiones?.find(e => e.fecha === fechaDia);
   const horario = esMiercoles && excursionDia ? HORARIO_EXCURSION : HORARIO_FIJO;
 
-  const getTituloSlot = (slot) => {
-    if (slot.esTaller) return tallerDia ? tallerDia.descripcion : "Taller (por confirmar)";
-    if (slot.esExcursion) return excursionDia ? excursionDia.titulo : "Excursión";
+  const getTitulo = (slot) => {
+    if (slot.esTaller && tallerDia) return tallerDia.descripcion;
+    if (slot.esExcursion && excursionDia) return excursionDia.titulo;
     return slot.titulo;
   };
-
-  const getSubtituloSlot = (slot) => {
+  const getSubtitulo = (slot) => {
     if (slot.esTaller && tallerDia) return `con ${tallerDia.quien}`;
     if (slot.esExcursion && excursionDia) return excursionDia.descripcion || "";
     return slot.duracion || "";
   };
 
-  const fechaFormateada = new Date(fechaDia + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
-
   return (
-    <div className="space-y-4">
-      {/* Semanas — cards horizontales */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {SEMANAS.map((s, i) => {
-          const pasada = new Date(s.dias[4]) < hoy;
-          const activa = i === semanaIdx;
-          return (
+    <div className="space-y-0">
+      {/* Semanas — tabs con barrrita */}
+      <div className="bg-white rounded-t-2xl border border-b-0 border-gray-100 shadow-sm">
+        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
+          {SEMANAS.map((s, i) => (
             <button key={i} onClick={() => { setSemanaIdx(i); setDiaIdx(0); }}
-              className={`flex-shrink-0 rounded-2xl px-4 py-3 text-left transition-all border ${activa ? "bg-violet-600 text-white border-violet-600 shadow-md" : pasada ? "bg-gray-50 text-gray-400 border-gray-100" : "bg-white text-gray-700 border-gray-100 shadow-sm"}`}>
-              <p className={`text-xs font-semibold ${activa ? "text-violet-200" : "text-gray-400"}`}>{s.label}</p>
-              <p className={`text-sm font-bold mt-0.5 ${activa ? "text-white" : "text-gray-800"}`}>
-                {new Date(s.dias[0]+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})} — {new Date(s.dias[4]+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}
-              </p>
+              className={`flex-shrink-0 px-5 py-3 text-sm font-semibold transition-all relative whitespace-nowrap
+                ${semanaIdx===i ? "text-violet-600" : "text-gray-400 hover:text-gray-600"}`}>
+              {s.label}
+              {semanaIdx===i && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full"></div>}
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* Días tabs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100">
+        {/* Días — botones */}
+        <div className="flex gap-1.5 px-3 py-3">
           {DIAS_LABELS.map((d, i) => {
             const fecha = semana.dias[i];
-            const esHoy = fecha === hoy.toISOString().slice(0,10);
-            const tieneTaller = talleres?.some(t => t.fecha === fecha);
-            const tieneExc = excursiones?.some(e => e.fecha === fecha);
+            const esHoy = fecha === todayStr;
+            const tieneEvento = talleres?.some(t => t.fecha === fecha) || excursiones?.some(e => e.fecha === fecha);
+            const sel = diaIdx === i;
             return (
               <button key={i} onClick={() => setDiaIdx(i)}
-                className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 transition-all ${diaIdx===i ? "border-b-2 border-violet-600" : ""}`}>
-                <span className={`text-[10px] font-semibold ${diaIdx===i?"text-violet-600":"text-gray-400"}`}>{d.slice(0,3)}</span>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${esHoy?"bg-violet-600 text-white":diaIdx===i?"text-violet-600":"text-gray-600"}`}>
+                className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-all text-center
+                  ${sel ? "bg-violet-600 shadow-sm" : "bg-gray-50 hover:bg-gray-100"}`}>
+                <span className={`text-[10px] font-semibold ${sel?"text-violet-200":"text-gray-400"}`}>{d.slice(0,3)}</span>
+                <span className={`text-sm font-bold ${sel?"text-white":esHoy?"text-violet-600":"text-gray-700"}`}>
                   {new Date(fecha+"T12:00:00").getDate()}
                 </span>
-                {(tieneTaller || tieneExc) && <div className={`w-1.5 h-1.5 rounded-full ${tieneExc?"bg-emerald-500":"bg-orange-500"}`}></div>}
+                {tieneEvento && <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${sel?"bg-white/60":i===2?"bg-emerald-400":"bg-orange-400"}`}></div>}
               </button>
             );
           })}
         </div>
 
-        {/* Header del día */}
-        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
-          <div>
-            <p className="text-xs text-gray-400">{fechaFormateada}</p>
-            <p className="text-sm font-bold text-gray-800">{DIAS_LABELS[diaIdx]}</p>
-          </div>
-          <button onClick={() => setShowAdd(!showAdd)}
-            className="w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center text-lg font-bold hover:bg-violet-700 transition-colors">+</button>
+        {/* Header con + */}
+        <div className="px-4 pb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-700">
+            {new Date(fechaDia+"T12:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}
+          </p>
+          <button onClick={() => { setShowAdd(true); setAddTipo(null); }}
+            className="w-8 h-8 bg-violet-600 text-white rounded-full flex items-center justify-center text-xl font-bold hover:bg-violet-700 transition-colors">+</button>
         </div>
+      </div>
 
-        {/* Timeline */}
-        <div className="px-4 py-3 space-y-0">
-          {horario.map((slot, i) => (
-            <div key={i} className="flex gap-3 relative">
-              {/* Línea vertical */}
-              {i < horario.length - 1 && <div className="absolute left-[27px] top-6 bottom-0 w-px bg-gray-100 z-0"></div>}
-              {/* Hora */}
-              <div className="w-12 flex-shrink-0 text-right pt-1 z-10">
-                <span className="text-[11px] font-semibold text-gray-500">{slot.hora}</span>
-              </div>
-              {/* Dot */}
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1.5 z-10 ${slot.dot}`}></div>
-              {/* Contenido */}
-              <div className={`flex-1 mb-4 rounded-2xl px-3 py-2.5 ${slot.color}`}>
-                <p className="text-sm font-semibold leading-tight">{getTituloSlot(slot)}</p>
-                {getSubtituloSlot(slot) && <p className="text-xs opacity-70 mt-0.5">{getSubtituloSlot(slot)}</p>}
-                {slot.fin && <p className="text-[10px] opacity-50 mt-0.5">hasta las {slot.fin}</p>}
+      {/* Timeline */}
+      <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm px-4 pb-4 pt-2">
+        {horario.map((slot, i) => (
+          <div key={i} className="flex gap-3 relative">
+            {i < horario.length - 1 && (
+              <div className="absolute left-[43px] top-8 bottom-0 w-px bg-gray-100 z-0"></div>
+            )}
+            {/* Hora */}
+            <div className="w-10 flex-shrink-0 pt-3 text-right z-10">
+              <span className="text-[11px] font-medium text-gray-400">{slot.hora}</span>
+            </div>
+            {/* Dot */}
+            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-3.5 z-10 border-2 border-white shadow-sm ${slot.line}`}></div>
+            {/* Card */}
+            <div className="flex-1 mb-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex">
+              <div className={`w-1 flex-shrink-0 ${slot.line}`}></div>
+              <div className="flex-1 px-3 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
+                  <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{slot.tag}</span>
+                    {slot.grado && GRADO_TAGS.map((g,j) => (
+                      <span key={j} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${GRADO_COLORS[j]}`}>{g}</span>
+                    ))}
+                  </div>
+                </div>
+                {getSubtitulo(slot) && <p className="text-xs text-gray-400 mt-0.5">{getSubtitulo(slot)}</p>}
+                {slot.fin && <p className="text-[10px] text-gray-300 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       {/* Pop-up añadir */}
@@ -1112,25 +1211,30 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
         <div className="fixed inset-0 bg-black/40 z-[70] flex items-end justify-center" onClick={() => { setShowAdd(false); setAddTipo(null); }}>
           <div className="bg-white rounded-t-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">{addTipo ? (addTipo==="ofrecimiento"?"Nuevo ofrecimiento":addTipo==="taller"?"Nuevo taller":"Nueva excursión") : "¿Qué quieres añadir?"}</h3>
-              <button onClick={() => { setShowAdd(false); setAddTipo(null); }} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">✕</button>
+              <h3 className="text-lg font-bold text-gray-900">
+                {addTipo ? (addTipo==="ofrecimiento"?"Nuevo ofrecimiento":addTipo==="taller"?"Nuevo taller":"Nueva excursión") : "¿Qué quieres añadir?"}
+              </h3>
+              <button onClick={() => { if(addTipo) setAddTipo(null); else setShowAdd(false); }}
+                className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm">
+                {addTipo ? "←" : "✕"}
+              </button>
             </div>
             <div className="px-4 py-4">
               {!addTipo ? (
                 <div className="space-y-3">
                   {[
-                    { id:"ofrecimiento", icon:"🎁", label:"Ofrecimiento", desc:"Una familia ofrece algo al campamento", color:"bg-violet-50 border-violet-200" },
-                    { id:"taller", icon:"🎨", label:"Taller", desc:"Actividad especial para los niños", color:"bg-amber-50 border-amber-200" },
-                    { id:"excursion", icon:"🚌", label:"Excursión", desc:"Salida fuera del centro", color:"bg-emerald-50 border-emerald-200" },
+                    { id:"ofrecimiento", icon:"🎁", label:"Ofrecimiento", desc:"Una familia ofrece algo al campamento", color:"border-violet-100" },
+                    { id:"taller", icon:"🎨", label:"Taller", desc:"Actividad especial para los niños", color:"border-amber-100" },
+                    { id:"excursion", icon:"🚌", label:"Excursión", desc:"Salida fuera del centro", color:"border-emerald-100" },
                   ].map(op => (
                     <button key={op.id} onClick={() => setAddTipo(op.id)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:shadow-sm ${op.color}`}>
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border bg-white text-left hover:bg-gray-50 transition-all ${op.color}`}>
                       <span className="text-3xl">{op.icon}</span>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-bold text-gray-800">{op.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{op.desc}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{op.desc}</p>
                       </div>
-                      <span className="ml-auto text-gray-400">›</span>
+                      <span className="text-gray-300">›</span>
                     </button>
                   ))}
                 </div>
@@ -1524,110 +1628,48 @@ function NuevoRegistroScreen({ familias, allProfiles, currentUser, onSave, onCan
 }
 
 function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisita, onVerFamilia }) {
-  const [convs, setConvs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showVisita, setShowVisita] = useState(false);
-  // Chat inline state
-  const [chatFamiliaId, setChatFamiliaId] = useState("");
-  const [chatNota, setChatNota] = useState("");
-  const [chatAutorId, setChatAutorId] = useState(currentUser.id);
-  const [sending, setSending] = useState(false);
+  const [showNuevo, setShowNuevo] = useState(false);
 
-  useEffect(() => {
-    supabase.from("conversaciones")
-      .select("*, profiles(nombre)")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (!error) setConvs(data || []);
-        setLoading(false);
-      });
-  }, []);
+  const sorted = [...visitas].sort((a,b) => (b.created_at||b.fecha||"").localeCompare(a.created_at||a.fecha||""));
 
-  const feed = [
-    ...convs.map(c => ({ ...c, tipo: "conversacion", _sort: c.created_at })),
-    ...visitas.map(v => ({ ...v, tipo: "visita", _sort: v.created_at || v.fecha + "T12:00:00" })),
-  ].sort((a, b) => (b._sort || "").localeCompare(a._sort || ""));
-
-  const handleSendChat = async () => {
-    if (!chatNota.trim() || !chatFamiliaId) return;
-    setSending(true);
-    const { data } = await supabase.from("conversaciones").insert({
-      familia_id: chatFamiliaId, nota: chatNota.trim(), autor_id: chatAutorId,
-    }).select("*, profiles(nombre)").single();
-    if (data) setConvs(prev => [{ ...data, tipo: "conversacion", _sort: data.created_at }, ...prev]);
-    setChatNota(""); setSending(false);
+  const handleSave = (item) => {
+    onAddVisita(item);
+    setShowNuevo(false);
   };
 
-  const handleAddVisita = (v) => {
-    onAddVisita(v);
-    setShowVisita(false);
+  const handleDelete = async (id) => {
+    await supabase.from("visitas").delete().eq("id", id);
   };
 
-  const handleDelete = async (item) => {
-    if (item.tipo === "conversacion") {
-      await supabase.from("conversaciones").delete().eq("id", item.id);
-      setConvs(prev => prev.filter(x => x.id !== item.id));
-    } else {
-      await supabase.from("visitas").delete().eq("id", item.id);
-    }
-  };
-
-  if (showVisita) return (
-    <FullScreen title="Nueva visita" onBack={() => setShowVisita(false)}>
+  if (showNuevo) return (
+    <FullScreen title="Nueva visita" onBack={() => setShowNuevo(false)}>
       <NuevoRegistroScreen familias={familias} allProfiles={allProfiles} currentUser={currentUser}
-        tipoFijo="visita" onSave={handleAddVisita} onCancel={() => setShowVisita(false)} />
+        tipoFijo="visita" onSave={handleSave} onCancel={() => setShowNuevo(false)} />
     </FullScreen>
   );
 
   return (
-    <div className="space-y-4">
-      {/* Chat inline */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <select value={chatFamiliaId} onChange={e => setChatFamiliaId(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white">
-          <option value="">Selecciona una familia</option>
-          {[...familias].sort((a,b) => a.nombre.localeCompare(b.nombre,"es")).map(f =>
-            <option key={f.id} value={f.id}>{f.nombre}</option>
-          )}
-        </select>
-        <div className="flex gap-2 items-end">
-          <textarea value={chatNota} onChange={e => setChatNota(e.target.value)} rows={2}
-            placeholder="Escribe una conversación..."
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
-          <button onClick={handleSendChat} disabled={sending || !chatNota.trim() || !chatFamiliaId}
-            className="w-10 h-10 bg-violet-600 text-white rounded-xl flex items-center justify-center disabled:opacity-40 flex-shrink-0">
-            ➤
-          </button>
-        </div>
-      </div>
-
-      {/* Botón nueva visita */}
-      <button onClick={() => setShowVisita(true)}
-        className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-semibold hover:border-violet-300 hover:text-violet-600 transition-all flex items-center justify-center gap-2">
+    <div className="space-y-3">
+      <button onClick={() => setShowNuevo(true)}
+        className="w-full py-3.5 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700 transition-all flex items-center justify-center gap-2">
         📖 Nueva visita
       </button>
-
-      {/* Feed */}
-      {loading ? (
-        <div className="space-y-2.5">{[1,2,3].map(i => <div key={i} className="h-20 bg-white rounded-2xl animate-pulse border border-gray-100"></div>)}</div>
-      ) : feed.length === 0 ? (
-        <div className="text-center py-16"><p className="text-4xl mb-3">💬</p><p className="text-gray-400 text-sm">Sin actividad aún</p></div>
+      {sorted.length === 0 ? (
+        <div className="text-center py-16"><p className="text-4xl mb-3">📖</p><p className="text-gray-400 text-sm">Sin visitas aún</p></div>
       ) : (
         <div className="space-y-2.5">
-          {feed.map((item) => {
-            const familia = familias.find(f => f.id === item.familia_id);
-            const esConv = item.tipo === "conversacion";
-            const _s = item._sort || "";
-            const fecha = new Date(_s);
-            const esHoy = !isNaN(fecha) && fecha.toDateString() === new Date().toDateString();
-            const fechaStr = isNaN(fecha) ? "" : esHoy
+          {sorted.map((v) => {
+            const familia = familias.find(f => f.id === v.familia_id);
+            const fecha = new Date(v.created_at || v.fecha);
+            const esHoy = fecha.toDateString() === new Date().toDateString();
+            const fechaStr = isNaN(fecha) ? v.fecha : esHoy
               ? fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
               : fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
             return (
-              <div key={`${item.tipo}-${item.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div key={v.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <div className="flex items-start gap-3">
                   <button onClick={() => familia && onVerFamilia(familia)}
-                    className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 mt-0.5">
+                    className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0 mt-0.5">
                     {(familia?.nombre || "?")[0]}
                   </button>
                   <div className="flex-1 min-w-0">
@@ -1636,24 +1678,21 @@ function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisit
                         className="text-sm font-semibold text-gray-800 hover:text-violet-600 transition-colors">
                         {familia?.nombre || "—"}
                       </button>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esConv?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
-                        {esConv?"💬":"📖"}
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">📖 Visita</span>
+                    </div>
+                    <p className="text-sm text-gray-700 font-medium">U{v.unidad} · S{v.seccion}</p>
+                    <p className="text-xs text-gray-500 truncate">{UNIDADES[v.unidad]?.secciones[v.seccion]}</p>
+                    {v.comentario && <p className="text-xs text-gray-400 mt-0.5 truncate">{v.comentario}</p>}
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-xs text-gray-400">{fechaStr}</span>
+                      {v.profiles?.nombre && <><span className="text-gray-200">·</span><span className="text-xs text-gray-400">{v.profiles.nombre}</span></>}
+                      <span className="text-gray-200">·</span>
+                      <span className={`text-xs font-medium ${v.completada?"text-emerald-600":"text-amber-600"}`}>
+                        {v.completada?"✓ Completada":"En progreso"}
                       </span>
                     </div>
-                    {esConv ? (
-                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{item.nota}</p>
-                    ) : (
-                      <div>
-                        <p className="text-sm text-gray-700 font-medium">U{item.unidad} · S{item.seccion}</p>
-                        <p className="text-xs text-gray-500 truncate">{UNIDADES[item.unidad]?.secciones[item.seccion]}</p>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-xs text-gray-400">{fechaStr}</span>
-                      {item.profiles?.nombre && <><span className="text-gray-200">·</span><span className="text-xs text-gray-400">{item.profiles.nombre}</span></>}
-                    </div>
                   </div>
-                  <button onClick={() => handleDelete(item)} className="text-gray-200 hover:text-red-400 transition-colors flex-shrink-0 mt-1 text-xs">✕</button>
+                  <button onClick={() => handleDelete(v.id)} className="text-gray-200 hover:text-red-400 transition-colors flex-shrink-0 mt-1 text-xs">✕</button>
                 </div>
               </div>
             );
@@ -1879,7 +1918,7 @@ export default function App() {
   // LOGGED IN APP
   const NAV_ITEMS = [
     { id: "home", label: "Inicio", icon: "🏠" },
-    { id: "actividad", label: "Actividad", icon: "💬" },
+    { id: "actividad", label: "Visitas", icon: "📖" },
     { id: "confirmados", label: "Familias", icon: "👨‍👩‍👧" },
     { id: "voluntarios", label: "Voluntarios", icon: "🙌" },
     { id: "servicios", label: "Servicios", icon: "🎨" },
@@ -1941,7 +1980,7 @@ export default function App() {
             </button>
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            {menu==="home"?"Inicio":menu==="actividad"?"Actividad":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
+            {menu==="home"?"Inicio":menu==="actividad"?"Visitas":menu==="voluntarios"?"Voluntarios":menu==="servicios"?"Servicios":"Familias"}
           </h1>
           {offline && <div className="mt-1 text-xs text-amber-600">📶 Sin conexión</div>}
           {menu==="confirmados" && (
