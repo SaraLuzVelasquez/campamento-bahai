@@ -1019,19 +1019,21 @@ function TallerCard({ taller: t, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left px-4 py-4">
-        <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          {t.fecha ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">📅 {new Date(t.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
-            : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">📅 Por confirmar</span>}
-          <span className="text-xs text-gray-500">· {t.quien}</span>
-        </div>
-      </button>
+      <div className="flex items-start">
+        <button onClick={() => setExpanded(!expanded)} className="flex-1 text-left px-4 py-4">
+          <p className="font-bold text-gray-900 mb-1">{t.descripcion}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {t.fecha ? <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">📅 {new Date(t.fecha+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"})}</span>
+              : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">📅 Por confirmar</span>}
+            <span className="text-xs text-gray-500">· {t.quien}</span>
+          </div>
+        </button>
+        <button onClick={onEdit} className="p-4 text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0">✏️</button>
+      </div>
       {expanded && (
-        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3">
           {t.necesita ? <div className="bg-amber-50 rounded-xl px-3 py-2.5"><p className="text-xs text-amber-600 font-medium mb-0.5">Necesita</p><p className="text-sm text-gray-700">{t.necesita}</p></div>
             : <p className="text-sm text-gray-400 italic">Sin necesidades indicadas</p>}
-          <button onClick={onEdit} className="w-full py-2.5 rounded-xl text-sm text-violet-500 font-medium bg-violet-50 hover:bg-violet-100">Editar</button>
         </div>
       )}
     </div>
@@ -1312,15 +1314,29 @@ function ExcursionForm({ fecha, onSave, onCancel }) {
 }
 
 
-function ExcursionCard({ excursion }) {
+function ExcursionCard({ excursion: excursionInicial }) {
+  const [excursion, setExcursion] = useState(excursionInicial);
   const [expanded, setExpanded] = useState(false);
   const [apuntados, setApuntados] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editTitulo, setEditTitulo] = useState(excursion.titulo);
+  const [editDesc, setEditDesc] = useState(excursion.descripcion || "");
+  const [editSaving, setEditSaving] = useState(false);
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("monitor");
   const [detalle, setDetalle] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const handleSaveEdit = async () => {
+    setEditSaving(true);
+    const { data } = await supabase.from("excursiones")
+      .update({ titulo: editTitulo.trim(), descripcion: editDesc.trim() || null })
+      .eq("id", excursion.id).select().single();
+    if (data) setExcursion(data);
+    setShowEdit(false); setEditSaving(false);
+  };
 
   const cargar = async () => {
     const { data } = await supabase.from("excursion_apuntados").select("*").eq("excursion_id", excursion.id).order("created_at");
@@ -1355,21 +1371,37 @@ function ExcursionCard({ excursion }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <button onClick={handleExpand} className="w-full text-left px-4 py-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold flex-shrink-0 text-sm">
-          {fecha.getDate()}
+      <div className="flex items-center">
+        <button onClick={handleExpand} className="flex-1 text-left px-4 py-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold flex-shrink-0 text-sm">
+            {fecha.getDate()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900">{excursion.titulo}</p>
+            <p className="text-xs text-gray-500">
+              {fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+          </div>
+          {loaded && apuntados.length > 0 && (
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{apuntados.length}</span>
+          )}
+        </button>
+        <button onClick={() => setShowEdit(!showEdit)} className="p-4 text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0">✏️</button>
+      </div>
+
+      {showEdit && (
+        <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
+          <input value={editTitulo} onChange={e=>setEditTitulo(e.target.value)} placeholder="Título"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <textarea value={editDesc} onChange={e=>setEditDesc(e.target.value)} rows={2} placeholder="Descripción (opcional)"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <div className="flex gap-2">
+            <button onClick={handleSaveEdit} disabled={editSaving||!editTitulo.trim()}
+              className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40">{editSaving?"Guardando...":"Guardar"}</button>
+            <button onClick={() => setShowEdit(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-500">Cancelar</button>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900">{excursion.titulo}</p>
-          <p className="text-xs text-gray-500">
-            {fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-        </div>
-        {loaded && apuntados.length > 0 && (
-          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{apuntados.length}</span>
-        )}
-        <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
-      </button>
+      )}
 
       {expanded && (
         <div className="border-t border-gray-50 px-4 pb-4 pt-3 space-y-3">
@@ -1988,17 +2020,20 @@ export default function App() {
 
   const loadPublicData = async () => {
     try {
-      const [{ data: talls }, { data: ofrecs }, { data: fams }, { data: excurs }] = await Promise.all([
+      const [{ data: talls }, { data: ofrecs }, { data: fams }, { data: excurs }, { data: vols }, { data: vis }] = await Promise.all([
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
         supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
         supabase.from("familias").select("*").order("nombre", { ascending: true }),
         supabase.from("excursiones").select("*").order("fecha"),
+        supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
+        supabase.from("visitas").select("*, profiles(nombre)"),
       ]);
       setTalleres(talls || []);
       setOfrecimientos(ofrecs || []);
       setFamilias(fams || []);
       setExcursiones(excurs || []);
-      setExcursiones(excurs || []);
+      setVoluntarios(vols || []);
+      setVisitas(vis || []);
     } catch(e) { console.error(e); }
     setLoading(false);
   };
