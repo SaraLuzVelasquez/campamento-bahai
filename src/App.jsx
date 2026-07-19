@@ -1381,11 +1381,19 @@ function ExcursionForm({ fecha, excursion, onSave, onCancel }) {
     setSaving(true);
     const payload = { titulo: titulo.trim(), descripcion: descripcion.trim() || null, horario };
     if (excursion?.id) {
+      // Update existing
       const { data } = await supabase.from("excursiones").update(payload).eq("id", excursion.id).select().single();
       if (data) onSave(data);
     } else {
-      const { data } = await supabase.from("excursiones").insert({ fecha, ...payload }).select().single();
-      if (data) onSave(data);
+      // Check if one exists for this date, update it instead of creating new
+      const { data: existing } = await supabase.from("excursiones").select("id").eq("fecha", fecha).single();
+      if (existing?.id) {
+        const { data } = await supabase.from("excursiones").update(payload).eq("id", existing.id).select().single();
+        if (data) onSave(data);
+      } else {
+        const { data } = await supabase.from("excursiones").insert({ fecha, ...payload }).select().single();
+        if (data) onSave(data);
+      }
     }
     setSaving(false);
   };
