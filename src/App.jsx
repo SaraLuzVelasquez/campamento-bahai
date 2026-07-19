@@ -1561,10 +1561,17 @@ function ExcursionesView() {
   );
 }
 
-function ServiciosView({ ofrecimientos, familias, onAddOfrecimiento, onDeleteOfrecimiento }) {
+function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditTaller, onDeleteTaller, onAddOfrecimiento, onDeleteOfrecimiento }) {
+  const [tab, setTab] = useState("ofrecimientos");
   return (
     <div className="space-y-4">
-      <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        {[{id:"ofrecimientos",label:"Ofrecimientos"},{id:"talleres",label:"Talleres"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===t.id?"bg-white text-violet-700 shadow-sm":"text-gray-500"}`}>{t.label}</button>
+        ))}
+      </div>
+      {tab==="ofrecimientos" && <OfrecimientosView ofrecimientos={ofrecimientos} familias={familias} onAdd={onAddOfrecimiento} onDelete={onDeleteOfrecimiento} />}
+      {tab==="talleres" && <TalleresView talleres={talleres||[]} onAdd={onAddTaller} onEdit={onEditTaller} onDelete={onDeleteTaller} />}
     </div>
   );
 }
@@ -2006,7 +2013,8 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
           )}
 
           {menu==="servicios" && (
-            <ServiciosView ofrecimientos={ofrecimientos} familias={familias}
+            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+              onAddTaller={onAddTaller} onEditTaller={()=>{}} onDeleteTaller={()=>{}}
               onAddOfrecimiento={onAddOfrecimiento} onDeleteOfrecimiento={onDeleteOfrecimiento} />
           )}
 
@@ -2347,7 +2355,8 @@ export default function App() {
 
           {/* SERVICIOS */}
           {menu==="servicios" && (
-            <ServiciosView ofrecimientos={ofrecimientos} familias={familias}
+            <ServiciosView talleres={talleres} ofrecimientos={ofrecimientos} familias={familias}
+              onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller}
               onAddOfrecimiento={handleAddOfrecimiento} onDeleteOfrecimiento={handleDeleteOfrecimiento} />
           )}
         </div>
@@ -2473,12 +2482,3 @@ function ParticipantesView({ familias, onVerFamilia }) {
             <div className="flex items-center gap-2 flex-shrink-0">
               {count > 0 && <span className="text-sm font-bold text-violet-600">{count}</span>}
               <span className="text-gray-500">›</span>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-
