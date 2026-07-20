@@ -1225,15 +1225,18 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
               <div className="absolute left-[43px] top-8 bottom-0 w-px bg-gray-100 z-0"></div>
             )}
             {/* Hora */}
-            <div className="w-10 flex-shrink-0 pt-3 text-right z-10">
-              <span className="text-[11px] font-medium text-gray-400">{slot.hora}</span>
-            </div>
+            {/* No hora column — hidden */}
+            <div className="w-10 flex-shrink-0 z-10"></div>
             {/* Dot */}
             <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-3.5 z-10 border-2 border-white shadow-sm ${lineColor}`}></div>
             {/* Card */}
             <div className="flex-1 mb-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex">
               <div className={`w-1 flex-shrink-0 ${lineColor}`}></div>
               <div className="flex-1 px-3 py-2.5">
+                {/* Hora dentro de la card */}
+                {slot.hora && (
+                  <p className="text-[11px] font-semibold text-gray-400 mb-1">{slot.hora}{slot.fin ? ` – ${slot.fin}` : ""}</p>
+                )}
                 <div className="flex items-center gap-1 flex-wrap mb-1">
                   <span className="text-[13px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{tagLabel}</span>
                   {slot.grado && GRADO_TAGS.map((g,j) => (
@@ -1248,7 +1251,6 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
                   {alergias.map((a,i) => <p key={i} className="text-[13px] text-red-500">{a}</p>)}
                 </div>
               )}
-                {slot.fin && <p className="text-[13px] text-gray-500 mt-0.5">{slot.hora} – {slot.fin}</p>}
               </div>
 
             </div>
