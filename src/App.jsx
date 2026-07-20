@@ -117,7 +117,7 @@ function ResetPasswordScreen({ onDone }) {
 
 function PendienteAprobacion({ email, onLogout }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 bg-gray-50 flex items-center justify-center px-4 overflow-y-auto">
       <div className="w-full max-w-sm text-center space-y-4">
         <div className="text-6xl">⏳</div>
         <h1 className="text-2xl font-bold text-gray-900">Cuenta pendiente</h1>
@@ -506,39 +506,19 @@ function DetalleScreen({ familia, visitas, currentUser, allProfiles, onAddVisita
   );
 }
 
-function HijoCard({ hijo, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [nombre, setNombre] = useState(hijo.nombre || "");
-  const [edad, setEdad] = useState(hijo.edad || "");
-  const [curso, setCurso] = useState(hijo.curso || "Huevito");
-  if (editing) return (
-    <div className="bg-violet-50 rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Editando</p>
-        <button onClick={() => setEditing(false)} className="text-[13px] text-gray-500">Cancelar</button>
-      </div>
-      <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre"
-        className="w-full border border-violet-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      <input value={edad} onChange={e=>setEdad(e.target.value)} placeholder="Edad"
-        className="w-full border border-violet-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300" />
-      <div className="flex flex-wrap gap-1.5">
-        {CURSOS.map(c => (
-          <button key={c} onClick={() => setCurso(c)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${curso===c?"bg-violet-600 text-white":"bg-white text-gray-600 border border-violet-200"}`}>{c}</button>
-        ))}
-      </div>
-      <button onClick={() => { onSave({ nombre, edad, curso }); setEditing(false); }}
-        className="w-full bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold">Guardar</button>
-    </div>
-  );
+function HijoCard({ hijo, hijoIdx, onEditFamilia }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold flex-shrink-0 text-sm">{(hijo.nombre || "?")[0]}</div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{hijo.nombre || "—"}</span><Badge text={hijo.curso} /></div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-gray-800">{hijo.nombre || "—"}</span>
+          <Badge text={hijo.curso} />
+        </div>
         {hijo.edad && <p className="text-[13px] text-gray-500 mt-0.5">{hijo.edad} años</p>}
+        {hijo.alergias && <p className="text-[13px] text-amber-600 mt-0.5">⚠️ {hijo.alergias}</p>}
       </div>
-      <button onClick={() => setEditing(true)} className="text-xs text-violet-500 font-medium hover:text-violet-700 flex-shrink-0">Editar</button>
+      <button onClick={onEditFamilia} className="text-xs text-violet-500 font-medium hover:text-violet-700 flex-shrink-0">Editar</button>
     </div>
   );
 }
@@ -604,12 +584,6 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
   const [showEdit, setShowEdit] = useState(false);
   const [nota, setNota] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const handleSaveHijo = async (idx, hijoData) => {
-    const nuevosHijos = (familia.hijos || []).map((h, i) => i === idx ? hijoData : h);
-    const { data } = await supabase.from("familias").update({ hijos: nuevosHijos }).eq("id", familia.id).select().single();
-    if (data) { setFamilia(data); onEdit(data); }
-  };
 
   const handleSend = async () => {
     if (!nota.trim()) return;
@@ -686,7 +660,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
         {hijos.length > 0 && (
           <div className="space-y-2">
             <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
-            {hijos.map((h, i) => <HijoCard key={i} hijo={h} onSave={(data) => handleSaveHijo(i, data)} />)}
+            {hijos.map((h, i) => <HijoCard key={i} hijo={h} hijoIdx={i} onEditFamilia={() => setShowEdit(true)} />)}
           </div>
         )}
 
@@ -1104,6 +1078,21 @@ const SEMANAS = [
 ];
 const DIAS_LABELS = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
 
+const SLOT_COLOR = (titulo) => {
+  const t = (titulo||"").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // strip accents
+  if (t.includes("oracion")) return "bg-violet-400";
+  if (t.includes("sesion")) return "bg-blue-400";
+  if (t.includes("merienda") || t.includes("refrigerio") || t.includes("descanso")) return "bg-amber-400";
+  if (t.includes("taller")) return "bg-orange-400";
+  if (t.includes("reflexion")) return "bg-pink-400";
+  if (t.includes("llegada")) return "bg-gray-300";
+  if (t.includes("vuelta") || t.includes("ida")) return "bg-gray-400";
+  if (t.includes("parque") || t.includes("juego") || t.includes("drama")) return "bg-emerald-400";
+  if (t.includes("agua") || t.includes("chorro") || t.includes("correr")) return "bg-cyan-400";
+  return "bg-violet-300";
+};
+
 const HORARIO_FIJO_DEFAULT = [
   { hora: "8:30",  fin: "9:00",  titulo: "Llegada de los niños" },
   { hora: "9:00",  fin: "9:30",  titulo: "Oraciones" },
@@ -1228,8 +1217,8 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
       {/* Timeline */}
       <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm px-4 pb-4 pt-2">
         {horario.map((slot, i) => {
-          const lineColor = slot.line || "bg-emerald-400";
-          const tagLabel = slot.tag || "Actividad";
+          const lineColor = slot.line || SLOT_COLOR(slot.titulo);
+          const tagLabel = slot.tag || slot.titulo?.split("·")[0]?.trim()?.split(" ")[0] || "Slot";
           return (
           <div key={i} className="flex gap-3 relative">
             {i < horario.length - 1 && (
@@ -1253,7 +1242,7 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
                 </div>
                 <p className="text-sm font-semibold text-gray-800 leading-tight">{getTitulo(slot)}</p>
                 {getSubtitulo(slot) && <p className="text-[13px] text-gray-500 mt-0.5">{getSubtitulo(slot)}</p>}
-              {tagLabel === "Merienda" && alergias.length > 0 && (
+              {(slot.titulo||"").toLowerCase().includes("merienda") && alergias.length > 0 && (
                 <div className="mt-1.5 bg-red-50 rounded-lg px-2 py-1.5">
                   <p className="text-[13px] font-semibold text-red-600 mb-0.5">⚠️ Alergias</p>
                   {alergias.map((a,i) => <p key={i} className="text-[13px] text-red-500">{a}</p>)}
