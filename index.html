@@ -2,13 +2,15 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
 
-    <!-- Primary Meta -->
     <title>Campamento Urbano Comunitario · Madrid 2026</title>
-    <meta name="description" content="Campamento Urbano Comunitario del Centro Bahá'í de Estudios de Madrid. Del 6 al 31 de julio, de 9h a 14h. C/ Pamplona 9." />
+    <meta name="description" content="Campamento Urbano Comunitario del Centro Bahá'í de Estudios de Madrid. Del 6 al 31 de julio, de 9h a 14h." />
 
-    <!-- Open Graph / WhatsApp / Facebook -->
+    <!-- Open Graph / WhatsApp -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://campamento-bahai.vercel.app" />
     <meta property="og:title" content="Campamento Urbano Comunitario · Madrid 2026" />
@@ -16,23 +18,19 @@
     <meta property="og:image" content="https://campamento-bahai.vercel.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:locale" content="es_ES" />
-    <meta property="og:site_name" content="Campamento Bahá'í Madrid" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Campamento Urbano Comunitario · Madrid 2026" />
-    <meta name="twitter:description" content="Del 6 al 31 de julio · 9h a 14h · Centro Bahá'í de Estudios · Madrid" />
-    <meta name="twitter:image" content="https://campamento-bahai.vercel.app/og-image.png" />
 
     <!-- PWA / iOS -->
     <meta name="theme-color" content="#7c3aed" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Campamento" />
-    <link rel="apple-touch-icon" href="/og-image.png" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <style>
+      * { -webkit-tap-highlight-color: transparent; }
+      body { overscroll-behavior: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
