@@ -233,6 +233,7 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   const [nombre, setNombre] = useState(familia?.nombre || "");
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Madre");
+  const [idioma, setIdioma] = useState(familia?.idioma || "es");
   const [servicio, setServicio] = useState(familia?.servicio || "");
   const [hijos, setHijos] = useState((familia?.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito", alergias: "" } : { alergias: "", ...h }));
   const [c2nombre, setC2nombre] = useState(familia?.contacto2_nombre || "");
@@ -247,7 +248,7 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
     setSaving(true);
     const id = familia?.id || nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
     const payload = {
-      id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, servicio: servicio.trim(), hijos,
+      id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, idioma, servicio: servicio.trim(), hijos,
       contacto2_nombre: showC2 ? c2nombre.trim() || null : null,
       contacto2_parentesco: showC2 ? c2parentesco : null,
       contacto2_telefono: showC2 ? c2telefono.trim() || null : null,
@@ -272,6 +273,11 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
         <div className="flex flex-wrap gap-1.5">{GRADOS.map(g => (
           <button key={g} onClick={()=>setGrado(g)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${grado===g?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{g}</button>
         ))}</div></div>
+      <div><label className="text-xs text-gray-500 mb-2 block">Idioma de la familia (para comunicados)</label>
+        <div className="flex gap-1.5">
+          <button onClick={()=>setIdioma("es")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${idioma==="es"?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>🇪🇸 Español</button>
+          <button onClick={()=>setIdioma("en")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${idioma==="en"?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>🇬🇧 English</button>
+        </div></div>
 
       {showC2 ? (
         <div className="bg-gray-50 rounded-xl p-3 space-y-2">
@@ -1687,6 +1693,168 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
   );
 }
 
+// ── COMUNICADOS ───────────────────────────────────────────────────────────────
+
+function ComunicadoFamiliaCard({ familia, mensaje, idioma, onToggleIdioma, onChangeMensaje, enviado, onMarcarEnviado }) {
+  const limpio = familia.telefono?.replace(/\D/g, "") || "";
+  const wa = `https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}?text=${encodeURIComponent(mensaje)}`;
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-gray-800">{familia.nombre}</span>
+          <Badge text={familia.grado} />
+          {enviado && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">✓ Enviado</span>}
+        </div>
+        <button onClick={onToggleIdioma} className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
+          {idioma === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
+        </button>
+      </div>
+      <textarea value={mensaje} onChange={e => onChangeMensaje(e.target.value)} rows={4}
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+      <div className="flex gap-2">
+        <a href={wa} target="_blank" rel="noopener noreferrer" onClick={onMarcarEnviado}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all">
+          💬 Enviar por WhatsApp
+        </a>
+        {!enviado && <button onClick={onMarcarEnviado} className="px-3 py-2.5 rounded-xl text-xs text-gray-500 hover:bg-gray-50">Marcar enviado</button>}
+      </div>
+    </div>
+  );
+}
+
+function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
+  const [idea, setIdea] = useState("");
+  const [mensajes, setMensajes] = useState(null); // [{id, familiaId, mensaje, enviado}]
+  const [generando, setGenerando] = useState(false);
+  const [error, setError] = useState("");
+
+  const familiasConTelefono = familias.filter(f => f.telefono);
+  const familiasSinTelefono = familias.length - familiasConTelefono.length;
+
+  const toggleIdioma = (familiaId) => {
+    const familia = familiasConTelefono.find(f => f.id === familiaId);
+    const nuevo = (familia?.idioma || "es") === "es" ? "en" : "es";
+    onUpdateIdioma(familiaId, nuevo);
+  };
+
+  const handleGenerar = async () => {
+    if (!idea.trim() || familiasConTelefono.length === 0) return;
+    setGenerando(true);
+    setError("");
+    try {
+      const ids = familiasConTelefono.map(f => f.id);
+      const { data: notas } = await supabase.from("conversaciones")
+        .select("familia_id, nota, created_at")
+        .in("familia_id", ids)
+        .order("created_at", { ascending: false });
+      const notasPorFamilia = {};
+      (notas || []).forEach(n => {
+        if (!notasPorFamilia[n.familia_id]) notasPorFamilia[n.familia_id] = [];
+        if (notasPorFamilia[n.familia_id].length < 4) notasPorFamilia[n.familia_id].push(n.nota);
+      });
+
+      const payloadFamilias = familiasConTelefono.map(f => ({
+        id: f.id, nombre: f.nombre, idioma: f.idioma || "es", grado: f.grado,
+        hijos: (f.hijos || []).map(h => typeof h === "string" ? { nombre: h } : h),
+        notas: notasPorFamilia[f.id] || [],
+      }));
+
+      const resp = await fetch("/api/generar-comunicado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: idea.trim(), familias: payloadFamilias }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Error generando los mensajes");
+
+      const { data: comunicado, error: errC } = await supabase.from("comunicados")
+        .insert({ idea: idea.trim(), autor_id: currentUser.id }).select().single();
+      if (errC) throw errC;
+
+      const filas = data.mensajes.map(m => ({
+        comunicado_id: comunicado.id, familia_id: m.familia_id, mensaje: m.mensaje,
+      }));
+      const { data: guardados, error: errM } = await supabase.from("comunicado_mensajes")
+        .insert(filas).select();
+      if (errM) throw errM;
+
+      setMensajes(guardados.map(g => ({ id: g.id, familiaId: g.familia_id, mensaje: g.mensaje, enviado: g.enviado })));
+    } catch (e) {
+      setError(e.message || "Algo falló generando los mensajes");
+    }
+    setGenerando(false);
+  };
+
+  const cambiarMensaje = async (msgId, familiaId, texto) => {
+    setMensajes(prev => prev.map(m => m.familiaId === familiaId ? { ...m, mensaje: texto } : m));
+    await supabase.from("comunicado_mensajes").update({ mensaje: texto }).eq("id", msgId);
+  };
+
+  const marcarEnviado = async (msgId, familiaId) => {
+    setMensajes(prev => prev.map(m => m.familiaId === familiaId ? { ...m, enviado: true } : m));
+    await supabase.from("comunicado_mensajes").update({ enviado: true, enviado_at: new Date().toISOString() }).eq("id", msgId);
+  };
+
+  return (
+    <FullScreen title="Comunicados" onBack={onClose}>
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs text-gray-500 mb-1.5 block font-medium">¿Qué quieres comunicar a las familias?</label>
+          <textarea value={idea} onChange={e => setIdea(e.target.value)} rows={4}
+            placeholder="Ej: El viernes 17 no hay campamento por la excursión del centro..."
+            className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+        </div>
+
+        <button onClick={handleGenerar} disabled={!idea.trim() || generando || familiasConTelefono.length === 0}
+          className="w-full bg-violet-600 text-white py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
+          {generando ? "Generando..." : "✨ Generar mensajes personalizados"}
+        </button>
+
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
+        {familiasSinTelefono > 0 && (
+          <p className="text-[13px] text-amber-600 text-center">{familiasSinTelefono} familia{familiasSinTelefono !== 1 ? "s" : ""} sin teléfono no se incluirá{familiasSinTelefono !== 1 ? "n" : ""}.</p>
+        )}
+
+        {mensajes === null ? (
+          familiasConTelefono.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Idioma por familia</p>
+              {familiasConTelefono.map(f => (
+                <div key={f.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-3 py-2.5">
+                  <span className="text-sm text-gray-700">{f.nombre}</span>
+                  <button onClick={() => toggleIdioma(f.id)} className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
+                    {(f.idioma || "es") === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div className="space-y-3">
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">
+              {mensajes.filter(m => m.enviado).length} de {mensajes.length} enviados
+            </p>
+            {mensajes.map(m => {
+              const familia = familiasConTelefono.find(f => f.id === m.familiaId);
+              if (!familia) return null;
+              return (
+                <ComunicadoFamiliaCard key={m.familiaId} familia={familia} mensaje={m.mensaje}
+                  idioma={familia.idioma || "es"}
+                  onToggleIdioma={() => toggleIdioma(familia.id)}
+                  onChangeMensaje={(texto) => cambiarMensaje(m.id, m.familiaId, texto)}
+                  enviado={m.enviado}
+                  onMarcarEnviado={() => marcarEnviado(m.id, m.familiaId)} />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </FullScreen>
+  );
+}
+
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 
 function AdminView({ currentUserId }) {
@@ -2190,6 +2358,7 @@ export default function App() {
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showComunicados, setShowComunicados] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
   const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
@@ -2264,6 +2433,10 @@ export default function App() {
   const handleAddFamilia = (f) => { setFamilias(prev => [f, ...prev]); setShowNuevaFamilia(false); };
   const handleEditFamilia = (f) => setFamilias(prev => prev.map(x=>x.id===f.id?f:x));
   const handleDeleteFamilia = async (id) => { await supabase.from("familias").delete().eq("id", id); setFamilias(prev => prev.filter(f=>f.id!==id)); };
+  const handleUpdateIdiomaFamilia = async (id, idioma) => {
+    setFamilias(prev => prev.map(f => f.id === id ? { ...f, idioma } : f));
+    await supabase.from("familias").update({ idioma }).eq("id", id);
+  };
   const handleAddVoluntario = (v) => setVoluntarios(prev => [...prev, v]);
   const handleEditVoluntario = (v) => setVoluntarios(prev => prev.map(x=>x.id===v.id?v:x));
   const handleAddTaller = (t) => setTalleres(prev => [t, ...prev]);
@@ -2341,6 +2514,9 @@ export default function App() {
           <AdminView currentUserId={user.id} />
         </FullScreen>
       )}
+      {showComunicados && (
+        <ComunicadosScreen familias={familias} currentUser={user} onUpdateIdioma={handleUpdateIdiomaFamilia} onClose={() => setShowComunicados(false)} />
+      )}
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden" onClick={e=>e.stopPropagation()}>
@@ -2350,6 +2526,7 @@ export default function App() {
               <p className="text-[13px] text-gray-500 mt-0.5">{user.email}</p>
             </div>
             <div className="px-2 py-2">
+              <button onClick={() => { setShowAvatarMenu(false); setShowComunicados(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>📣</span><p className="text-sm font-semibold text-gray-800">Comunicados</p></button>
               {isAdmin && <button onClick={() => { setShowAvatarMenu(false); setShowAdmin(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>⚙️</span><p className="text-sm font-semibold text-gray-800">Administración</p></button>}
               <button onClick={() => { setShowAvatarMenu(false); handleLogout(); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 text-left"><span>🚪</span><p className="text-sm font-medium text-red-500">Cerrar sesión</p></button>
             </div>
