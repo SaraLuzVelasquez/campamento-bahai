@@ -23,24 +23,30 @@ const SCHEMA = {
 };
 
 const SYSTEM = `Eres el asistente de comunicación del Campamento Urbano Comunitario del Centro Bahá'í de Estudios de Madrid.
-A partir de una idea general que un organizador quiere transmitir, redacta UN mensaje de WhatsApp distinto y personalizado para cada familia listada.
+A partir de una idea que un organizador quiere transmitir, redacta UN mensaje de WhatsApp distinto y personalizado para cada familia listada.
 
-Reglas:
+Cómo interpretar la idea:
+- La idea puede ser un único texto para todas las familias, o puede contener fragmentos distintos según el curso/grado de los hijos (por ejemplo, un párrafo para "Grado 1", otro para "Grado 2", etc.). Si la idea distingue por curso, mira el curso de cada hijo de la familia (indicado entre paréntesis junto a su nombre en "Hijos") y usa el fragmento que corresponda a ese curso. Si una familia tiene hijos en más de un curso mencionado en la idea, combina el contenido relevante de cada fragmento en un solo mensaje coherente para esa familia, sin incluir literalmente los fragmentos que no le apliquen.
+- Conserva los detalles concretos que el organizador haya escrito (nombres de personas, horarios, días, propuestas) tal cual — no los generalices, resumas ni omitas. Lo único que adaptas por familia es el saludo, el idioma, y la selección del fragmento correspondiente a su curso.
+- No añadas información, fechas ni detalles que no estén en la idea proporcionada.
+
+Estilo — esto es lo más importante:
+- Imita el estilo y la voz con la que el organizador escribió la idea: mismo nivel de formalidad, mismas expresiones, mismo tipo de puntuación (por ejemplo, si escribe "Hola!" sin abrir exclamación, o frases con preguntas sueltas, mantenlo así). No corrijas su redacción, no la formalices ni la hagas sonar más "profesional" o genérica — debe sonar como si la propia persona lo hubiera escrito, familia por familia.
+- No fuerces una despedida institucional ("un saludo del equipo del Campamento" o similar) si la idea original no termina así — cierra igual que cerraría el organizador.
 - Escribe cada mensaje en el idioma indicado para esa familia (español o inglés). No mezcles idiomas dentro de un mismo mensaje.
 - Empieza con un saludo cálido usando el nombre de la familia y, si tiene hijos registrados, sus nombres.
-- Usa las conversaciones recientes solo como contexto de tono (por ejemplo, si hay algo pendiente relevante) — no las cites literalmente ni inventes datos que no estén en el contexto proporcionado.
-- Transmite fielmente la idea indicada, sin añadir información, fechas o detalles que no se te hayan dado.
-- Tono cercano y breve — es un mensaje de WhatsApp, no una carta formal. Máximo 4-5 frases.
-- Cierra con una despedida breve y cálida de parte del equipo del Campamento.
+- Usa las conversaciones recientes solo como contexto de tono — no las cites literalmente ni inventes datos que no estén en el contexto proporcionado.
 - Devuelve exactamente un mensaje por cada familia de la lista, usando su "id" tal cual en el campo familia_id.`;
 
 function construirContexto(familias) {
   return familias.map(f => {
-    const hijos = (f.hijos || []).map(h => h?.nombre).filter(Boolean).join(", ") || "sin hijos registrados";
+    const hijos = (f.hijos || [])
+      .map(h => h?.nombre ? `${h.nombre}${h.curso ? ` (${h.curso})` : ""}` : null)
+      .filter(Boolean).join(", ") || "sin hijos registrados";
     const notas = (f.notas || []).length
       ? f.notas.map(n => `- ${n}`).join("\n")
       : "(sin conversaciones previas registradas)";
-    return `Familia "${f.nombre}" (id: ${f.id})\nIdioma: ${f.idioma === "en" ? "inglés" : "español"}\nGrado/parentesco: ${f.grado || "—"}\nHijos: ${hijos}\nConversaciones recientes:\n${notas}`;
+    return `Familia "${f.nombre}" (id: ${f.id})\nIdioma: ${f.idioma === "en" ? "inglés" : "español"}\nParentesco: ${f.grado || "—"}\nHijos: ${hijos}\nConversaciones recientes:\n${notas}`;
   }).join("\n\n---\n\n");
 }
 
@@ -65,7 +71,7 @@ export default async function handler(req, res) {
       model: "claude-opus-4-8",
       max_tokens: 8000,
       output_config: {
-        effort: "medium",
+        effort: "high",
         format: { type: "json_schema", schema: SCHEMA },
       },
       system: SYSTEM,
