@@ -2325,9 +2325,9 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
                 {[
                   {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
                   {label:"Voluntarios",value:voluntarios?.length||0,icon:"🙌",m:"voluntarios"},
-                  {label:"Ofrecimientos",value:ofrecimientos.length,icon:"🎁",m:"servicios"},
+                  {label:"Participantes",value:familias.reduce((acc,f)=>acc+(f.hijos?.length||0),0),icon:"🧒",m:"confirmados",t:"participantes"},
                 ].map(s=>(
-                  <button key={s.label} onClick={() => setMenu(s.m)}
+                  <button key={s.label} onClick={() => { setMenu(s.m); if (s.t) setTab(s.t); }}
                     className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
                     <p className="text-xl mb-1">{s.icon}</p>
                     <p className="text-lg font-bold text-violet-600">{s.value}</p>
@@ -2665,9 +2665,9 @@ export default function App() {
                 {[
                   {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
                   {label:"Voluntarios",value:voluntarios.length,icon:"🙌",m:"voluntarios"},
-                  {label:"Ofrecimientos",value:ofrecimientos.length,icon:"🎁",m:"servicios"},
+                  {label:"Participantes",value:familias.reduce((acc,f)=>acc+(f.hijos?.length||0),0),icon:"🧒",m:"confirmados",t:"participantes"},
                 ].map(s=>(
-                  <button key={s.label} onClick={() => setMenu(s.m)} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
+                  <button key={s.label} onClick={() => { setMenu(s.m); if (s.t) setTab(s.t); }} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-gray-100 hover:border-violet-200 transition-all active:scale-95">
                     <p className="text-xl mb-1">{s.icon}</p><p className="text-lg font-bold text-violet-600">{s.value}</p><p className="text-xs text-gray-500">{s.label}</p>
                   </button>
                 ))}
