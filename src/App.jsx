@@ -1760,24 +1760,34 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
         notas: notasPorFamilia[f.id] || [],
       }));
 
-      const resp = await fetch("/api/generar-comunicado", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: idea.trim(), familias: payloadFamilias }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Error generando los mensajes");
+      let resp;
+      try {
+        resp = await fetch("/api/generar-comunicado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idea: idea.trim(), familias: payloadFamilias }),
+        });
+      } catch {
+        throw new Error("No se pudo conectar con el servidor. Comprueba tu conexión a internet e inténtalo de nuevo.");
+      }
+      let data;
+      try {
+        data = await resp.json();
+      } catch {
+        throw new Error("El servidor no respondió correctamente. Inténtalo de nuevo en un momento.");
+      }
+      if (!resp.ok) throw new Error(data.error || "Error generando los mensajes.");
 
       const { data: comunicado, error: errC } = await supabase.from("comunicados")
         .insert({ idea: idea.trim(), autor_id: currentUser.id }).select().single();
-      if (errC) throw errC;
+      if (errC) throw new Error("Los mensajes se generaron pero no se pudieron guardar. Inténtalo de nuevo.");
 
       const filas = data.mensajes.map(m => ({
         comunicado_id: comunicado.id, familia_id: m.familia_id, mensaje: m.mensaje,
       }));
       const { data: guardados, error: errM } = await supabase.from("comunicado_mensajes")
         .insert(filas).select();
-      if (errM) throw errM;
+      if (errM) throw new Error("Los mensajes se generaron pero no se pudieron guardar. Inténtalo de nuevo.");
 
       setMensajes(guardados.map(g => ({ id: g.id, familiaId: g.familia_id, mensaje: g.mensaje, enviado: g.enviado })));
     } catch (e) {
