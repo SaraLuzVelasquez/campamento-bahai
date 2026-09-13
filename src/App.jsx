@@ -1740,13 +1740,14 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
+  const [filtroIdioma, setFiltroIdioma] = useState("Todos");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
 
   const familiasConTelefono = familias.filter(f => f.telefono);
   const familiasSinTelefono = familias.length - familiasConTelefono.length;
-  const familiasFiltradas = filtroGrado === "Todos"
-    ? familiasConTelefono
-    : familiasConTelefono.filter(f => normalizarHijos(f.hijos).some(h => h.curso === filtroGrado));
+  const familiasFiltradas = familiasConTelefono
+    .filter(f => filtroGrado === "Todos" || normalizarHijos(f.hijos).some(h => h.curso === filtroGrado))
+    .filter(f => filtroIdioma === "Todos" || (f.idioma || "es") === filtroIdioma);
 
   const toggleIdioma = (familiaId) => {
     const familia = familiasConTelefono.find(f => f.id === familiaId);
@@ -1841,9 +1842,20 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroGrado===c?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{c}</button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-2 block font-medium">Filtrar por idioma</label>
+          <div className="flex flex-wrap gap-1.5">
+            {[{ id: "Todos", label: "Todos" }, { id: "es", label: "🇪🇸 Español" }, { id: "en", label: "🇬🇧 English" }].map(op => (
+              <button key={op.id} onClick={() => { setFiltroIdioma(op.id); setMensajes(null); }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroIdioma===op.id?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{op.label}</button>
+            ))}
+          </div>
           <p className="text-[13px] text-gray-500 mt-1.5">
             {familiasFiltradas.length} familia{familiasFiltradas.length !== 1 ? "s" : ""} con teléfono
-            {filtroGrado !== "Todos" ? ` en ${filtroGrado}` : ""}.
+            {filtroGrado !== "Todos" ? ` en ${filtroGrado}` : ""}
+            {filtroIdioma !== "Todos" ? ` (${filtroIdioma === "en" ? "inglés" : "español"})` : ""}.
             {filtroGrado === "Todos" && " Si mezclas varios grados, escribe en la idea un párrafo por grado — si no filtras, ten cuidado: la IA puede equivocarse asignando el grado."}
           </p>
         </div>
