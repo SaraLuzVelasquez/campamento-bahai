@@ -529,7 +529,7 @@ function HijoCard({ hijo, hijoIdx, onEditFamilia }) {
   );
 }
 
-function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setNota, onSend, saving }) {
+function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNombre, nota, setNota, onSend, saving }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -556,7 +556,8 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setN
       )}
       {conversaciones.map(c => {
         const esMio = c.autor_id === currentUser.id;
-        const nombre = c.profiles?.nombre || "—";
+        const esFamilia = !c.autor_id;
+        const nombre = esFamilia ? (familiaNombre || "Familia") : (c.profiles?.nombre || "—");
         const fecha = new Date(c.created_at);
         const esHoy = fecha.toDateString() === new Date().toDateString();
         const hora = fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
@@ -564,13 +565,15 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, nota, setN
         return (
           <div key={c.id} className={`flex ${esMio ? "justify-end" : "justify-start"} group mb-1`}>
             {!esMio && (
-              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0 mr-1.5 mt-0.5 self-end">{nombre[0]}</div>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 mr-1.5 mt-0.5 self-end ${esFamilia ? "bg-rose-100 text-rose-700" : "bg-gray-200 text-gray-600"}`}>{nombre[0]}</div>
             )}
             <div className={`max-w-[78%] ${esMio ? "items-end" : "items-start"} flex flex-col`}>
-              {!esMio && <p className="text-[13px] text-gray-400 font-medium mb-0.5 ml-1">{nombre}</p>}
+              {!esMio && <p className="text-[13px] text-gray-400 font-medium mb-0.5 ml-1">{nombre}{esFamilia ? " · voz de la familia" : ""}</p>}
               <div className={`relative px-3 py-2 rounded-2xl ${esMio
                 ? "bg-violet-600 text-white rounded-br-sm"
-                : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
+                : esFamilia
+                  ? "bg-rose-50 border border-rose-100 text-gray-800 rounded-bl-sm"
+                  : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
                 <p className="text-sm leading-relaxed">{c.nota}</p>
                 <p className={`text-[13px] mt-0.5 text-right ${esMio ? "text-violet-300" : "text-gray-400"}`}>{fechaStr}</p>
                 <button onClick={() => handleDelete(c.id)}
@@ -590,12 +593,15 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
   const [showEdit, setShowEdit] = useState(false);
   const [nota, setNota] = useState("");
   const [saving, setSaving] = useState(false);
+  const [remitente, setRemitente] = useState("organizador"); // "organizador" | "familia"
+  const [showRemitenteMenu, setShowRemitenteMenu] = useState(false);
 
   const handleSend = async () => {
     if (!nota.trim()) return;
     setSaving(true);
     const { data } = await supabase.from("conversaciones").insert({
-      familia_id: familia.id, nota: nota.trim(), autor_id: currentUser.id,
+      familia_id: familia.id, nota: nota.trim(),
+      autor_id: remitente === "familia" ? null : currentUser.id,
     }).select("*, profiles(nombre)").single();
     if (data && ConversacionesFamilia._addConv) ConversacionesFamilia._addConv(data);
     setNota(""); setSaving(false);
@@ -690,18 +696,46 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
 
         <div>
           <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Conversaciones</p>
-          <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} />
+          <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} familiaNombre={familia.nombre} />
         </div>
       </div>
 
-      <div className="bg-white border-t border-gray-100 px-3 py-3 flex-shrink-0">
-        <div className="flex items-end gap-2">
-          <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0 mb-0.5">
-            {(currentUser?.email?.[0] || "?").toUpperCase()}
+      <div className="bg-white border-t border-gray-100 px-3 py-3 flex-shrink-0 relative">
+        {showRemitenteMenu && (
+          <div className="fixed inset-0 z-10" onClick={() => setShowRemitenteMenu(false)}>
+            <div className="absolute bottom-16 left-3 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <p className="px-4 pt-3 pb-1.5 text-[13px] text-gray-400 font-semibold uppercase tracking-wide">Escribir como...</p>
+              <button onClick={() => { setRemitente("organizador"); setShowRemitenteMenu(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left ${remitente==="organizador"?"bg-violet-50":""}`}>
+                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs flex-shrink-0">
+                  {(currentUser?.email?.[0] || "?").toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">Tú</p>
+                  <p className="text-[13px] text-gray-500 truncate">{currentUser?.email}</p>
+                </div>
+              </button>
+              <button onClick={() => { setRemitente("familia"); setShowRemitenteMenu(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-t border-gray-50 ${remitente==="familia"?"bg-rose-50":""}`}>
+                <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 font-bold text-xs flex-shrink-0">
+                  {familia.nombre[0]}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">{familia.nombre}</p>
+                  <p className="text-[13px] text-gray-500">Voz del padre/madre — para registrar su respuesta</p>
+                </div>
+              </button>
+            </div>
           </div>
+        )}
+        <div className="flex items-end gap-2">
+          <button onClick={() => setShowRemitenteMenu(v => !v)}
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 mb-0.5 transition-all ${remitente==="familia" ? "bg-rose-100 text-rose-700" : "bg-violet-100 text-violet-700"}`}>
+            {remitente === "familia" ? familia.nombre[0] : (currentUser?.email?.[0] || "?").toUpperCase()}
+          </button>
           <textarea value={nota} onChange={e => setNota(e.target.value)}
             onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); handleSend(); }}}
-            rows={1} placeholder="Escribe un mensaje..."
+            rows={1} placeholder={remitente === "familia" ? `Escribe lo que respondió ${familia.nombre}...` : "Escribe un mensaje..."}
             className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
           <button onClick={handleSend} disabled={saving || !nota.trim()}
             className="w-9 h-9 bg-violet-600 text-white rounded-full flex items-center justify-center disabled:opacity-40 flex-shrink-0 mb-0.5">
