@@ -1834,6 +1834,11 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
             className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
         </div>
 
+        <button onClick={handleGenerar} disabled={!idea.trim() || generando || familiasFiltradas.length === 0}
+          className="w-full bg-violet-600 text-white py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
+          {generando ? "Generando..." : "✨ Generar mensajes personalizados"}
+        </button>
+
         <div>
           <label className="text-xs text-gray-500 mb-2 block font-medium">Filtrar por grado</label>
           <div className="flex flex-wrap gap-1.5">
@@ -1859,11 +1864,6 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
             {filtroGrado === "Todos" && " Si mezclas varios grados, escribe en la idea un párrafo por grado — si no filtras, ten cuidado: la IA puede equivocarse asignando el grado."}
           </p>
         </div>
-
-        <button onClick={handleGenerar} disabled={!idea.trim() || generando || familiasFiltradas.length === 0}
-          className="w-full bg-violet-600 text-white py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
-          {generando ? "Generando..." : "✨ Generar mensajes personalizados"}
-        </button>
 
         {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
 
