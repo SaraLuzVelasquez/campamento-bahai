@@ -1740,6 +1740,7 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
   const [filtroGrado, setFiltroGrado] = useState("Todos");
+  const [filtroEstado, setFiltroEstado] = useState("Todos");
 
   const familiasConTelefono = familias.filter(f => f.telefono);
   const familiasSinTelefono = familias.length - familiasConTelefono.length;
@@ -1805,6 +1806,7 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
       if (errM) throw new Error("Los mensajes se generaron pero no se pudieron guardar. Inténtalo de nuevo.");
 
       setMensajes(guardados.map(g => ({ id: g.id, familiaId: g.familia_id, mensaje: g.mensaje, enviado: g.enviado })));
+      setFiltroEstado("Todos");
     } catch (e) {
       setError(e.message || "Algo falló generando los mensajes");
     }
@@ -1875,29 +1877,59 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
             </div>
           )
         ) : (
-          <div className="space-y-3">
-            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">
-              {mensajes.filter(m => m.enviado).length} de {mensajes.length} enviados
-            </p>
-            {familiasFiltradas.filter(f => !mensajes.some(m => m.familiaId === f.id)).length > 0 && (
-              <p className="text-[13px] text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
-                No se generó mensaje para: {familiasFiltradas.filter(f => !mensajes.some(m => m.familiaId === f.id)).map(f => f.nombre).join(", ")}
-                {" "}— probablemente porque la idea no menciona su grado.
-              </p>
-            )}
-            {mensajes.map(m => {
-              const familia = familiasFiltradas.find(f => f.id === m.familiaId);
-              if (!familia) return null;
-              return (
-                <ComunicadoFamiliaCard key={m.familiaId} familia={familia} mensaje={m.mensaje}
-                  idioma={familia.idioma || "es"}
-                  onToggleIdioma={() => toggleIdioma(familia.id)}
-                  onChangeMensaje={(texto) => cambiarMensaje(m.id, m.familiaId, texto)}
-                  enviado={m.enviado}
-                  onMarcarEnviado={() => marcarEnviado(m.id, m.familiaId)} />
-              );
-            })}
-          </div>
+          (() => {
+            const excluidas = familiasFiltradas.filter(f => !mensajes.some(m => m.familiaId === f.id));
+            const opciones = [
+              { id: "Todos", label: `Todos (${mensajes.length})` },
+              { id: "Pendientes", label: `Pendientes (${mensajes.filter(m => !m.enviado).length})` },
+              { id: "Enviados", label: `Enviados (${mensajes.filter(m => m.enviado).length})` },
+              ...(excluidas.length > 0 ? [{ id: "SinMensaje", label: `Sin mensaje (${excluidas.length})` }] : []),
+            ];
+            const mensajesVisibles = mensajes.filter(m =>
+              filtroEstado === "Enviados" ? m.enviado : filtroEstado === "Pendientes" ? !m.enviado : true);
+            return (
+              <div className="space-y-3">
+                <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">
+                  {mensajes.filter(m => m.enviado).length} de {mensajes.length} enviados
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {opciones.map(op => (
+                    <button key={op.id} onClick={() => setFiltroEstado(op.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroEstado===op.id?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{op.label}</button>
+                  ))}
+                </div>
+
+                {filtroEstado === "SinMensaje" ? (
+                  <div className="space-y-2">
+                    <p className="text-[13px] text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
+                      No se generó mensaje para estas familias — probablemente porque la idea no menciona el grado de su hijo/a.
+                    </p>
+                    {excluidas.map(f => (
+                      <div key={f.id} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5">
+                        <p className="text-sm font-medium text-gray-700">{f.nombre}</p>
+                        <p className="text-[13px] text-gray-500">{resumenHijos(f)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : mensajesVisibles.length === 0 ? (
+                  <p className="text-center text-gray-400 py-8">Sin resultados en este filtro.</p>
+                ) : (
+                  mensajesVisibles.map(m => {
+                    const familia = familiasFiltradas.find(f => f.id === m.familiaId);
+                    if (!familia) return null;
+                    return (
+                      <ComunicadoFamiliaCard key={m.familiaId} familia={familia} mensaje={m.mensaje}
+                        idioma={familia.idioma || "es"}
+                        onToggleIdioma={() => toggleIdioma(familia.id)}
+                        onChangeMensaje={(texto) => cambiarMensaje(m.id, m.familiaId, texto)}
+                        enviado={m.enviado}
+                        onMarcarEnviado={() => marcarEnviado(m.id, m.familiaId)} />
+                    );
+                  })
+                )}
+              </div>
+            );
+          })()
         )}
       </div>
     </FullScreen>
