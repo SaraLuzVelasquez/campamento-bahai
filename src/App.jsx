@@ -1837,9 +1837,16 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
     await supabase.from("comunicado_mensajes").update({ mensaje: texto }).eq("id", msgId);
   };
 
-  const marcarEnviado = async (msgId, familiaId) => {
+  const marcarEnviado = async (msgId, familiaId, mensajeTexto) => {
+    const yaEnviado = mensajes?.find(m => m.id === msgId)?.enviado;
     setMensajes(prev => prev.map(m => m.familiaId === familiaId ? { ...m, enviado: true } : m));
+    if (yaEnviado) return;
     await supabase.from("comunicado_mensajes").update({ enviado: true, enviado_at: new Date().toISOString() }).eq("id", msgId);
+    await supabase.from("conversaciones").insert({
+      familia_id: familiaId,
+      nota: `📣 Comunicado enviado por WhatsApp:\n${mensajeTexto}`,
+      autor_id: currentUser.id,
+    });
   };
 
   return (
@@ -1953,7 +1960,7 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
                         onToggleIdioma={() => toggleIdioma(familia.id)}
                         onChangeMensaje={(texto) => cambiarMensaje(m.id, m.familiaId, texto)}
                         enviado={m.enviado}
-                        onMarcarEnviado={() => marcarEnviado(m.id, m.familiaId)} />
+                        onMarcarEnviado={() => marcarEnviado(m.id, m.familiaId, m.mensaje)} />
                     );
                   })
                 )}
@@ -2825,6 +2832,10 @@ function RecientesView({ visitas, familias, onVerPerfil }) {
 
 function ParticipantesView({ familias, onVerFamilia }) {
   const [gradoSeleccionado, setGradoSeleccionado] = useState(null);
+  const [showInsights, setShowInsights] = useState(false);
+  const [cargandoInsights, setCargandoInsights] = useState(false);
+  const [errorInsights, setErrorInsights] = useState("");
+  const [insights, setInsights] = useState(null);
 
   const GRADO_ICONS = {
     "Huevito": "🐣", "Grado 1": "✏️", "Grado 2": "📖", "Grado 3": "🌟", "Prejuvenil": "🌿"
@@ -2839,13 +2850,73 @@ function ParticipantesView({ familias, onVerFamilia }) {
     return acc;
   }, {});
 
+  const volver = () => {
+    setGradoSeleccionado(null);
+    setShowInsights(false);
+    setInsights(null);
+    setErrorInsights("");
+  };
+
+  const handleVerInsights = async (grado, lista) => {
+    setShowInsights(true);
+    setCargandoInsights(true);
+    setErrorInsights("");
+    setInsights(null);
+    try {
+      const familiasUnicas = [...new Map(lista.map(p => [p.familia.id, p.familia])).values()];
+      const ids = familiasUnicas.map(f => f.id);
+      const { data: notas } = await supabase.from("conversaciones")
+        .select("familia_id, nota, created_at")
+        .in("familia_id", ids)
+        .order("created_at", { ascending: false });
+      const notasPorFamilia = {};
+      (notas || []).forEach(n => {
+        if (!notasPorFamilia[n.familia_id]) notasPorFamilia[n.familia_id] = [];
+        notasPorFamilia[n.familia_id].push(n.nota);
+      });
+      const payloadFamilias = familiasUnicas.map(f => ({ nombre: f.nombre, notas: notasPorFamilia[f.id] || [] }));
+
+      const resp = await fetch("/api/insights-grado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grado, familias: payloadFamilias }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Error generando los insights.");
+      setInsights(data.insights);
+    } catch (e) {
+      setErrorInsights(e.message || "No se pudieron generar los insights.");
+    }
+    setCargandoInsights(false);
+  };
+
   if (gradoSeleccionado) {
     const lista = participantesPorGrado[gradoSeleccionado];
     return (
       <div className="space-y-3">
-        <button onClick={() => setGradoSeleccionado(null)} className="text-sm text-violet-500 font-medium flex items-center gap-1">
+        <button onClick={volver} className="text-sm text-violet-500 font-medium flex items-center gap-1">
           ← {gradoSeleccionado}
         </button>
+
+        {lista.length > 0 && (
+          <button onClick={() => handleVerInsights(gradoSeleccionado, lista)} disabled={cargandoInsights}
+            className="w-full py-3 bg-violet-50 text-violet-700 rounded-2xl text-sm font-semibold hover:bg-violet-100 disabled:opacity-50 transition-all">
+            {cargandoInsights ? "Analizando conversaciones..." : `📊 Ver insights de ${gradoSeleccionado}`}
+          </button>
+        )}
+
+        {showInsights && (
+          <Popup title={`Insights · ${gradoSeleccionado}`} onClose={() => setShowInsights(false)}>
+            {cargandoInsights ? (
+              <p className="text-center text-gray-400 py-8">Analizando conversaciones...</p>
+            ) : errorInsights ? (
+              <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{errorInsights}</p>
+            ) : (
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{insights}</p>
+            )}
+          </Popup>
+        )}
+
         {lista.length === 0 ? (
           <p className="text-center text-gray-400 py-8">Sin participantes en este grado</p>
         ) : lista.map((p, i) => (
