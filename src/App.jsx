@@ -1695,6 +1695,16 @@ function ServiciosView({ talleres, ofrecimientos, familias, onAddTaller, onEditT
 
 // ── COMUNICADOS ───────────────────────────────────────────────────────────────
 
+function normalizarHijos(hijos) {
+  return (hijos || []).map(h => typeof h === "string" ? { nombre: h, curso: "Huevito" } : h);
+}
+
+function resumenHijos(familia) {
+  const hijos = normalizarHijos(familia.hijos);
+  if (hijos.length === 0) return "Sin hijos registrados";
+  return hijos.map(h => `${h.nombre || "—"}${h.curso ? ` (${h.curso})` : ""}`).join(", ");
+}
+
 function ComunicadoFamiliaCard({ familia, mensaje, idioma, onToggleIdioma, onChangeMensaje, enviado, onMarcarEnviado }) {
   const limpio = familia.telefono?.replace(/\D/g, "") || "";
   const wa = `https://wa.me/${limpio.startsWith("34") ? limpio : "34" + limpio}?text=${encodeURIComponent(mensaje)}`;
@@ -1710,6 +1720,7 @@ function ComunicadoFamiliaCard({ familia, mensaje, idioma, onToggleIdioma, onCha
           {idioma === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
         </button>
       </div>
+      <p className="text-[13px] text-gray-500 -mt-1.5">{resumenHijos(familia)}</p>
       <textarea value={mensaje} onChange={e => onChangeMensaje(e.target.value)} rows={4}
         className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
       <div className="flex gap-2">
@@ -1728,9 +1739,13 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   const [mensajes, setMensajes] = useState(null); // [{id, familiaId, mensaje, enviado}]
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
+  const [filtroGrado, setFiltroGrado] = useState("Todos");
 
   const familiasConTelefono = familias.filter(f => f.telefono);
   const familiasSinTelefono = familias.length - familiasConTelefono.length;
+  const familiasFiltradas = filtroGrado === "Todos"
+    ? familiasConTelefono
+    : familiasConTelefono.filter(f => normalizarHijos(f.hijos).some(h => h.curso === filtroGrado));
 
   const toggleIdioma = (familiaId) => {
     const familia = familiasConTelefono.find(f => f.id === familiaId);
@@ -1739,11 +1754,11 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   };
 
   const handleGenerar = async () => {
-    if (!idea.trim() || familiasConTelefono.length === 0) return;
+    if (!idea.trim() || familiasFiltradas.length === 0) return;
     setGenerando(true);
     setError("");
     try {
-      const ids = familiasConTelefono.map(f => f.id);
+      const ids = familiasFiltradas.map(f => f.id);
       const { data: notas } = await supabase.from("conversaciones")
         .select("familia_id, nota, created_at")
         .in("familia_id", ids)
@@ -1754,9 +1769,9 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
         if (notasPorFamilia[n.familia_id].length < 4) notasPorFamilia[n.familia_id].push(n.nota);
       });
 
-      const payloadFamilias = familiasConTelefono.map(f => ({
+      const payloadFamilias = familiasFiltradas.map(f => ({
         id: f.id, nombre: f.nombre, idioma: f.idioma || "es", grado: f.grado,
-        hijos: (f.hijos || []).map(h => typeof h === "string" ? { nombre: h } : h),
+        hijos: normalizarHijos(f.hijos),
         notas: notasPorFamilia[f.id] || [],
       }));
 
@@ -1816,7 +1831,22 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
             className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
         </div>
 
-        <button onClick={handleGenerar} disabled={!idea.trim() || generando || familiasConTelefono.length === 0}
+        <div>
+          <label className="text-xs text-gray-500 mb-2 block font-medium">Filtrar por grado</label>
+          <div className="flex flex-wrap gap-1.5">
+            {["Todos", ...CURSOS].map(c => (
+              <button key={c} onClick={() => { setFiltroGrado(c); setMensajes(null); }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroGrado===c?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{c}</button>
+            ))}
+          </div>
+          <p className="text-[13px] text-gray-500 mt-1.5">
+            {familiasFiltradas.length} familia{familiasFiltradas.length !== 1 ? "s" : ""} con teléfono
+            {filtroGrado !== "Todos" ? ` en ${filtroGrado}` : ""}.
+            {filtroGrado === "Todos" && " Si mezclas varios grados, escribe en la idea un párrafo por grado — si no filtras, ten cuidado: la IA puede equivocarse asignando el grado."}
+          </p>
+        </div>
+
+        <button onClick={handleGenerar} disabled={!idea.trim() || generando || familiasFiltradas.length === 0}
           className="w-full bg-violet-600 text-white py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 hover:bg-violet-700 transition-all">
           {generando ? "Generando..." : "✨ Generar mensajes personalizados"}
         </button>
@@ -1828,15 +1858,18 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
         )}
 
         {mensajes === null ? (
-          familiasConTelefono.length > 0 && (
+          familiasFiltradas.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Idioma por familia</p>
-              {familiasConTelefono.map(f => (
-                <div key={f.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-3 py-2.5">
-                  <span className="text-sm text-gray-700">{f.nombre}</span>
-                  <button onClick={() => toggleIdioma(f.id)} className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
-                    {(f.idioma || "es") === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
-                  </button>
+              <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Familias incluidas</p>
+              {familiasFiltradas.map(f => (
+                <div key={f.id} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">{f.nombre}</span>
+                    <button onClick={() => toggleIdioma(f.id)} className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
+                      {(f.idioma || "es") === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
+                    </button>
+                  </div>
+                  <p className="text-[13px] text-gray-500">{resumenHijos(f)}</p>
                 </div>
               ))}
             </div>
@@ -1846,8 +1879,14 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
             <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">
               {mensajes.filter(m => m.enviado).length} de {mensajes.length} enviados
             </p>
+            {familiasFiltradas.filter(f => !mensajes.some(m => m.familiaId === f.id)).length > 0 && (
+              <p className="text-[13px] text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
+                No se generó mensaje para: {familiasFiltradas.filter(f => !mensajes.some(m => m.familiaId === f.id)).map(f => f.nombre).join(", ")}
+                {" "}— probablemente porque la idea no menciona su grado.
+              </p>
+            )}
             {mensajes.map(m => {
-              const familia = familiasConTelefono.find(f => f.id === m.familiaId);
+              const familia = familiasFiltradas.find(f => f.id === m.familiaId);
               if (!familia) return null;
               return (
                 <ComunicadoFamiliaCard key={m.familiaId} familia={familia} mensaje={m.mensaje}
