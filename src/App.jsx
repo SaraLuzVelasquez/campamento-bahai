@@ -2416,7 +2416,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
+                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Voluntarios",value:voluntarios?.length||0,icon:"🙌",m:"voluntarios"},
                   {label:"Participantes",value:familias.reduce((acc,f)=>acc+(f.hijos?.length||0),0),icon:"🧒",m:"confirmados",t:"participantes"},
                 ].map(s=>(
@@ -2756,7 +2756,7 @@ export default function App() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados"},
+                  {label:"Familias",value:familias.length,icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Voluntarios",value:voluntarios.length,icon:"🙌",m:"voluntarios"},
                   {label:"Participantes",value:familias.reduce((acc,f)=>acc+(f.hijos?.length||0),0),icon:"🧒",m:"confirmados",t:"participantes"},
                 ].map(s=>(
@@ -2771,8 +2771,9 @@ export default function App() {
                 {[
                   {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
+                  {label:"Comunicados",icon:"📣",accion:"comunicados"},
                 ].map((item,i)=>(
-                  <button key={i} onClick={() => { setMenu(item.m); if(item.t) setTab(item.t); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
+                  <button key={i} onClick={() => { if (item.accion === "comunicados") setShowComunicados(true); else { setMenu(item.m); if(item.t) setTab(item.t); } }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
                     <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-500">›</span>
                   </button>
                 ))}
