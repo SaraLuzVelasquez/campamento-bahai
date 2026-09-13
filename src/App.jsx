@@ -1794,6 +1794,27 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   const [filtroGrado, setFiltroGrado] = useState("Todos");
   const [filtroIdioma, setFiltroIdioma] = useState("Todos");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
+  const [comunicadoId, setComunicadoId] = useState(null);
+
+  // Al volver de WhatsApp (cambio de app en móvil puede cortar la escritura en curso),
+  // se vuelve a comprobar contra la base de datos el estado real de "enviado".
+  useEffect(() => {
+    if (!comunicadoId) return;
+    const sincronizar = () => {
+      if (document.visibilityState !== "visible") return;
+      supabase.from("comunicado_mensajes").select("id, enviado")
+        .eq("comunicado_id", comunicadoId)
+        .then(({ data }) => {
+          if (!data) return;
+          setMensajes(prev => prev ? prev.map(m => {
+            const real = data.find(d => d.id === m.id);
+            return real ? { ...m, enviado: real.enviado } : m;
+          }) : prev);
+        });
+    };
+    document.addEventListener("visibilitychange", sincronizar);
+    return () => document.removeEventListener("visibilitychange", sincronizar);
+  }, [comunicadoId]);
 
   const familiasConTelefono = familias.filter(f => f.telefono);
   const familiasSinTelefono = familias.length - familiasConTelefono.length;
@@ -1859,6 +1880,7 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
       if (errM) throw new Error("Los mensajes se generaron pero no se pudieron guardar. Inténtalo de nuevo.");
 
       setMensajes(guardados.map(g => ({ id: g.id, familiaId: g.familia_id, mensaje: g.mensaje, enviado: g.enviado })));
+      setComunicadoId(comunicado.id);
       setFiltroEstado("Todos");
     } catch (e) {
       setError(e.message || "Algo falló generando los mensajes");
@@ -1873,9 +1895,21 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
 
   const marcarEnviado = async (msgId, familiaId, mensajeTexto) => {
     const yaEnviado = mensajes?.find(m => m.id === msgId)?.enviado;
-    setMensajes(prev => prev.map(m => m.familiaId === familiaId ? { ...m, enviado: true } : m));
     if (yaEnviado) return;
-    await supabase.from("comunicado_mensajes").update({ enviado: true, enviado_at: new Date().toISOString() }).eq("id", msgId);
+
+    // Se confirma el guardado ANTES de reflejarlo como enviado — si se marcara antes,
+    // en móvil el cambio a WhatsApp puede cortar la petición y quedaría "enviado" en
+    // pantalla sin haberse guardado de verdad.
+    const { error: errU } = await supabase.from("comunicado_mensajes")
+      .update({ enviado: true, enviado_at: new Date().toISOString() })
+      .eq("id", msgId);
+    if (errU) {
+      setError("No se pudo marcar como enviado (puede que se cortara al cambiar a WhatsApp). Vuelve a intentarlo.");
+      return;
+    }
+
+    setMensajes(prev => prev.map(m => m.familiaId === familiaId ? { ...m, enviado: true } : m));
+
     await supabase.from("conversaciones").insert({
       familia_id: familiaId,
       nota: `📣 Comunicado enviado por WhatsApp:\n${mensajeTexto}`,
