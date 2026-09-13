@@ -603,6 +603,14 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
 
   const hijos = (familia.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito", alergias: "" } : { alergias: "", ...h });
 
+  const handleToggleIdioma = async () => {
+    const nuevo = (familia.idioma || "es") === "es" ? "en" : "es";
+    const actualizado = { ...familia, idioma: nuevo };
+    setFamilia(actualizado);
+    onEdit(actualizado);
+    await supabase.from("familias").update({ idioma: nuevo }).eq("id", familia.id);
+  };
+
   if (showEdit) return (
     <FullScreen title="Editar familia" onBack={() => setShowEdit(false)}>
       <FamiliaForm familia={familia} onSave={(f) => { setFamilia(f); onEdit(f); setShowEdit(false); }}
@@ -641,6 +649,16 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
           ) : (
             <p className="text-sm text-gray-400">Sin teléfono</p>
           )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Idioma</p>
+            <p className="text-sm text-gray-600 mt-1">Idioma en el que se le suele escribir (se usa para personalizar los comunicados)</p>
+          </div>
+          <button onClick={handleToggleIdioma} className="text-xs px-3 py-1.5 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 flex-shrink-0 whitespace-nowrap">
+            {(familia.idioma || "es") === "en" ? "🇬🇧 English" : "🇪🇸 Español"}
+          </button>
         </div>
 
         {familia.contacto2_nombre && (
