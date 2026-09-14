@@ -2688,6 +2688,7 @@ export default function App() {
     { id: "Respondio", label: "✅ Respondieron" },
     { id: "SinResponder", label: "⏳ Sin responder" },
     { id: "Hoy", label: "🕐 Modificado hoy" },
+    { id: "SinModificar", label: "🗓️ Sin modificar" },
   ];
   const toggleFiltro = (id) => setFiltrosActivos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -2695,11 +2696,12 @@ export default function App() {
     const q = busqueda.toLowerCase();
     const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
     const matchR = filtroRol==="Todos" || f.grado===filtroRol;
-    // Respondieron / Sin responder son el mismo "grupo" (se combinan con OR); Modificado hoy se combina con AND
+    // Dentro de cada grupo se combinan con OR; entre grupos, con AND
     const estadoActivos = filtrosActivos.filter(x => x === "Respondio" || x === "SinResponder");
     const matchEstado = estadoActivos.length === 0 || estadoActivos.some(x => x === "Respondio" ? haRespondido(f.id) : !haRespondido(f.id));
-    const matchHoy = !filtrosActivos.includes("Hoy") || esModificadoHoy(f.id);
-    return matchQ && matchR && matchEstado && matchHoy;
+    const fechaActivos = filtrosActivos.filter(x => x === "Hoy" || x === "SinModificar");
+    const matchFecha = fechaActivos.length === 0 || fechaActivos.some(x => x === "Hoy" ? esModificadoHoy(f.id) : !esModificadoHoy(f.id));
+    return matchQ && matchR && matchEstado && matchFecha;
   }).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
 
   return (
