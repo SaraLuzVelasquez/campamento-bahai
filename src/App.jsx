@@ -2050,6 +2050,122 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
   );
 }
 
+// ── ASISTENTE IA ──────────────────────────────────────────────────────────────
+
+function AsistenteIA({ familias, voluntarios, talleres, ofrecimientos, onClose }) {
+  const [mensajes, setMensajes] = useState([]); // { role: "user"|"assistant", content }
+  const [pregunta, setPregunta] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState("");
+  const bottomRef = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [mensajes, enviando]);
+
+  const handleEnviar = async () => {
+    const texto = pregunta.trim();
+    if (!texto || enviando) return;
+    setPregunta("");
+    setError("");
+    const historial = mensajes.map(m => ({ role: m.role, content: m.content }));
+    setMensajes(prev => [...prev, { role: "user", content: texto }]);
+    setEnviando(true);
+    try {
+      const { data: notas } = await supabase.from("conversaciones")
+        .select("familia_id, nota, autor_id, created_at").order("created_at", { ascending: true });
+      const notasPorFamilia = {};
+      (notas || []).forEach(n => {
+        if (!notasPorFamilia[n.familia_id]) notasPorFamilia[n.familia_id] = [];
+        notasPorFamilia[n.familia_id].push(`${n.autor_id ? "Organizador" : "Familia"}: ${n.nota}`);
+      });
+      const payloadFamilias = familias.map(f => ({
+        nombre: f.nombre, grado: f.grado, idioma: f.idioma, libro: f.libro, servicio: f.servicio,
+        hijos: (f.hijos || []).map(h => typeof h === "string" ? { nombre: h } : { nombre: h.nombre, edad: h.edad, curso: h.curso, alergias: h.alergias }),
+        notas: (notasPorFamilia[f.id] || []).slice(-12),
+      }));
+      const payloadOfrecimientos = (ofrecimientos || []).map(o => ({
+        que: o.que, fecha: o.fecha, familiaNombre: familias.find(f => f.id === o.familia_id)?.nombre,
+      }));
+
+      const resp = await fetch("/api/preguntar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pregunta: texto,
+          historial,
+          familias: payloadFamilias,
+          voluntarios: (voluntarios || []).map(v => ({ nombre: v.nombre, telefono: v.telefono, roles: v.roles, notas: v.notas })),
+          talleres: (talleres || []).map(t => ({ quien: t.quien, descripcion: t.descripcion, fecha: t.fecha, necesita: t.necesita })),
+          ofrecimientos: payloadOfrecimientos,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "No se pudo obtener respuesta.");
+      setMensajes(prev => [...prev, { role: "assistant", content: data.respuesta }]);
+    } catch (e) {
+      setError(e.message || "No se pudo obtener respuesta. Inténtalo de nuevo.");
+      setMensajes(prev => prev.slice(0, -1));
+      setPregunta(texto);
+    }
+    setEnviando(false);
+  };
+
+  const sugerencias = [
+    "¿Cuántas familias no han respondido esta semana?",
+    "¿Qué alergias hay que tener en cuenta?",
+    "Resume las dudas o peticiones pendientes",
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-gray-50 z-[60] flex flex-col overflow-hidden">
+      <div className="bg-white border-b border-gray-100 px-4 pt-12 pb-3 flex-shrink-0">
+        <button onClick={onClose} className="text-sm text-violet-500 font-medium mb-2">← Volver</button>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">🤖 Preguntar a la IA</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Responde usando los datos de familias, voluntarios, talleres y conversaciones</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {mensajes.length === 0 && (
+          <div className="space-y-2">
+            <p className="text-center text-gray-400 text-sm py-4">Hazme una pregunta sobre el campamento 💬</p>
+            {sugerencias.map(s => (
+              <button key={s} onClick={() => setPregunta(s)}
+                className="w-full text-left bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3 text-sm text-gray-600 hover:border-violet-200">{s}</button>
+            ))}
+          </div>
+        )}
+        {mensajes.map((m, i) => (
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+              m.role === "user" ? "bg-violet-600 text-white rounded-br-sm" : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
+              {m.content}
+            </div>
+          </div>
+        ))}
+        {enviando && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm text-gray-400">Pensando...</div>
+          </div>
+        )}
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="bg-white border-t border-gray-100 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex-shrink-0">
+        <div className="flex items-end gap-2">
+          <textarea value={pregunta} onChange={e => setPregunta(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEnviar(); } }}
+            rows={1} placeholder="Escribe tu pregunta..."
+            className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+          <button onClick={handleEnviar} disabled={enviando || !pregunta.trim()}
+            className="w-9 h-9 bg-violet-600 text-white rounded-full flex items-center justify-center disabled:opacity-40 flex-shrink-0 mb-0.5">
+            <span className="text-sm">➤</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 
 function AdminView({ currentUserId }) {
@@ -2574,6 +2690,7 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showComunicados, setShowComunicados] = useState(false);
+  const [showAsistente, setShowAsistente] = useState(false);
   const [detalleTarget, setDetalleTarget] = useState(null);
   const [familiaPerfilTarget, setFamiliaPerfilTarget] = useState(null);
   const [serviciosTab, setServiciosTab] = useState("ofrecimientos");
@@ -2772,6 +2889,9 @@ export default function App() {
       {showComunicados && (
         <ComunicadosScreen familias={familias} currentUser={user} onUpdateIdioma={handleUpdateIdiomaFamilia} onClose={() => setShowComunicados(false)} />
       )}
+      {showAsistente && (
+        <AsistenteIA familias={familias} voluntarios={voluntarios} talleres={talleres} ofrecimientos={ofrecimientos} onClose={() => setShowAsistente(false)} />
+      )}
       {showAvatarMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowAvatarMenu(false)}>
           <div className="absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden" onClick={e=>e.stopPropagation()}>
@@ -2782,6 +2902,7 @@ export default function App() {
             </div>
             <div className="px-2 py-2">
               <button onClick={() => { setShowAvatarMenu(false); setShowComunicados(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>📣</span><p className="text-sm font-semibold text-gray-800">Comunicados</p></button>
+              <button onClick={() => { setShowAvatarMenu(false); setShowAsistente(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>🤖</span><p className="text-sm font-semibold text-gray-800">Preguntar a la IA</p></button>
               {isAdmin && <button onClick={() => { setShowAvatarMenu(false); setShowAdmin(true); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-violet-50 text-left"><span>⚙️</span><p className="text-sm font-semibold text-gray-800">Administración</p></button>}
               <button onClick={() => { setShowAvatarMenu(false); handleLogout(); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-50 text-left"><span>🚪</span><p className="text-sm font-medium text-red-500">Cerrar sesión</p></button>
             </div>
@@ -2875,8 +2996,9 @@ export default function App() {
                   {label:"Familias confirmadas",icon:"👨‍👩‍👧",m:"confirmados",t:"familias"},
                   {label:"Participantes",icon:"🧒",m:"confirmados",t:"participantes"},
                   {label:"Comunicados",icon:"📣",accion:"comunicados"},
+                  {label:"Preguntar a la IA",icon:"🤖",accion:"asistente"},
                 ].map((item,i)=>(
-                  <button key={i} onClick={() => { if (item.accion === "comunicados") setShowComunicados(true); else { setMenu(item.m); if(item.t) setTab(item.t); } }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
+                  <button key={i} onClick={() => { if (item.accion === "comunicados") setShowComunicados(true); else if (item.accion === "asistente") setShowAsistente(true); else { setMenu(item.m); if(item.t) setTab(item.t); } }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-t border-gray-50 text-left">
                     <span className="text-lg">{item.icon}</span><span className="text-sm text-gray-700 font-medium">{item.label}</span><span className="ml-auto text-gray-500">›</span>
                   </button>
                 ))}
