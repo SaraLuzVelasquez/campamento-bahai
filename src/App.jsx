@@ -22,6 +22,7 @@ const GRADO_COLOR = {
   "Prejuvenil": "bg-purple-100 text-purple-700",
 };
 const CURSOS = ["Huevito", "Grado 1", "Grado 2", "Grado 3", "Prejuvenil"];
+const GRADO_ICONS = { "Huevito": "🐣", "Grado 1": "✏️", "Grado 2": "📖", "Grado 3": "🌟", "Prejuvenil": "🌿" };
 const ROLES_VOLUNTARIO = ["Logística", "Maestro", "Animador", "Tesorería", "Camisetas", "Meriendas/Excursiones", "Otros"];
 const UNIDADES = {
   1: { nombre: "Comprensión de los Escritos bahá'ís", secciones: { 1:"Leer y reflexionar cada día", 2:"Veracidad", 3:"La veracidad como base", 4:"Honradez y lealtad", 5:"La lengua amable", 6:"Amorosa bondad", 7:"La murmuración apaga la luz", 8:"Efectos en la comunidad", 9:"El hábito de leer" } },
@@ -2876,10 +2877,15 @@ export default function App() {
                     🔽 {filtroCurso==="Todos"?"Grado":filtroCurso}
                   </button>
                   {showFiltroCurso && (
-                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-44 overflow-hidden">
+                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-48 overflow-hidden">
                       {["Todos", ...CURSOS].map(c=>(
                         <button key={c} onClick={() => { setFiltroCurso(c); setShowFiltroCurso(false); }}
-                          className={`w-full text-left px-4 py-3 text-sm ${filtroCurso===c?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{c}</button>
+                          className={`w-full flex items-center gap-2 text-left px-4 py-3 text-sm ${filtroCurso===c?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
+                          {c !== "Todos" && (
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${GRADO_COLOR[c] || "bg-gray-100 text-gray-600"}`}>{GRADO_ICONS[c]}</span>
+                          )}
+                          {c}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -2990,10 +2996,6 @@ function ParticipantesView({ familias, onVerFamilia }) {
   const [cargandoInsights, setCargandoInsights] = useState(false);
   const [errorInsights, setErrorInsights] = useState("");
   const [insights, setInsights] = useState(null);
-
-  const GRADO_ICONS = {
-    "Huevito": "🐣", "Grado 1": "✏️", "Grado 2": "📖", "Grado 3": "🌟", "Prejuvenil": "🌿"
-  };
 
   const participantesPorGrado = CURSOS.reduce((acc, curso) => {
     acc[curso] = familias.flatMap(f =>
