@@ -532,12 +532,17 @@ function HijoCard({ hijo, hijoIdx, onEditFamilia }) {
 function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNombre, nota, setNota, onSend, saving }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     supabase.from("conversaciones").select("*, profiles(nombre)")
       .eq("familia_id", familiaId).order("created_at", { ascending: true })
       .then(({ data }) => { setConversaciones(data || []); setLoaded(true); });
   }, [familiaId]);
+
+  useEffect(() => {
+    if (loaded) bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [conversaciones, loaded]);
 
   // Expose addConversacion method via ref pattern
   ConversacionesFamilia._addConv = (c) => setConversaciones(prev => [...prev, c]);
@@ -583,6 +588,7 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNom
           </div>
         );
       })}
+      <div ref={bottomRef} />
     </div>
   );
 }
@@ -595,6 +601,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
   const [saving, setSaving] = useState(false);
   const [remitente, setRemitente] = useState("organizador"); // "organizador" | "familia"
   const [showRemitenteMenu, setShowRemitenteMenu] = useState(false);
+  const [showDetalles, setShowDetalles] = useState(false);
 
   const handleSend = async () => {
     if (!nota.trim()) return;
@@ -641,62 +648,68 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-          <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
-          {familia.telefono && isAdmin ? (
-            <div className="flex gap-2">
-              <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
-              <a href={`tel:${familia.telefono}`}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 flex flex-col">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex-shrink-0">
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            {familia.telefono && isAdmin && (
+              <>
+                <a href={`https://wa.me/${familia.telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                  className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-700 rounded-full flex-shrink-0" title="WhatsApp">💬</a>
+                <a href={`tel:${familia.telefono}`}
+                  className="w-9 h-9 flex items-center justify-center bg-gray-50 text-gray-600 rounded-full flex-shrink-0" title="Llamar">📞</a>
+              </>
+            )}
+            <button onClick={handleToggleIdioma} className="text-xs px-2.5 py-1.5 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 flex-shrink-0 whitespace-nowrap">
+              {(familia.idioma || "es") === "en" ? "🇬🇧 EN" : "🇪🇸 ES"}
+            </button>
+            <button onClick={() => setShowDetalles(v => !v)}
+              className="ml-auto flex items-center gap-1 text-xs text-violet-600 font-semibold flex-shrink-0 whitespace-nowrap px-1 py-1.5">
+              {hijos.length > 0 ? `${hijos.length} hijo${hijos.length>1?"s":""}` : "Detalles"} {showDetalles ? "▴" : "▾"}
+            </button>
+          </div>
+          {showDetalles && (
+            <div className="border-t border-gray-100 px-4 py-4 space-y-4 max-h-[33vh] overflow-y-auto">
+              <div className="space-y-1">
+                <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Contacto</p>
+                {familia.telefono ? (
+                  <p className="text-sm text-gray-600">{isAdmin ? familia.telefono : "Teléfono oculto"}</p>
+                ) : (
+                  <p className="text-sm text-gray-400">Sin teléfono</p>
+                )}
+              </div>
+
+              {familia.contacto2_nombre && (
+                <div>
+                  <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Segundo contacto</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0 text-sm">{familia.contacto2_nombre[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800 text-sm">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
+                    </div>
+                    {familia.contacto2_telefono && isAdmin && (
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
+                          className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-700 rounded-full text-sm">💬</a>
+                        <a href={`tel:${familia.contacto2_telefono}`}
+                          className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-600 rounded-full text-sm">📞</a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {hijos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
+                  {hijos.map((h, i) => <HijoCard key={i} hijo={h} hijoIdx={i} onEditFamilia={() => setShowEdit(true)} />)}
+                </div>
+              )}
             </div>
-          ) : familia.telefono ? (
-            <p className="text-sm text-gray-600">{familia.telefono}</p>
-          ) : (
-            <p className="text-sm text-gray-400">Sin teléfono</p>
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Idioma</p>
-            <p className="text-sm text-gray-600 mt-1">Idioma en el que se le suele escribir (se usa para personalizar los comunicados)</p>
-          </div>
-          <button onClick={handleToggleIdioma} className="text-xs px-3 py-1.5 rounded-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 flex-shrink-0 whitespace-nowrap">
-            {(familia.idioma || "es") === "en" ? "🇬🇧 English" : "🇪🇸 Español"}
-          </button>
-        </div>
-
-        {familia.contacto2_nombre && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Segundo contacto</p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-700 font-bold flex-shrink-0">{familia.contacto2_nombre[0]}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-gray-800">{familia.contacto2_nombre}</span><Badge text={familia.contacto2_parentesco} /></div>
-                {familia.contacto2_telefono && isAdmin && (
-                  <div className="flex gap-2 mt-3">
-                    <a href={`https://wa.me/${familia.contacto2_telefono.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-semibold">💬 WhatsApp</a>
-                    <a href={`tel:${familia.contacto2_telefono}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 text-gray-600 py-2.5 rounded-xl text-sm font-semibold">📞 Llamar</a>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {hijos.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide">Hijos</p>
-            {hijos.map((h, i) => <HijoCard key={i} hijo={h} hijoIdx={i} onEditFamilia={() => setShowEdit(true)} />)}
-          </div>
-        )}
-
-        <div>
-          <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Conversaciones</p>
+        <div className="flex-1 flex flex-col min-h-0">
+          <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex-shrink-0">Conversaciones</p>
           <ConversacionesFamilia familiaId={familia.id} currentUser={currentUser} allProfiles={allProfiles} familiaNombre={familia.nombre} />
         </div>
       </div>
