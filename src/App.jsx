@@ -588,7 +588,7 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNom
 }
 
 
-function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete }) {
+function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser, isAdmin, onClose, onEdit, onDelete, onSendMensaje }) {
   const [familia, setFamilia] = useState(familiaInicial);
   const [showEdit, setShowEdit] = useState(false);
   const [nota, setNota] = useState("");
@@ -604,6 +604,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
       autor_id: remitente === "familia" ? null : currentUser.id,
     }).select("*, profiles(nombre)").single();
     if (data && ConversacionesFamilia._addConv) ConversacionesFamilia._addConv(data);
+    if (data) onSendMensaje?.(data);
     setNota(""); setSaving(false);
   };
 
@@ -788,7 +789,7 @@ function VisitaFormInline({ familiaId, currentUser, allProfiles, onSave, onCance
 }
 
 
-function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, onDelete, isAdmin, onAddOfrecimiento, onVerDetalle }) {
+function FamiliaCard({ familia, visitas, tieneConversacion, respondido, currentUser, allProfiles, onAddVisita, onDeleteVisita, onEdit, onDelete, isAdmin, onAddOfrecimiento, onVerDetalle }) {
   const [expanded, setExpanded] = useState(false);
   const [accion, setAccion] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -823,6 +824,9 @@ function FamiliaCard({ familia, visitas, currentUser, allProfiles, onAddVisita, 
         {familia.servicio && <p className="text-[13px] text-gray-500 truncate mt-0.5">{familia.servicio}</p>}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {tieneConversacion && (respondido
+          ? <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-medium">✅ Respondió</span>
+          : <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full font-medium">⏳ Sin responder</span>)}
         {visitas.length > 0 && <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-medium">{visitas.length}v</span>}
         <span className="text-gray-500 text-sm">›</span>
       </div>
@@ -1224,19 +1228,7 @@ function CalendarioView({ ofrecimientos, talleres, familias, excursiones, onAddO
 
   return (
     <div className="space-y-0">
-      {/* Semanas — tabs con barrrita */}
       <div className="bg-white rounded-t-2xl border border-b-0 border-gray-100 shadow-sm">
-        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
-          {SEMANAS.map((s, i) => (
-            <button key={i} onClick={() => { setSemanaIdx(i); setDiaIdx(0); }}
-              className={`flex-shrink-0 px-5 py-3 text-sm font-semibold transition-all relative whitespace-nowrap
-                ${semanaIdx===i ? "text-violet-600" : "text-gray-400 hover:text-gray-600"}`}>
-              {s.label}
-              {semanaIdx===i && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 rounded-full"></div>}
-            </button>
-          ))}
-        </div>
-
         {/* Días — botones */}
         <div className="flex gap-1.5 px-3 py-3">
           {DIAS_LABELS.map((d, i) => {
@@ -2428,7 +2420,14 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
                   </button>
                 ))}
               </div>
-              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={onAddOfrecimiento} onAddTaller={onAddTaller} />
+              <button onClick={onLogin} className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-3 text-left hover:border-violet-200 transition-all active:scale-95">
+                <span className="text-2xl">🔒</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">Resumen de conversaciones</p>
+                  <p className="text-[13px] text-gray-500">Inicia sesión para ver cuántas familias han respondido</p>
+                </div>
+                <span className="ml-auto text-gray-400 text-sm">›</span>
+              </button>
             </div>
           )}
 
@@ -2530,6 +2529,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [allProfiles, setAllProfiles] = useState([]);
   const [familias, setFamilias] = useState([]);
+  const [conversaciones, setConversaciones] = useState([]);
   const [visitas, setVisitas] = useState([]);
   const [voluntarios, setVoluntarios] = useState([]);
   const [talleres, setTalleres] = useState([]);
@@ -2539,6 +2539,7 @@ export default function App() {
   const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroRol, setFiltroRol] = useState("Todos");
+  const [filtroRespuesta, setFiltroRespuesta] = useState("Todos");
   const [showFiltro, setShowFiltro] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
@@ -2583,7 +2584,7 @@ export default function App() {
   const initUser = async (u) => {
     setUser(u);
     try {
-      const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }] = await Promise.all([
+      const [{ data: prof }, { data: profs }, { data: fams }, { data: vis }, { data: vols }, { data: talls }, { data: ofrecs }, { data: convs }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", u.id).single(),
         supabase.from("profiles").select("*"),
         supabase.from("familias").select("*").order("nombre", { ascending: true }),
@@ -2591,9 +2592,11 @@ export default function App() {
         supabase.from("voluntarios").select("*").order("created_at", { ascending: true }),
         supabase.from("talleres").select("*").order("created_at", { ascending: false }),
         supabase.from("ofrecimientos").select("*").order("fecha", { ascending: true }),
+        supabase.from("conversaciones").select("familia_id, autor_id, created_at").order("created_at", { ascending: true }),
       ]);
       setProfile(prof); setAllProfiles(profs || []); setFamilias(fams || []);
       setVisitas(vis || []); setVoluntarios(vols || []); setTalleres(talls || []); setOfrecimientos(ofrecs || []);
+      setConversaciones(convs || []);
     } catch(e) { console.error(e); }
     setLoading(false);
   };
@@ -2672,11 +2675,26 @@ export default function App() {
   ];
 
   const roles = ["Todos", "Madre", "Padre", "Abuela", "Abuelo", "Voluntario"];
+
+  // Última conversación por familia, para saber quién habló en último lugar
+  const ultimaConvPorFamilia = {};
+  conversaciones.forEach(c => { ultimaConvPorFamilia[c.familia_id] = c; }); // ordenadas ascendente: la última sobreescribe
+  const haRespondido = (familiaId) => !!ultimaConvPorFamilia[familiaId] && !ultimaConvPorFamilia[familiaId].autor_id;
+  const totalRespondieron = familias.filter(f => haRespondido(f.id)).length;
+  const totalSinResponder = familias.length - totalRespondieron;
+
+  const respuestas = [
+    { id: "Todos", label: "Todas" },
+    { id: "Respondio", label: "✅ Respondieron" },
+    { id: "SinResponder", label: "⏳ Sin responder" },
+  ];
+
   const familiasFiltradas = familias.filter(f => {
     const q = busqueda.toLowerCase();
     const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
     const matchR = filtroRol==="Todos" || f.grado===filtroRol;
-    return matchQ && matchR;
+    const matchResp = filtroRespuesta==="Todos" || (filtroRespuesta==="Respondio" ? haRespondido(f.id) : !haRespondido(f.id));
+    return matchQ && matchR && matchResp;
   }).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
 
   return (
@@ -2688,6 +2706,7 @@ export default function App() {
           onClose={() => setFamiliaPerfilTarget(null)}
           onEdit={(f) => { handleEditFamilia(f); setFamiliaPerfilTarget(f); }}
           onDelete={(id) => { handleDeleteFamilia(id); setFamiliaPerfilTarget(null); }}
+          onSendMensaje={(c) => setConversaciones(prev => [...prev, c])}
         />
       )}
       {showNuevaFamilia && (
@@ -2765,7 +2784,21 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <CalendarioView ofrecimientos={ofrecimientos} talleres={talleres} familias={familias} excursiones={excursiones} onAddOfrecimiento={handleAddOfrecimiento} onAddTaller={handleAddTaller} onEditTaller={handleEditTaller} onDeleteTaller={handleDeleteTaller} onAddExcursion={(e) => setExcursiones(prev => prev.some(x=>x.id===e.id) ? prev.map(x=>x.id===e.id?e:x) : [...prev, e])} />
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Estado de conversaciones</p>
+                <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltroRespuesta("Respondio"); }}
+                    className="bg-emerald-50 rounded-xl p-3 text-center hover:bg-emerald-100 transition-all active:scale-95">
+                    <p className="text-2xl font-bold text-emerald-600">{totalRespondieron}</p>
+                    <p className="text-xs text-emerald-700 font-medium mt-0.5">✅ Respondieron</p>
+                  </button>
+                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltroRespuesta("SinResponder"); }}
+                    className="bg-amber-50 rounded-xl p-3 text-center hover:bg-amber-100 transition-all active:scale-95">
+                    <p className="text-2xl font-bold text-amber-600">{totalSinResponder}</p>
+                    <p className="text-xs text-amber-700 font-medium mt-0.5">⏳ Sin responder</p>
+                  </button>
+                </div>
+              </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Acceso rápido</p>
                 {[
@@ -2813,9 +2846,16 @@ export default function App() {
                   )}
                 </div>
               </div>
+              <div className="flex gap-2 overflow-x-auto">
+                {respuestas.map(r=>(
+                  <button key={r.id} onClick={() => setFiltroRespuesta(r.id)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroRespuesta===r.id?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{r.label}</button>
+                ))}
+              </div>
               <div className="space-y-2.5">
                 {familiasFiltradas.map(f=>(
                   <FamiliaCard key={f.id} familia={f} visitas={visitas.filter(v=>v.familia_id===f.id)}
+                    tieneConversacion={!!ultimaConvPorFamilia[f.id]} respondido={haRespondido(f.id)}
                     currentUser={user} allProfiles={allProfiles} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
                     onEdit={handleEditFamilia} onDelete={handleDeleteFamilia} isAdmin={isAdmin}
                     onAddOfrecimiento={handleAddOfrecimiento} onVerDetalle={setFamiliaPerfilTarget} />
