@@ -2536,8 +2536,10 @@ export default function App() {
   const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroRol, setFiltroRol] = useState("Todos");
-  const [filtrosActivos, setFiltrosActivos] = useState([]); // subset de "Respondio" | "SinResponder" | "Hoy", combinables
+  const [filtroCurso, setFiltroCurso] = useState("Todos");
+  const [filtrosActivos, setFiltrosActivos] = useState([]); // subset de "Respondio" | "SinResponder" | "Hoy" | "SinModificar", combinables
   const [showFiltro, setShowFiltro] = useState(false);
+  const [showFiltroCurso, setShowFiltroCurso] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -2696,12 +2698,13 @@ export default function App() {
     const q = busqueda.toLowerCase();
     const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
     const matchR = filtroRol==="Todos" || f.grado===filtroRol;
+    const matchCurso = filtroCurso==="Todos" || (f.hijos || []).some(h => (typeof h==="string" ? "Huevito" : (h.curso || "Huevito")) === filtroCurso);
     // Dentro de cada grupo se combinan con OR; entre grupos, con AND
     const estadoActivos = filtrosActivos.filter(x => x === "Respondio" || x === "SinResponder");
     const matchEstado = estadoActivos.length === 0 || estadoActivos.some(x => x === "Respondio" ? haRespondido(f.id) : !haRespondido(f.id));
     const fechaActivos = filtrosActivos.filter(x => x === "Hoy" || x === "SinModificar");
     const matchFecha = fechaActivos.length === 0 || fechaActivos.some(x => x === "Hoy" ? esModificadoHoy(f.id) : !esModificadoHoy(f.id));
-    return matchQ && matchR && matchEstado && matchFecha;
+    return matchQ && matchR && matchCurso && matchEstado && matchFecha;
   }).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
 
   return (
@@ -2848,6 +2851,20 @@ export default function App() {
                       {roles.map(r=>(
                         <button key={r} onClick={() => { setFiltroRol(r); setShowFiltro(false); }}
                           className={`w-full text-left px-4 py-3 text-sm ${filtroRol===r?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{r}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="relative">
+                  <button onClick={() => setShowFiltroCurso(!showFiltroCurso)}
+                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all whitespace-nowrap ${filtroCurso!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                    🔽 {filtroCurso==="Todos"?"Grado":filtroCurso}
+                  </button>
+                  {showFiltroCurso && (
+                    <div className="absolute right-0 top-12 bg-white rounded-2xl shadow-lg border border-gray-100 z-20 w-44 overflow-hidden">
+                      {["Todos", ...CURSOS].map(c=>(
+                        <button key={c} onClick={() => { setFiltroCurso(c); setShowFiltroCurso(false); }}
+                          className={`w-full text-left px-4 py-3 text-sm ${filtroCurso===c?"bg-violet-50 text-violet-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>{c}</button>
                       ))}
                     </div>
                   )}
