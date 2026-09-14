@@ -2715,6 +2715,17 @@ export default function App() {
   const totalRespondieron = familias.filter(f => haRespondido(f.id)).length;
   const totalSinResponder = familias.length - totalRespondieron;
 
+  // Última conversación de cada familia, solo si cayó en los últimos 7 días
+  const haceUnaSemana = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const ultimaConvSemanaPorFamilia = {};
+  conversaciones.forEach(c => { if (new Date(c.created_at).getTime() >= haceUnaSemana) ultimaConvSemanaPorFamilia[c.familia_id] = c; });
+  const insightsPorGrado = CURSOS.map(curso => {
+    const familiasGrado = familias.filter(f => (f.hijos || []).some(h => (typeof h==="string" ? "Huevito" : (h.curso || "Huevito")) === curso));
+    const total = familiasGrado.length;
+    const respondieron = familiasGrado.filter(f => ultimaConvSemanaPorFamilia[f.id] && !ultimaConvSemanaPorFamilia[f.id].autor_id).length;
+    return { curso, total, respondieron };
+  });
+
   const opcionesFiltro = [
     { id: "Respondio", label: "✅ Respondieron" },
     { id: "SinResponder", label: "⏳ Sin responder" },
@@ -2836,6 +2847,26 @@ export default function App() {
                     <p className="text-2xl font-bold text-amber-600">{totalSinResponder}</p>
                     <p className="text-xs text-amber-700 font-medium mt-0.5">⏳ Sin responder</p>
                   </button>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Actividad de la última semana por grado</p>
+                <div className="px-4 pb-4 space-y-3">
+                  {insightsPorGrado.map(({ curso, total, respondieron }) => (
+                    <button key={curso} onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltroCurso(curso); setFiltrosActivos([]); }}
+                      className="w-full flex items-center gap-3 text-left">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${GRADO_COLOR[curso] || "bg-gray-100 text-gray-600"}`}>{GRADO_ICONS[curso]}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-700">{curso}</span>
+                          <span className="text-[11px] text-gray-400">{total===0 ? "sin familias" : `${respondieron}/${total} respondieron`}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: total ? `${(respondieron/total)*100}%` : "0%" }} />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
