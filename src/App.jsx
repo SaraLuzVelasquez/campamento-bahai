@@ -281,6 +281,15 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
           <button onClick={()=>setIdioma("en")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${idioma==="en"?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>🇬🇧 English</button>
         </div></div>
 
+      <div><label className="text-xs text-gray-500 mb-2 block">Libro de Ruhi</label>
+        <div className="flex flex-wrap gap-1.5">
+          {[1,2,3,4,5,6,7].map(n => (
+            <button key={n} onClick={() => setLibro(libro===n ? null : n)}
+              className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${libro===n?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{n}</button>
+          ))}
+        </div>
+      </div>
+
       {showC2 ? (
         <div className="bg-gray-50 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between"><p className="text-xs font-medium text-gray-500">Segundo contacto</p>
@@ -296,15 +305,6 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
       ) : (
         <button onClick={() => setShowC2(true)} className="text-xs text-violet-500 font-medium">+ Añadir segundo contacto</button>
       )}
-
-      <div><label className="text-xs text-gray-500 mb-2 block">Libro de Ruhi</label>
-        <div className="flex flex-wrap gap-1.5">
-          {[1,2,3,4,5,6,7].map(n => (
-            <button key={n} onClick={() => setLibro(libro===n ? null : n)}
-              className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${libro===n?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{n}</button>
-          ))}
-        </div>
-      </div>
 
       <div>
         <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500">Hijos</label>
