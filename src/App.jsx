@@ -2536,7 +2536,7 @@ export default function App() {
   const [tab, setTab] = useState("familias");
   const [busqueda, setBusqueda] = useState("");
   const [filtroRol, setFiltroRol] = useState("Todos");
-  const [filtroRespuesta, setFiltroRespuesta] = useState("Todos");
+  const [filtrosActivos, setFiltrosActivos] = useState([]); // subset de "Respondio" | "SinResponder" | "Hoy", combinables
   const [showFiltro, setShowFiltro] = useState(false);
   const [showNuevaFamilia, setShowNuevaFamilia] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
@@ -2677,21 +2677,29 @@ export default function App() {
   const ultimaConvPorFamilia = {};
   conversaciones.forEach(c => { ultimaConvPorFamilia[c.familia_id] = c; }); // ordenadas ascendente: la última sobreescribe
   const haRespondido = (familiaId) => !!ultimaConvPorFamilia[familiaId] && !ultimaConvPorFamilia[familiaId].autor_id;
+  const esModificadoHoy = (familiaId) => {
+    const c = ultimaConvPorFamilia[familiaId];
+    return !!c && new Date(c.created_at).toDateString() === new Date().toDateString();
+  };
   const totalRespondieron = familias.filter(f => haRespondido(f.id)).length;
   const totalSinResponder = familias.length - totalRespondieron;
 
-  const respuestas = [
-    { id: "Todos", label: "Todas" },
+  const opcionesFiltro = [
     { id: "Respondio", label: "✅ Respondieron" },
     { id: "SinResponder", label: "⏳ Sin responder" },
+    { id: "Hoy", label: "🕐 Modificado hoy" },
   ];
+  const toggleFiltro = (id) => setFiltrosActivos(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const familiasFiltradas = familias.filter(f => {
     const q = busqueda.toLowerCase();
     const matchQ = !q || f.nombre.toLowerCase().includes(q) || f.hijos?.some(h => (typeof h==="string"?h:h.nombre)?.toLowerCase().includes(q));
     const matchR = filtroRol==="Todos" || f.grado===filtroRol;
-    const matchResp = filtroRespuesta==="Todos" || (filtroRespuesta==="Respondio" ? haRespondido(f.id) : !haRespondido(f.id));
-    return matchQ && matchR && matchResp;
+    // Respondieron / Sin responder son el mismo "grupo" (se combinan con OR); Modificado hoy se combina con AND
+    const estadoActivos = filtrosActivos.filter(x => x === "Respondio" || x === "SinResponder");
+    const matchEstado = estadoActivos.length === 0 || estadoActivos.some(x => x === "Respondio" ? haRespondido(f.id) : !haRespondido(f.id));
+    const matchHoy = !filtrosActivos.includes("Hoy") || esModificadoHoy(f.id);
+    return matchQ && matchR && matchEstado && matchHoy;
   }).sort((a,b) => a.nombre.localeCompare(b.nombre, "es"));
 
   return (
@@ -2784,12 +2792,12 @@ export default function App() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <p className="text-[13px] font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2">Estado de conversaciones</p>
                 <div className="grid grid-cols-2 gap-3 px-4 pb-4">
-                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltroRespuesta("Respondio"); }}
+                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltrosActivos(["Respondio"]); }}
                     className="bg-emerald-50 rounded-xl p-3 text-center hover:bg-emerald-100 transition-all active:scale-95">
                     <p className="text-2xl font-bold text-emerald-600">{totalRespondieron}</p>
                     <p className="text-xs text-emerald-700 font-medium mt-0.5">✅ Respondieron</p>
                   </button>
-                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltroRespuesta("SinResponder"); }}
+                  <button onClick={() => { setMenu("confirmados"); setTab("familias"); setFiltrosActivos(["SinResponder"]); }}
                     className="bg-amber-50 rounded-xl p-3 text-center hover:bg-amber-100 transition-all active:scale-95">
                     <p className="text-2xl font-bold text-amber-600">{totalSinResponder}</p>
                     <p className="text-xs text-amber-700 font-medium mt-0.5">⏳ Sin responder</p>
@@ -2844,10 +2852,16 @@ export default function App() {
                 </div>
               </div>
               <div className="flex gap-2 overflow-x-auto">
-                {respuestas.map(r=>(
-                  <button key={r.id} onClick={() => setFiltroRespuesta(r.id)}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${filtroRespuesta===r.id?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{r.label}</button>
-                ))}
+                {opcionesFiltro.map(o=>{
+                  const activo = filtrosActivos.includes(o.id);
+                  return (
+                    <button key={o.id} onClick={() => toggleFiltro(o.id)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${activo?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                      <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] flex-shrink-0 ${activo?"bg-white text-violet-600":"border border-gray-300"}`}>{activo?"✓":""}</span>
+                      {o.label}
+                    </button>
+                  );
+                })}
               </div>
               <div className="space-y-2.5">
                 {familiasFiltradas.map(f=>(
