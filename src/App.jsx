@@ -532,6 +532,7 @@ function HijoCard({ hijo, hijoIdx, onEditFamilia }) {
 function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNombre, nota, setNota, onSend, saving }) {
   const [conversaciones, setConversaciones] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -581,14 +582,19 @@ function ConversacionesFamilia({ familiaId, currentUser, allProfiles, familiaNom
                   : "bg-white border border-gray-100 shadow-sm text-gray-800 rounded-bl-sm"}`}>
                 <p className="text-sm leading-relaxed">{c.nota}</p>
                 <p className={`text-[13px] mt-0.5 text-right ${esMio ? "text-violet-300" : "text-gray-400"}`}>{fechaStr}</p>
-                <button onClick={() => handleDelete(c.id)}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-100 text-red-400 rounded-full text-[9px] opacity-0 group-hover:opacity-100 flex items-center justify-center">✕</button>
+                <button onClick={() => setConfirmDeleteId(c.id)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-100 text-red-400 rounded-full text-xs flex items-center justify-center">✕</button>
               </div>
             </div>
           </div>
         );
       })}
       <div ref={bottomRef} />
+      {confirmDeleteId && (
+        <ConfirmModal title="¿Eliminar este mensaje?" confirmLabel="Eliminar"
+          onConfirm={() => { handleDelete(confirmDeleteId); setConfirmDeleteId(null); }}
+          onCancel={() => setConfirmDeleteId(null)} />
+      )}
     </div>
   );
 }
@@ -698,7 +704,7 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
         </div>
       </div>
 
-      <div className="bg-white border-t border-gray-100 px-3 py-3 flex-shrink-0 relative">
+      <div className="bg-white border-t border-gray-100 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex-shrink-0 relative">
         {showRemitenteMenu && (
           <div className="fixed inset-0 z-10" onClick={() => setShowRemitenteMenu(false)}>
             <div className="absolute bottom-16 left-3 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -2035,6 +2041,7 @@ function ComunicadosScreen({ familias, currentUser, onUpdateIdioma, onClose }) {
 function AdminView({ currentUserId }) {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmEliminar, setConfirmEliminar] = useState(null);
 
   useEffect(() => {
     supabase.from("profiles").select("*").order("created_at", { ascending: true })
@@ -2075,7 +2082,7 @@ function AdminView({ currentUserId }) {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => handleAprobar(u)} className="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600">✓ Aprobar</button>
-                <button onClick={() => handleEliminar(u)} className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50">Rechazar</button>
+                <button onClick={() => setConfirmEliminar(u)} className="px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50">Rechazar</button>
               </div>
             </div>
           ))}
@@ -2092,13 +2099,18 @@ function AdminView({ currentUserId }) {
               {u.id !== currentUserId && (
                 <>
                   <button onClick={() => toggleAdmin(u)} className={`text-xs px-2 py-1.5 rounded-full font-medium transition-all ${u.is_admin?"bg-red-50 text-red-500":"bg-gray-100 text-gray-600"}`}>{u.is_admin?"−Admin":"+Admin"}</button>
-                  <button onClick={() => handleEliminar(u)} className="text-xs px-2 py-1.5 rounded-full text-red-400 hover:bg-red-50">✕</button>
+                  <button onClick={() => setConfirmEliminar(u)} className="w-8 h-8 flex items-center justify-center rounded-full text-sm text-red-400 hover:bg-red-50">✕</button>
                 </>
               )}
             </div>
           </div>
         ))}
       </div>
+      {confirmEliminar && (
+        <ConfirmModal title={`¿Eliminar a ${confirmEliminar.nombre}?`} message="Esta acción no se puede deshacer." confirmLabel="Eliminar"
+          onConfirm={() => { handleEliminar(confirmEliminar); setConfirmEliminar(null); }}
+          onCancel={() => setConfirmEliminar(null)} />
+      )}
     </div>
   );
 }
@@ -2208,18 +2220,15 @@ function NuevoRegistroScreen({ familias, allProfiles, currentUser, onSave, onCan
   );
 }
 
-function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisita, onVerFamilia }) {
+function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisita, onDeleteVisita, onVerFamilia }) {
   const [showNuevo, setShowNuevo] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const sorted = [...visitas].sort((a,b) => (b.created_at||b.fecha||"").localeCompare(a.created_at||a.fecha||""));
 
   const handleSave = (item) => {
     onAddVisita(item);
     setShowNuevo(false);
-  };
-
-  const handleDelete = async (id) => {
-    await supabase.from("visitas").delete().eq("id", id);
   };
 
   if (showNuevo) return (
@@ -2273,12 +2282,18 @@ function ActividadView({ familias, allProfiles, currentUser, visitas, onAddVisit
                       </span>
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(v.id)} className="text-gray-200 hover:text-red-400 transition-colors flex-shrink-0 mt-1 text-xs">✕</button>
+                  <button onClick={() => setConfirmDeleteId(v.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-sm text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0">✕</button>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+      {confirmDeleteId && (
+        <ConfirmModal title="¿Eliminar esta visita?" confirmLabel="Eliminar"
+          onConfirm={() => { onDeleteVisita(confirmDeleteId); setConfirmDeleteId(null); }}
+          onCancel={() => setConfirmDeleteId(null)} />
       )}
     </div>
   );
@@ -2502,7 +2517,7 @@ function PublicApp({ talleres, ofrecimientos, familias, excursiones, onAddTaller
         </div>
 
         {/* Bottom Nav */}
-        <div className="bg-white border-t border-gray-100 flex-shrink-0 pb-safe z-10">
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 pb-[env(safe-area-inset-bottom)] z-10">
           <div className="flex max-w-lg mx-auto">
             {NAV_ITEMS.map(item=>(
               <button key={item.id} onClick={() => setMenu(item.id)}
@@ -2827,7 +2842,7 @@ export default function App() {
           {/* FAMILIAS */}
           {menu==="actividad" && (
             <ActividadView familias={familias} allProfiles={allProfiles} currentUser={user}
-              visitas={visitas} onAddVisita={handleAddVisita}
+              visitas={visitas} onAddVisita={handleAddVisita} onDeleteVisita={handleDeleteVisita}
               onVerFamilia={(f) => setFamiliaPerfilTarget(f)} />
           )}
 
@@ -2838,12 +2853,12 @@ export default function App() {
           {menu==="confirmados" && tab==="familias" && (
             <>
               <button onClick={() => setShowNuevaFamilia(true)} className="w-full py-3 bg-violet-600 text-white rounded-2xl text-sm font-semibold hover:bg-violet-700">+ Nueva familia</button>
+              <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
               <div className="flex gap-2">
-                <input type="text" placeholder="Buscar familia o hijo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
-                <div className="relative">
+                <div className="relative flex-1 min-w-0">
                   <button onClick={() => setShowFiltro(!showFiltro)}
-                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${filtroRol!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                    className={`w-full flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all truncate ${filtroRol!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
                     🔽 {filtroRol==="Todos"?"Filtrar":filtroRol}
                   </button>
                   {showFiltro && (
@@ -2855,9 +2870,9 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <div className="relative">
+                <div className="relative flex-1 min-w-0">
                   <button onClick={() => setShowFiltroCurso(!showFiltroCurso)}
-                    className={`flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all whitespace-nowrap ${filtroCurso!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                    className={`w-full flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all truncate ${filtroCurso!=="Todos"?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
                     🔽 {filtroCurso==="Todos"?"Grado":filtroCurso}
                   </button>
                   {showFiltroCurso && (
@@ -2870,12 +2885,12 @@ export default function App() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex flex-wrap gap-2">
                 {opcionesFiltro.map(o=>{
                   const activo = filtrosActivos.includes(o.id);
                   return (
                     <button key={o.id} onClick={() => toggleFiltro(o.id)}
-                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${activo?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${activo?"bg-violet-600 text-white border-violet-600":"bg-white text-gray-600 border-gray-200"}`}>
                       <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] flex-shrink-0 ${activo?"bg-white text-violet-600":"border border-gray-300"}`}>{activo?"✓":""}</span>
                       {o.label}
                     </button>
@@ -2907,7 +2922,7 @@ export default function App() {
         </div>
 
         {/* Bottom Nav */}
-        <div className="bg-white border-t border-gray-100 flex-shrink-0 safe-bottom z-10">
+        <div className="bg-white border-t border-gray-100 flex-shrink-0 pb-[env(safe-area-inset-bottom)] z-10">
           <div className="flex max-w-lg mx-auto">
             {NAV_ITEMS.map(item=>(
               <button key={item.id} onClick={() => setMenu(item.id)}
