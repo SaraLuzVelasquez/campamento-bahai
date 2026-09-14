@@ -3098,7 +3098,9 @@ function ParticipantesView({ familias, onVerFamilia }) {
         return (
           <button key={curso} onClick={() => setGradoSeleccionado(curso)}
             className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center gap-4 hover:border-violet-200 transition-all active:bg-gray-50 text-left">
-            <span className="text-3xl flex-shrink-0">{GRADO_ICONS[curso]}</span>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl ${GRADO_COLOR[curso] || "bg-gray-100 text-gray-600"}`}>
+              {GRADO_ICONS[curso]}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-800">{curso}</p>
               <p className="text-[13px] text-gray-500 mt-0.5">{count} participante{count !== 1 ? "s" : ""}</p>
