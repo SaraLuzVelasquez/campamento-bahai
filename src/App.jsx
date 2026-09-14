@@ -234,6 +234,7 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
   const [nombre, setNombre] = useState(familia?.nombre || "");
   const [telefono, setTelefono] = useState(familia?.telefono || "");
   const [grado, setGrado] = useState(familia?.grado || "Madre");
+  const [libro, setLibro] = useState(familia?.libro || null);
   const [idioma, setIdioma] = useState(familia?.idioma || "es");
   const [servicio, setServicio] = useState(familia?.servicio || "");
   const [hijos, setHijos] = useState((familia?.hijos || []).map(h => typeof h === "string" ? { nombre: h, edad: "", curso: "Huevito", alergias: "" } : { alergias: "", ...h }));
@@ -249,7 +250,7 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
     setSaving(true);
     const id = familia?.id || nombre.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now();
     const payload = {
-      id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, idioma, servicio: servicio.trim(), hijos,
+      id, nombre: nombre.trim(), telefono: telefono.trim() || null, grado, libro, idioma, servicio: servicio.trim(), hijos,
       contacto2_nombre: showC2 ? c2nombre.trim() || null : null,
       contacto2_parentesco: showC2 ? c2parentesco : null,
       contacto2_telefono: showC2 ? c2telefono.trim() || null : null,
@@ -295,6 +296,15 @@ function FamiliaForm({ familia, onSave, onCancel, onDelete }) {
       ) : (
         <button onClick={() => setShowC2(true)} className="text-xs text-violet-500 font-medium">+ Añadir segundo contacto</button>
       )}
+
+      <div><label className="text-xs text-gray-500 mb-2 block">Libro de Ruhi</label>
+        <div className="flex flex-wrap gap-1.5">
+          {[1,2,3,4,5,6,7].map(n => (
+            <button key={n} onClick={() => setLibro(libro===n ? null : n)}
+              className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${libro===n?"bg-violet-600 text-white":"bg-gray-100 text-gray-600"}`}>{n}</button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500">Hijos</label>
@@ -648,7 +658,10 @@ function PerfilFamiliaScreen({ familia: familiaInicial, allProfiles, currentUser
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg flex-shrink-0">{familia.nombre[0]}</div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap"><span className="font-bold text-gray-900 text-lg">{familia.nombre}</span><Badge text={familia.grado} /></div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-gray-900 text-lg">{familia.nombre}</span><Badge text={familia.grado} />
+              {familia.libro && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">📘 Libro {familia.libro}</span>}
+            </div>
             {familia.servicio && <p className="text-xs text-gray-500 mt-0.5">{familia.servicio}</p>}
           </div>
         </div>
